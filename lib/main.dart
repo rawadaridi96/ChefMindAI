@@ -1,0 +1,79 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'core/constants/supabase_constants.dart';
+import 'core/theme/app_theme.dart';
+import 'package:chefmind_ai/features/auth/presentation/auth_screen.dart';
+import 'package:chefmind_ai/features/home/home_screen.dart';
+import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart';
+import 'package:chefmind_ai/features/import/presentation/global_import_listener.dart';
+import 'package:chefmind_ai/core/services/deep_link_service.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: SupabaseConstants.url,
+    anonKey: SupabaseConstants.anonKey,
+  );
+
+  // Check Remember Me preference
+  final prefs = await SharedPreferences.getInstance();
+  final rememberMe = prefs.getBool('remember_me') ?? true;
+
+  if (!rememberMe) {
+    // Explicitly sign out before running the app if remember me is false
+    // We suppress errors here in case it's already signed out
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
+  }
+
+  // Initialize Deep Link Listener
+  DeepLinkService().init(navigatorKey);
+
+  runApp(const ProviderScope(child: ChefMindApp()));
+}
+
+class ChefMindApp extends ConsumerWidget {
+  const ChefMindApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp(
+      title: 'ChefMind AI',
+      navigatorKey: navigatorKey,
+      theme: AppTheme.darkTheme,
+      builder: (context, child) {
+        // Wrap the entire app with the listener, passing the navigator key
+        return GlobalImportListener(
+          navigatorKey: navigatorKey,
+          child: child!,
+        );
+      },
+      home: Consumer(
+        builder: (context, ref, _) {
+          final authState = ref.watch(authStateChangesProvider);
+
+          return authState.when(
+            data: (state) {
+              final session = state.session;
+              if (session != null) {
+                return const HomeScreen();
+              } else {
+                return const AuthScreen();
+              }
+            },
+            loading: () => const Scaffold(
+                body: Center(child: CircularProgressIndicator())),
+            error: (_, __) => const AuthScreen(),
+          );
+        },
+      ),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
