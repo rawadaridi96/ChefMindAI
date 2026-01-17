@@ -48,7 +48,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('ChefMind Recipes',
+        title: const Text('ChefMindAI Recipes',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,

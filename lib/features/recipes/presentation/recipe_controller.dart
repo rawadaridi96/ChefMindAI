@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../recipes/data/recipe_repository.dart';
+import '../../auth/data/auth_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 part 'recipe_controller.g.dart';
 
@@ -19,13 +21,28 @@ class RecipeController extends _$RecipeController {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      return ref.read(recipeRepositoryProvider).generateRecipes(
+      final user = ref.read(authRepositoryProvider).currentUser;
+      final prefs = await SharedPreferences.getInstance();
+      bool isGuest = user == null || user.isAnonymous;
+      int guestGenCount = prefs.getInt('guest_gen_count') ?? 0;
+
+      final recipes = await ref.read(recipeRepositoryProvider).generateRecipes(
             mode: mode,
             query: query,
             filters: filters,
             mealType: mealType,
             allergies: allergies,
           );
+
+      if (isGuest) {
+        if (guestGenCount >= 1) {
+          // Lock the recipes
+          return recipes.map((r) => {...r, 'is_locked': true}).toList();
+        }
+        await prefs.setInt('guest_gen_count', guestGenCount + 1);
+      }
+
+      return recipes;
     });
   }
 

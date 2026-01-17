@@ -1,15 +1,19 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/features/recipes/presentation/widgets/conflict_resolution_dialog.dart';
+import 'package:chefmind_ai/features/auth/presentation/auth_screen.dart';
 import 'recipe_controller.dart';
 import '../../shopping/presentation/shopping_controller.dart';
 import 'package:confetti/confetti.dart';
 import '../../../../core/widgets/nano_toast.dart';
 import 'vault_controller.dart';
+import '../../auth/presentation/auth_state_provider.dart'; // Import provider
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> recipe;
@@ -38,8 +42,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         _originalRecipe =
             json.decode(json.encode(widget.recipe['original_version']));
         _currentRecipe = json.decode(json.encode(widget.recipe));
-        // Ensure current does not nest the original inside itself again to keep it clean in memory
-        // (optional, but good for sanity)
         _isEdited = true;
       } else {
         _originalRecipe = json.decode(json.encode(widget.recipe));
@@ -48,6 +50,18 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     } catch (e) {
       _originalRecipe = Map.from(widget.recipe);
       _currentRecipe = Map.from(widget.recipe);
+    }
+
+    // Check if user is logged in to override legacy lock state
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null && !user.isAnonymous) {
+      _currentRecipe['is_locked'] = false;
+    }
+
+    if (_currentRecipe['is_locked'] == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showLockedContentModal();
+      });
     }
   }
 
@@ -392,6 +406,23 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for Auth changes to unlock content dynamically
+    ref.listen(authStateChangesProvider, (previous, next) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null &&
+          !user.isAnonymous &&
+          _currentRecipe['is_locked'] == true) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _currentRecipe['is_locked'] = false;
+            });
+            NanoToast.showSuccess(context, "Recipe Unlocked!");
+          }
+        });
+      }
+    });
+
     // Determine which recipe to show
     final recipe = _showOriginal ? _originalRecipe : _currentRecipe;
 
@@ -412,176 +443,185 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           // Save Button
           // Save Button
           // Save Button
-          Consumer(
-            builder: (context, ref, child) {
-              final vaultState = ref.watch(vaultControllerProvider);
-              final savedRecipes = vaultState.valueOrNull ?? [];
+          // Save Button
+          if (recipe['is_locked'] != true)
+            Consumer(
+              builder: (context, ref, child) {
+                final vaultState = ref.watch(vaultControllerProvider);
+                final savedRecipes = vaultState.valueOrNull ?? [];
 
-              // Check if saved by matching ID or Title (fallback for legacy)
-              final isSaved = savedRecipes.any((r) {
-                final idMatch = r['recipe_id'] != null &&
-                    r['recipe_id'] == _currentRecipe['id'];
-                // If ID is missing (fresh generation), we can't match by ID yet, returning false.
-                // Unless we matched by title? But titles can be duplicates.
-                // Relying on ID is safer. If it has no ID, it's likely not saved.
-                return idMatch;
-              });
+                // Check if saved by matching ID or Title (fallback for legacy)
+                final isSaved = savedRecipes.any((r) {
+                  final idMatch = r['recipe_id'] != null &&
+                      r['recipe_id'] == _currentRecipe['id'];
+                  // If ID is missing (fresh generation), we can't match by ID yet, returning false.
+                  // Unless we matched by title? But titles can be duplicates.
+                  // Relying on ID is safer. If it has no ID, it's likely not saved.
+                  return idMatch;
+                });
 
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    // Ensure filled icon when saved
-                    icon:
-                        Icon(isSaved ? Icons.bookmark : Icons.bookmark_border),
-                    color: AppColors.zestyLime,
-                    onPressed: () async {
-                      if (isSaved) {
-                        // Start delete flow
-                        final savedItem = savedRecipes.firstWhere(
-                            (r) => r['recipe_id'] == _currentRecipe['id'],
-                            orElse: () => {});
-                        if (savedItem.isNotEmpty &&
-                            savedItem['recipe_id'] != null) {
-                          final shouldDelete = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              backgroundColor: AppColors.deepCharcoal,
-                              title: const Text("Delete Recipe?",
-                                  style: TextStyle(color: Colors.white)),
-                              content: const Text(
-                                  "Are you sure you want to remove this from your Vault?",
-                                  style: TextStyle(color: Colors.white70)),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text("Cancel",
-                                      style: TextStyle(color: Colors.white54)),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text("Delete",
-                                      style: TextStyle(
-                                          color: AppColors.errorRed,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          );
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      // Ensure filled icon when saved
+                      icon: Icon(
+                          isSaved ? Icons.bookmark : Icons.bookmark_border),
+                      color: AppColors.zestyLime,
+                      onPressed: () async {
+                        if (isSaved) {
+                          // Start delete flow
+                          final savedItem = savedRecipes.firstWhere(
+                              (r) => r['recipe_id'] == _currentRecipe['id'],
+                              orElse: () => {});
+                          if (savedItem.isNotEmpty &&
+                              savedItem['recipe_id'] != null) {
+                            final shouldDelete = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                backgroundColor: AppColors.deepCharcoal,
+                                title: const Text("Delete Recipe?",
+                                    style: TextStyle(color: Colors.white)),
+                                content: const Text(
+                                    "Are you sure you want to remove this from your Vault?",
+                                    style: TextStyle(color: Colors.white70)),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text("Cancel",
+                                        style:
+                                            TextStyle(color: Colors.white54)),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text("Delete",
+                                        style: TextStyle(
+                                            color: AppColors.errorRed,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            );
 
-                          if (shouldDelete == true) {
-                            await ref
-                                .read(vaultControllerProvider.notifier)
-                                .deleteRecipe(savedItem['recipe_id']);
-                            if (mounted) {
-                              NanoToast.showInfo(
-                                  context, 'Recipe removed from Vault');
+                            if (shouldDelete == true) {
+                              await ref
+                                  .read(vaultControllerProvider.notifier)
+                                  .deleteRecipe(savedItem['recipe_id']);
+                              if (mounted) {
+                                NanoToast.showInfo(
+                                    context, 'Recipe removed from Vault');
+                              }
                             }
                           }
-                        }
-                      } else {
-                        // Save flow
-                        // 1. Check for duplicate title first
-                        final title = _currentRecipe['title'];
-                        final existingId = await ref
-                            .read(vaultControllerProvider.notifier)
-                            .checkForDuplicate(title);
+                        } else {
+                          // Save flow
+                          // 1. Check for duplicate title first
+                          final title = _currentRecipe['title'];
+                          final existingId = await ref
+                              .read(vaultControllerProvider.notifier)
+                              .checkForDuplicate(title);
 
-                        // If existingId found AND it's different from our current ID
-                        // (meaning not just re-saving the same file we already have open)
-                        if (existingId != null &&
-                            existingId != _currentRecipe['id']) {
-                          // Conflict Detected!
-                          final choice = await showDialog<String>(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) => ConflictResolutionDialog(
-                              title: title,
-                              onOverwrite: () =>
-                                  Navigator.pop(context, 'overwrite'),
-                              onSaveAsNew: () => Navigator.pop(context, 'new'),
-                              onCancel: () => Navigator.pop(context, 'cancel'),
-                            ),
-                          );
+                          // If existingId found AND it's different from our current ID
+                          // (meaning not just re-saving the same file we already have open)
+                          if (existingId != null &&
+                              existingId != _currentRecipe['id']) {
+                            // Conflict Detected!
+                            final choice = await showDialog<String>(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => ConflictResolutionDialog(
+                                title: title,
+                                onOverwrite: () =>
+                                    Navigator.pop(context, 'overwrite'),
+                                onSaveAsNew: () =>
+                                    Navigator.pop(context, 'new'),
+                                onCancel: () =>
+                                    Navigator.pop(context, 'cancel'),
+                              ),
+                            );
 
-                          if (choice == 'cancel' || choice == null) return;
+                            if (choice == 'cancel' || choice == null) return;
 
-                          if (choice == 'overwrite') {
-                            // Use existing ID to overwrite
-                            _currentRecipe['id'] = existingId;
-                          } else if (choice == 'new') {
-                            // Smart Versioning: Check if title ends with " V<number>"
-                            final versionRegex = RegExp(r' V(\d+)$');
-                            final match = versionRegex.firstMatch(title);
+                            if (choice == 'overwrite') {
+                              // Use existing ID to overwrite
+                              _currentRecipe['id'] = existingId;
+                            } else if (choice == 'new') {
+                              // Smart Versioning: Check if title ends with " V<number>"
+                              final versionRegex = RegExp(r' V(\d+)$');
+                              final match = versionRegex.firstMatch(title);
 
-                            if (match != null) {
-                              // Has version, increment it
-                              final version = int.parse(match.group(1)!);
-                              _currentRecipe['title'] = title.replaceFirst(
-                                  versionRegex, " V${version + 1}");
-                            } else {
-                              // No version, append V2
-                              _currentRecipe['title'] = "$title V2";
+                              if (match != null) {
+                                // Has version, increment it
+                                final version = int.parse(match.group(1)!);
+                                _currentRecipe['title'] = title.replaceFirst(
+                                    versionRegex, " V${version + 1}");
+                              } else {
+                                // No version, append V2
+                                _currentRecipe['title'] = "$title V2";
+                              }
+                              _currentRecipe
+                                  .remove('id'); // Ensure fresh ID generation
                             }
-                            _currentRecipe
-                                .remove('id'); // Ensure fresh ID generation
+                          }
+
+                          // Prepare recipe for saving
+                          final recipeToSave =
+                              Map<String, dynamic>.from(_currentRecipe);
+                          if (_isEdited) {
+                            recipeToSave['original_version'] = _originalRecipe;
+                          }
+
+                          await ref
+                              .read(vaultControllerProvider.notifier)
+                              .saveRecipe(recipeToSave);
+
+                          // Sync generated ID back to current recipe state so UI updates
+                          if (recipeToSave['id'] != null) {
+                            _currentRecipe['id'] = recipeToSave['id'];
+                          }
+
+                          if (mounted) {
+                            _confettiController.play();
+                            NanoToast.showSuccess(
+                                context, 'Recipe saved to Vault!');
+                            // Force rebuild to pick up new ID if it was assigned on the map
+                            setState(() {});
                           }
                         }
-
-                        // Prepare recipe for saving
-                        final recipeToSave =
-                            Map<String, dynamic>.from(_currentRecipe);
-                        if (_isEdited) {
-                          recipeToSave['original_version'] = _originalRecipe;
-                        }
-
-                        await ref
-                            .read(vaultControllerProvider.notifier)
-                            .saveRecipe(recipeToSave);
-
-                        // Sync generated ID back to current recipe state so UI updates
-                        if (recipeToSave['id'] != null) {
-                          _currentRecipe['id'] = recipeToSave['id'];
-                        }
-
-                        if (mounted) {
-                          _confettiController.play();
-                          NanoToast.showSuccess(
-                              context, 'Recipe saved to Vault!');
-                          // Force rebuild to pick up new ID if it was assigned on the map
-                          setState(() {});
-                        }
-                      }
-                    },
-                  ),
-                  ConfettiWidget(
-                    confettiController: _confettiController,
-                    blastDirectionality: BlastDirectionality.explosive,
-                    shouldLoop: false,
-                    colors: const [
-                      AppColors.zestyLime,
-                      Colors.white,
-                      AppColors.electricBlue
-                    ],
-                    numberOfParticles: 20,
-                    gravity: 0.1,
-                  ),
-                ],
-              );
-            },
-          ),
+                      },
+                    ),
+                    ConfettiWidget(
+                      confettiController: _confettiController,
+                      blastDirectionality: BlastDirectionality.explosive,
+                      shouldLoop: false,
+                      colors: const [
+                        AppColors.zestyLime,
+                        Colors.white,
+                        AppColors.electricBlue
+                      ],
+                      numberOfParticles: 20,
+                      gravity: 0.1,
+                    ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showConsultChefDialog,
-        backgroundColor: AppColors.zestyLime,
-        icon: const Icon(Icons.chat_bubble_outline,
-            color: AppColors.deepCharcoal),
-        label: const Text('Assistant',
-            style: TextStyle(
-                color: AppColors.deepCharcoal, fontWeight: FontWeight.bold)),
-      ),
+      floatingActionButton: recipe['is_locked'] == true
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _showConsultChefDialog,
+              backgroundColor: AppColors.zestyLime,
+              icon: const Icon(Icons.chat_bubble_outline,
+                  color: AppColors.deepCharcoal),
+              label: const Text('Assistant',
+                  style: TextStyle(
+                      color: AppColors.deepCharcoal,
+                      fontWeight: FontWeight.bold)),
+            ),
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -884,35 +924,109 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         fontWeight: FontWeight.bold,
                         fontSize: 20)),
                 const SizedBox(height: 12),
-                ...instructions.asMap().entries.map((entry) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                if (recipe['is_locked'] == true) ...[
+                  GestureDetector(
+                    onTap: _showLockedContentModal,
+                    child: Stack(
                       children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          alignment: Alignment.center,
-                          decoration: const BoxDecoration(
-                              color: AppColors.zestyLime,
-                              shape: BoxShape.circle),
-                          child: Text("${entry.key + 1}",
-                              style: const TextStyle(
-                                  color: AppColors.deepCharcoal,
-                                  fontWeight: FontWeight.bold)),
+                        // Blurred Instructions Preview
+                        Column(
+                          children: [
+                            ...List.generate(6, (index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: const BoxDecoration(
+                                          color: Colors.white10,
+                                          shape: BoxShape.circle),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Container(
+                                        height: 16,
+                                        color: Colors.white10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                            child: Text(entry.value.toString(),
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    height: 1.5,
-                                    fontSize: 15))),
+                        Positioned.fill(
+                          child: ClipRect(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              child: Container(
+                                color: Colors.black.withOpacity(0.1),
+                                alignment: Alignment.center,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.lock_outline,
+                                        color: AppColors.zestyLime, size: 48),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      "Recipe Locked",
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton(
+                                      onPressed: _showLockedContentModal,
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.zestyLime,
+                                          foregroundColor:
+                                              AppColors.deepCharcoal),
+                                      child: const Text("Unlock Full Recipe"),
+                                    )
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  );
-                }).toList(),
+                  )
+                ] else ...[
+                  ...instructions.asMap().entries.map((entry) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                                color: AppColors.zestyLime,
+                                shape: BoxShape.circle),
+                            child: Text("${entry.key + 1}",
+                                style: const TextStyle(
+                                    color: AppColors.deepCharcoal,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                              child: Text(entry.value.toString(),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      height: 1.5,
+                                      fontSize: 15))),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
 
                 const SizedBox(height: 80), // Fab space
               ],
@@ -939,6 +1053,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   Widget _buildStatBadge(IconData icon, String label) {
     return Container(
+      constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width - 80), // Prevent overflow
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white10,
@@ -950,9 +1066,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         children: [
           Icon(icon, color: AppColors.zestyLime, size: 16),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
           ),
         ],
       ),
@@ -971,6 +1091,98 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         Text(label,
             style: const TextStyle(color: Colors.white54, fontSize: 12)),
       ],
+    );
+  }
+
+  void _showLockedContentModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          border: Border(
+              top: BorderSide(color: Colors.white.withOpacity(0.1), width: 1)),
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(Icons.lock_outline_rounded,
+                      color: AppColors.zestyLime, size: 48),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Unlock the Full Recipe",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    "You've reached your guest limit. Sign up for free to unlock this recipe and keep cooking!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const AuthScreen(isLogin: false)),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.zestyLime,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "Sign Up for Free",
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const AuthScreen(isLogin: true)),
+                      );
+                    },
+                    child: const Text(
+                      "Already have an account? Log In",
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

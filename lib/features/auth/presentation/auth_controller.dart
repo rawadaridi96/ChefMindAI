@@ -66,6 +66,17 @@ class AuthController extends _$AuthController {
     });
   }
 
+  Future<void> signInAnonymously() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(authRepositoryProvider).signInAnonymously();
+      // Important: Guest sessions usually don't need 'Remember Me' for email/pass
+      // but Supabase persists the session automatically.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('remember_me', true);
+    });
+  }
+
   Future<void> updateProfile({String? fullName, String? password}) async {
     await ref.read(authRepositoryProvider).updateUser(
         fullName: fullName != null && fullName.isNotEmpty ? fullName : null,
@@ -85,6 +96,12 @@ class AuthController extends _$AuthController {
         }
       }
     }
+  }
+
+  Future<void> updateDietaryPreferences(List<String> preferences) async {
+    await ref.read(authRepositoryProvider).updateUser(data: {
+      'dietary_preferences': preferences,
+    });
   }
 
   // --- Biometric Management ---

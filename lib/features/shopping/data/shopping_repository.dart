@@ -14,10 +14,14 @@ class ShoppingRepository {
   ShoppingRepository(this._client);
 
   Future<List<Map<String, dynamic>>> getItems() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return [];
+
     final response = await _client
         .from('shopping_cart')
         .select()
-        .order('is_bought', ascending: true) // Unbought first
+        .eq('user_id', userId) // Explicit data isolation
+        .order('is_bought', ascending: true)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(response);
   }

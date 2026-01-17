@@ -81,9 +81,13 @@ class VaultRepository {
   }
 
   Future<List<Map<String, dynamic>>> getSavedRecipes() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return [];
+
     final response = await _client
         .from('saved_recipes')
         .select()
+        .eq('user_id', userId) // Explicit data isolation
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(response);
   }

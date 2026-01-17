@@ -12,6 +12,8 @@ import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart'
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/widgets/nano_toast.dart';
 import 'edit_profile_screen.dart';
+import '../../auth/presentation/dietary_preferences_screen.dart';
+import '../../auth/presentation/auth_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -264,20 +266,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   final authState = ref.watch(authStateChangesProvider);
                   final user = authState.asData?.value.session?.user;
                   final email = user?.email ?? 'Guest';
+                  final isGuest = user?.isAnonymous ?? true;
 
                   // Priority: Metadata Name -> Formatted Email
                   String username = 'Guest';
                   final metadata = user?.userMetadata;
 
-                  if (metadata != null && metadata.containsKey('full_name')) {
-                    username = metadata['full_name'].toString().toUpperCase();
-                  } else if (metadata != null && metadata.containsKey('name')) {
-                    username = metadata['name'].toString().toUpperCase();
+                  if (!isGuest) {
+                    if (metadata != null && metadata.containsKey('full_name')) {
+                      username = metadata['full_name'].toString().toUpperCase();
+                    } else if (metadata != null &&
+                        metadata.containsKey('name')) {
+                      username = metadata['name'].toString().toUpperCase();
+                    } else {
+                      // Fallback: Replace . and _ with spaces
+                      final handle = email.split('@')[0];
+                      username =
+                          handle.replaceAll(RegExp(r'[._]'), ' ').toUpperCase();
+                    }
                   } else {
-                    // Fallback: Replace . and _ with spaces
-                    final handle = email.split('@')[0];
-                    username =
-                        handle.replaceAll(RegExp(r'[._]'), ' ').toUpperCase();
+                    username = "GUEST CHEF";
                   }
 
                   return Column(
@@ -301,10 +309,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(height: 32),
                       GestureDetector(
                         onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const EditProfileScreen()));
+                          if (isGuest) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const AuthScreen(
+                                        isLogin: false))); // Go to Sign Up
+                          } else {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const EditProfileScreen()));
+                          }
                         },
                         child: Stack(
                           children: [
@@ -318,30 +334,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               child: CircleAvatar(
                                 radius: 40,
                                 backgroundColor: Colors.white10,
-                                backgroundImage:
-                                    user?.userMetadata?['avatar_url'] != null
-                                        ? NetworkImage(
-                                            user!.userMetadata!['avatar_url'])
-                                        : null,
-                                child: user?.userMetadata?['avatar_url'] == null
-                                    ? const Icon(Icons.camera_alt_outlined,
+                                backgroundImage: !isGuest &&
+                                        user?.userMetadata?['avatar_url'] !=
+                                            null
+                                    ? NetworkImage(
+                                        user!.userMetadata!['avatar_url'])
+                                    : null,
+                                child: isGuest ||
+                                        user?.userMetadata?['avatar_url'] ==
+                                            null
+                                    ? const Icon(Icons.person_outline,
                                         size: 30, color: Colors.white)
                                     : null,
                               ),
                             ),
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.zestyLime,
-                                  shape: BoxShape.circle,
+                            if (!isGuest)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.zestyLime,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.edit,
+                                      size: 14, color: AppColors.deepCharcoal),
                                 ),
-                                child: const Icon(Icons.edit,
-                                    size: 14, color: AppColors.deepCharcoal),
-                              ),
-                            )
+                              )
                           ],
                         ),
                       ),
@@ -356,10 +376,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 8),
                       GestureDetector(
-                        onTap: () => _showUserDetails(user),
-                        child: const Text(
-                          "Show details",
-                          style: TextStyle(
+                        onTap: () => isGuest
+                            ? Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const AuthScreen(isLogin: false)))
+                            : _showUserDetails(user),
+                        child: Text(
+                          isGuest
+                              ? "Sign up to save your settings"
+                              : "Show details",
+                          style: const TextStyle(
                               color: AppColors.zestyLime,
                               fontSize: 14,
                               fontWeight: FontWeight.w600),
@@ -374,121 +402,174 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             // Settings List
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Privacy and Security",
-                    style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final user = ref
+                      .read(authRepositoryProvider)
+                      .currentUser; // Direct read for logic
+                  final isGuest = user?.isAnonymous ?? true;
 
-                  // Notifications (Simulated "Change PIN" style)
-                  _SettingsTile(
-                    icon: Icons.notifications_outlined,
-                    title: "Push Notifications",
-                    trailing: Switch(
-                      value: _notificationsEnabled,
-                      activeColor: AppColors.zestyLime,
-                      activeTrackColor: AppColors.zestyLime.withOpacity(0.2),
-                      inactiveThumbColor: Colors.white54,
-                      inactiveTrackColor: Colors.white10,
-                      onChanged: (val) {
-                        setState(() => _notificationsEnabled = val);
-                        NanoToast.showInfo(
-                            context,
-                            val
-                                ? "Notifications Enabled"
-                                : "Notifications Disabled");
-                      },
-                    ),
-                  ),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      const Text(
+                        "Privacy and Security",
+                        style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
 
-                  const SizedBox(height: 8),
+                      // Notifications (Simulated "Change PIN" style)
+                      _SettingsTile(
+                        icon: Icons.notifications_outlined,
+                        title: "Push Notifications",
+                        trailing: Switch(
+                          value: _notificationsEnabled,
+                          activeColor: AppColors.zestyLime,
+                          activeTrackColor:
+                              AppColors.zestyLime.withOpacity(0.2),
+                          inactiveThumbColor: Colors.white54,
+                          inactiveTrackColor: Colors.white10,
+                          onChanged: (val) {
+                            setState(() => _notificationsEnabled = val);
+                            NanoToast.showInfo(
+                                context,
+                                val
+                                    ? "Notifications Enabled"
+                                    : "Notifications Disabled");
+                          },
+                        ),
+                      ),
 
-                  // Biometrics
-                  _SettingsTile(
-                    icon: Icons.fingerprint,
-                    title: "Biometric Login",
-                    trailing: Switch(
-                      value: _biometricEnabled,
-                      activeColor: AppColors.zestyLime,
-                      activeTrackColor: AppColors.zestyLime.withOpacity(0.2),
-                      inactiveThumbColor: Colors.white54,
-                      inactiveTrackColor: Colors.white10,
-                      onChanged: _toggleBiometrics,
-                    ),
-                  ),
+                      const SizedBox(height: 8),
 
-                  const SizedBox(height: 24),
-                  const Text(
-                    "Subscription",
-                    style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
+                      // Biometrics (Only for Logged In Users)
+                      if (!isGuest)
+                        _SettingsTile(
+                          icon: Icons.fingerprint,
+                          title: "Biometric Login",
+                          trailing: Switch(
+                            value: _biometricEnabled,
+                            activeColor: AppColors.zestyLime,
+                            activeTrackColor:
+                                AppColors.zestyLime.withOpacity(0.2),
+                            inactiveThumbColor: Colors.white54,
+                            inactiveTrackColor: Colors.white10,
+                            onChanged: _toggleBiometrics,
+                          ),
+                        ),
 
-                  // Subscription & Billing
-                  _SettingsTile(
-                    icon: Icons.credit_card,
-                    title: "Subscription & Billing",
-                    trailing: const Icon(Icons.arrow_forward_ios,
-                        color: Colors.white54, size: 16),
-                    onTap: () async {
-                      final url = ref
-                          .read(paymentServiceProvider)
-                          .getBillingPortalUrl();
-                      final uri = Uri.parse(url);
-                      try {
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri,
-                              mode: LaunchMode.externalApplication);
-                        } else {
-                          // Fallback
-                          await launchUrl(uri,
-                              mode: LaunchMode.externalApplication);
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          NanoToast.showError(
-                              context, "Could not open billing portal");
-                        }
-                      }
-                    },
-                  ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        "Subscription",
+                        style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
 
-                  const SizedBox(height: 24),
-                  const Text(
-                    "Account",
-                    style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
+                      // Subscription & Billing
+                      _SettingsTile(
+                        icon: Icons.credit_card,
+                        title: "Subscription & Billing",
+                        trailing: const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white54, size: 16),
+                        onTap: () async {
+                          if (isGuest) {
+                            NanoToast.showInfo(
+                                context, "Please sign up to subscribe.");
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const AuthScreen(isLogin: false)));
+                            return;
+                          }
 
-                  // Sign Out
-                  _SettingsTile(
-                    icon: Icons.logout,
-                    title: "Sign Out",
-                    iconColor: AppColors.errorRed,
-                    textColor: AppColors.errorRed,
-                    trailing: const Icon(Icons.arrow_forward_ios,
-                        color: AppColors.errorRed, size: 16),
-                    onTap: () {
-                      ref.read(authControllerProvider.notifier).signOut();
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    },
-                  ),
+                          final url = ref
+                              .read(paymentServiceProvider)
+                              .getBillingPortalUrl();
+                          final uri = Uri.parse(url);
+                          try {
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
+                            } else {
+                              // Fallback
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              NanoToast.showError(
+                                  context, "Could not open billing portal");
+                            }
+                          }
+                        },
+                      ),
 
-                  const SizedBox(height: 40),
-                ],
+                      const SizedBox(height: 24),
+                      if (!isGuest) ...[
+                        const Text(
+                          "Account",
+                          style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        _SettingsTile(
+                          icon: Icons.auto_awesome,
+                          title: "Personalize AI Chef",
+                          trailing: const Icon(Icons.arrow_forward_ios,
+                              color: Colors.white54, size: 16),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const DietaryPreferencesScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Sign Out / Log In
+                      _SettingsTile(
+                        icon: isGuest ? Icons.login : Icons.logout,
+                        title: isGuest ? "Log In / Sign Up" : "Sign Out",
+                        iconColor:
+                            isGuest ? AppColors.zestyLime : AppColors.errorRed,
+                        textColor: isGuest ? Colors.white : AppColors.errorRed,
+                        trailing: Icon(Icons.arrow_forward_ios,
+                            color:
+                                isGuest ? Colors.white54 : AppColors.errorRed,
+                            size: 16),
+                        onTap: () {
+                          if (isGuest) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const AuthScreen(isLogin: true)));
+                          } else {
+                            ref.read(authControllerProvider.notifier).signOut();
+                            Navigator.of(context)
+                                .popUntil((route) => route.isFirst);
+                          }
+                        },
+                      ),
+
+                      const SizedBox(height: 40),
+                    ],
+                  );
+                },
               ),
             )
           ],

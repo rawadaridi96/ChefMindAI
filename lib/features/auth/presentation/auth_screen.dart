@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/utils/validators.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
@@ -11,7 +11,8 @@ import '../data/auth_repository.dart';
 import 'auth_controller.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
-  const AuthScreen({super.key});
+  final bool isLogin;
+  const AuthScreen({super.key, this.isLogin = true});
 
   @override
   ConsumerState<AuthScreen> createState() => _AuthScreenState();
@@ -29,17 +30,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
   bool _isLogin = true;
   bool _isPasswordVisible = false;
-  bool _rememberMe = true;
+
   List<Map<String, dynamic>> _biometricAccounts = [];
 
   // Hybrid Adaptive State
   Map<String, dynamic>? _selectedBiometricAccount;
-  bool _showPasswordField = false;
   int _biometricAttempts = 0;
 
   @override
   void initState() {
     super.initState();
+    _isLogin = widget.isLogin;
     _shakeController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 500));
     _shakeAnimation = Tween<double>(begin: 0, end: 24)
@@ -52,18 +53,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       }
     });
 
-    _loadUserPreferences();
     _loadBiometricAccounts();
-  }
-
-  Future<void> _loadUserPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _rememberMe = prefs.getBool('remember_me') ?? true;
-      if (_rememberMe) {
-        _emailController.text = prefs.getString('saved_email') ?? '';
-      }
-    });
   }
 
   Future<void> _loadBiometricAccounts() async {
@@ -88,7 +78,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       _selectedBiometricAccount = account;
       _isLogin = true;
       _emailController.text = account['email'] ?? '';
-      _showPasswordField = false;
       _biometricAttempts = 0;
       _formKey.currentState?.reset(); // Clear errors
     });
@@ -99,7 +88,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       _selectedBiometricAccount = null;
       _emailController.clear();
       _passwordController.clear();
-      _showPasswordField = false;
       _biometricAttempts = 0;
     });
   }
@@ -118,9 +106,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       });
       if (_biometricAttempts >= 3) {
         _shakeController.forward();
-        setState(() {
-          _showPasswordField = true;
-        });
+        // setState(() {
+        //   _showPasswordField = true; // Field is always visible now
+        // });
         NanoToast.showError(
             context, "Too many failed attempts. Please use password.");
       } else {
@@ -140,14 +128,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       ref.read(authControllerProvider.notifier).signIn(
             email,
             password,
-            rememberMe: _rememberMe,
           );
     } else {
       ref.read(authControllerProvider.notifier).signUp(
             email,
             password,
             fullName: name,
-            rememberMe: _rememberMe,
           );
     }
   }
@@ -270,10 +256,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           (previous?.isLoading ?? false)) {
         if (_isLogin) {
           NanoToast.showSuccess(context, "Welcome back, $displayName!");
-          _checkAndTriggerEnrollment();
+          // Close Auth Screen to reveal Home or previous screen
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+          // _checkAndTriggerEnrollment(); // Delayed check might fail if context is popped
         } else {
           NanoToast.showSuccess(
               context, "Account created! Please check your email.");
+          // For signup, we might want to stay to tell them to check email?
+          // Or pop if auto-login happens? Usually Supabase requires email confirm.
+          // Keeping it as is for signup.
           _checkAndTriggerEnrollment();
         }
       }
@@ -312,22 +305,30 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                       },
                       child: Column(
                         children: [
-                          const SizedBox(height: 60),
-                          const Icon(Icons.restaurant_menu,
-                              size: 60, color: AppColors.zestyLime),
+                          const SizedBox(height: 32),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              'assets/app_icon.jpg',
+                              height: 64,
+                              width: 64,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Text(
-                            'CHEFMIND AI',
+                            'ChefMindAI',
                             style: Theme.of(context)
                                 .textTheme
                                 .headlineSmall
                                 ?.copyWith(
                                   color: Colors.white,
-                                  letterSpacing: 4,
                                   fontWeight: FontWeight.w900,
+                                  fontSize:
+                                      24, // Slightly larger for brand presence
                                 ),
                           ),
-                          const SizedBox(height: 48),
+                          const SizedBox(height: 16),
 
                           // Account Picker
                           if (_biometricAccounts.isNotEmpty) ...[
@@ -379,6 +380,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                 ),
                               ),
                             ),
+                          const SizedBox(
+                              height: 40), // Raise content from bottom
                         ],
                       ),
                     ),
@@ -515,129 +518,97 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         Text(
           'Welcome back,',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white54, fontSize: 16),
+          style: const TextStyle(color: Colors.white54, fontSize: 14),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           _selectedBiometricAccount?['displayName'] ??
               _selectedBiometricAccount?['email']?.split('@')[0] ??
               'User',
           textAlign: TextAlign.center,
           style: const TextStyle(
-              color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
 
-        // Neumorphic Biometric Button - BIG
-        Center(
-          child: GestureDetector(
-            onTap: _triggerBiometricAuth,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                  color: AppColors.zestyLime,
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.zestyLime,
-                      Color.lerp(AppColors.zestyLime, Colors.black, 0.2)!
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                        color: AppColors.zestyLime.withOpacity(0.4),
-                        offset: const Offset(4, 4),
-                        blurRadius: 10,
-                        spreadRadius: 1),
-                    BoxShadow(
-                        color: Colors.white.withOpacity(0.1),
-                        offset: const Offset(-4, -4),
-                        blurRadius: 10,
-                        spreadRadius: 1),
-                  ]),
-              child: const Icon(Icons.fingerprint,
-                  size: 64, color: AppColors.deepCharcoal),
+        // Password Field (Always visible now)
+        TextFormField(
+          controller: _passwordController,
+          autofillHints: const [AutofillHints.password],
+          validator: (val) =>
+              val != null && val.isNotEmpty ? null : 'Password is required',
+          obscureText: !_isPasswordVisible,
+          style: const TextStyle(color: Colors.white),
+          cursorColor: AppColors.zestyLime,
+          decoration: InputDecoration(
+            labelText: 'Password',
+            labelStyle: const TextStyle(color: Colors.white38),
+            floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.zestyLime)),
+            filled: true,
+            fillColor: Colors.black12,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                color: Colors.white38,
+              ),
+              onPressed: () =>
+                  setState(() => _isPasswordVisible = !_isPasswordVisible),
             ),
           ),
         ),
         const SizedBox(height: 16),
+
+        // Sign In Button
+        ElevatedButton(
+          onPressed: () {
+            _submit();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.zestyLime,
+            foregroundColor: AppColors.deepCharcoal,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 0,
+          ),
+          child: const Text(
+            'Sign In',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Biometric Icon Centered
+        Center(
+          child: InkWell(
+            onTap: _triggerBiometricAuth,
+            borderRadius: BorderRadius.circular(40),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: AppColors.zestyLime.withOpacity(0.3))),
+              child: const Icon(Icons.fingerprint,
+                  size: 32, color: AppColors.zestyLime),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         const Text(
-          "Tap to Sign In",
+          "Touch to Login",
           textAlign: TextAlign.center,
-          style: TextStyle(
-              color: AppColors.zestyLime,
-              fontWeight: FontWeight.bold,
-              fontSize: 16),
+          style: TextStyle(color: Colors.white38, fontSize: 12),
         ),
 
-        const SizedBox(height: 32),
-
-        if (_showPasswordField) ...[
-          TextFormField(
-            controller: _passwordController,
-            autofillHints: const [AutofillHints.password],
-            validator: (val) =>
-                val != null && val.isNotEmpty ? null : 'Password is required',
-            obscureText: !_isPasswordVisible,
-            style: const TextStyle(color: Colors.white),
-            cursorColor: AppColors.zestyLime,
-            decoration: InputDecoration(
-              labelText: 'Password',
-              labelStyle: const TextStyle(color: Colors.white38),
-              floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white12)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.zestyLime)),
-              filled: true,
-              fillColor: Colors.black12,
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.white38,
-                ),
-                onPressed: () =>
-                    setState(() => _isPasswordVisible = !_isPasswordVisible),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              // Normal sign in with pre-filled email
-              _submit();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.zestyLime,
-              foregroundColor: AppColors.deepCharcoal,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Sign In',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        if (!_showPasswordField)
-          TextButton(
-            onPressed: () {
-              setState(() => _showPasswordField = true);
-            },
-            child: const Text("Use Password instead",
-                style: TextStyle(color: Colors.white54)),
-          ),
-
-        const Divider(color: Colors.white10),
+        const Divider(color: Colors.white10, height: 32),
 
         TextButton(
           onPressed: _switchAccount,
@@ -655,203 +626,200 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           child: CircularProgressIndicator(color: AppColors.zestyLime));
 
     return Column(
-        key: const ValueKey('FullForm'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            _isLogin ? 'Welcome Back' : 'Create Account',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+      key: const ValueKey('FullForm'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _isLogin ? 'Welcome Back' : 'Create Account',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _isLogin
+              ? 'Enter your details to access your kitchen.'
+              : 'Join the revolution of AI cooking.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
+        ),
+        const SizedBox(height: 12),
+        if (!_isLogin) ...[
+          TextFormField(
+            controller: _nameController,
+            validator: (val) =>
+                val != null && val.isNotEmpty ? null : 'Full Name is required',
+            textCapitalization: TextCapitalization.words,
+            style: const TextStyle(color: Colors.white),
+            cursorColor: AppColors.zestyLime,
+            decoration: InputDecoration(
+              labelText: 'Full Name',
+              labelStyle: const TextStyle(color: Colors.white38),
+              floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white12)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.zestyLime)),
+              errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.errorRed)),
+              focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.errorRed)),
+              filled: true,
+              fillColor: Colors.black12,
+            ),
           ),
+          const SizedBox(height: 16),
+        ],
+        TextFormField(
+          controller: _emailController,
+          validator: Validators.validateEmail,
+          autofillHints: const [AutofillHints.email],
+          style: const TextStyle(color: Colors.white),
+          cursorColor: AppColors.zestyLime,
+          decoration: InputDecoration(
+            labelText: 'Email Address',
+            labelStyle: const TextStyle(color: Colors.white38),
+            floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.zestyLime)),
+            errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.errorRed)),
+            focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.errorRed)),
+            filled: true,
+            fillColor: Colors.black12,
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _passwordController,
+          autofillHints: const [AutofillHints.password],
+          // Only validate complexity on Sign Up, not Login
+          validator: (val) => _isLogin
+              ? (val != null && val.isNotEmpty ? null : 'Password is required')
+              : Validators.validatePassword(val),
+          obscureText: !_isPasswordVisible,
+          style: const TextStyle(color: Colors.white),
+          cursorColor: AppColors.zestyLime,
+          decoration: InputDecoration(
+            labelText: 'Password',
+            labelStyle: const TextStyle(color: Colors.white38),
+            floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.zestyLime)),
+            errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.errorRed)),
+            focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.errorRed)),
+            filled: true,
+            fillColor: Colors.black12,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                color: Colors.white38,
+              ),
+              onPressed: () =>
+                  setState(() => _isPasswordVisible = !_isPasswordVisible),
+            ),
+          ),
+        ),
+        if (_isLogin) ...[
           const SizedBox(height: 8),
-          Text(
-            _isLogin
-                ? 'Enter your details to access your kitchen.'
-                : 'Join the revolution of AI cooking.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white54, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          if (!_isLogin) ...[
-            TextFormField(
-              controller: _nameController,
-              validator: (val) => val != null && val.isNotEmpty
-                  ? null
-                  : 'Full Name is required',
-              textCapitalization: TextCapitalization.words,
-              style: const TextStyle(color: Colors.white),
-              cursorColor: AppColors.zestyLime,
-              decoration: InputDecoration(
-                labelText: 'Full Name',
-                labelStyle: const TextStyle(color: Colors.white38),
-                floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.white12)),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.zestyLime)),
-                errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.errorRed)),
-                focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.errorRed)),
-                filled: true,
-                fillColor: Colors.black12,
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _forgotPassword,
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 0),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
+              child: const Text("Forgot Password?",
+                  style: TextStyle(color: AppColors.zestyLime, fontSize: 13)),
             ),
-            const SizedBox(height: 16),
+          ),
+        ],
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.zestyLime,
+            foregroundColor: AppColors.deepCharcoal,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 0,
+          ),
+          child: Text(
+            _isLogin ? 'Sign In' : 'Sign Up',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Row(
+          children: [
+            Expanded(child: Divider(color: Colors.white10)),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text("OR",
+                  style: TextStyle(color: Colors.white24, fontSize: 12)),
+            ),
+            Expanded(child: Divider(color: Colors.white10)),
           ],
-          TextFormField(
-            controller: _emailController,
-            validator: Validators.validateEmail,
-            autofillHints: const [AutofillHints.email],
-            style: const TextStyle(color: Colors.white),
-            cursorColor: AppColors.zestyLime,
-            decoration: InputDecoration(
-              labelText: 'Email Address',
-              labelStyle: const TextStyle(color: Colors.white38),
-              floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white12)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.zestyLime)),
-              errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.errorRed)),
-              focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.errorRed)),
-              filled: true,
-              fillColor: Colors.black12,
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSocialButton(
+                  Icons.apple,
+                  "Apple",
+                  () => ref
+                      .read(authControllerProvider.notifier)
+                      .signInWithApple()),
             ),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _passwordController,
-            autofillHints: const [AutofillHints.password],
-            // Only validate complexity on Sign Up, not Login
-            validator: (val) => _isLogin
-                ? (val != null && val.isNotEmpty
-                    ? null
-                    : 'Password is required')
-                : Validators.validatePassword(val),
-            obscureText: !_isPasswordVisible,
-            style: const TextStyle(color: Colors.white),
-            cursorColor: AppColors.zestyLime,
-            decoration: InputDecoration(
-              labelText: 'Password',
-              labelStyle: const TextStyle(color: Colors.white38),
-              floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white12)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.zestyLime)),
-              errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.errorRed)),
-              focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.errorRed)),
-              filled: true,
-              fillColor: Colors.black12,
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.white38,
-                ),
-                onPressed: () =>
-                    setState(() => _isPasswordVisible = !_isPasswordVisible),
-              ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildSocialButton(
+                  Icons.g_mobiledata,
+                  "Google",
+                  () => ref
+                      .read(authControllerProvider.notifier)
+                      .signInWithGoogle()),
             ),
-          ),
-          if (_isLogin) ...[
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Transform.scale(
-                      scale: 0.8,
-                      child: Checkbox(
-                        value: _rememberMe,
-                        onChanged: (val) =>
-                            setState(() => _rememberMe = val ?? true),
-                        activeColor: AppColors.zestyLime,
-                        checkColor: AppColors.deepCharcoal,
-                        side: const BorderSide(color: Colors.white54),
-                      ),
-                    ),
-                    const Text("Remember Me",
-                        style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  ],
-                ),
-                TextButton(
-                  onPressed: _forgotPassword,
-                  child: const Text("Forgot Password?",
-                      style:
-                          TextStyle(color: AppColors.zestyLime, fontSize: 13)),
-                )
-              ],
-            )
           ],
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.zestyLime,
-              foregroundColor: AppColors.deepCharcoal,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-            ),
-            child: Text(
-              _isLogin ? 'Sign In' : 'Sign Up',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 32),
+        TextButton(
+          onPressed: () {
+            ref.read(authControllerProvider.notifier).signInAnonymously();
+          },
+          child: const Text(
+            "Continue as Guest",
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 14,
+              decoration: TextDecoration.underline,
             ),
           ),
-          const SizedBox(height: 24),
-          const Row(
-            children: [
-              Expanded(child: Divider(color: Colors.white10)),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text("OR",
-                    style: TextStyle(color: Colors.white24, fontSize: 12)),
-              ),
-              Expanded(child: Divider(color: Colors.white10)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSocialButton(
-                    Icons.apple,
-                    "Apple",
-                    () => ref
-                        .read(authControllerProvider.notifier)
-                        .signInWithApple()),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildSocialButton(
-                    Icons.g_mobiledata,
-                    "Google",
-                    () => ref
-                        .read(authControllerProvider.notifier)
-                        .signInWithGoogle()),
-              ),
-            ],
-          ),
-        ]);
+        ),
+      ],
+    );
   }
 }

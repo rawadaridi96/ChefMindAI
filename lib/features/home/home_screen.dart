@@ -102,10 +102,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       children: [
         AppBar(
-          title: const Text('ChefMind AI'),
+          title: const Text('ChefMindAI'),
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.local_fire_department,
+                      color: Colors.orangeAccent, size: 18),
+                  SizedBox(width: 4),
+                  Text("3",
+                      style: TextStyle(
+                          color: Colors.orangeAccent,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.link, color: AppColors.zestyLime),
               onPressed: _showUrlInputDialog,
@@ -365,6 +385,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
         ),
+        _buildSkillBadges(),
       ],
     );
   }
@@ -439,6 +460,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           )
         ],
       ),
+    );
+  }
+
+  Widget _buildSkillBadges() {
+    return Container(
+      margin: const EdgeInsets.only(top: 32),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Chef Skills",
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildBadgeItem("Sauce Master", Icons.waves, true),
+              _buildBadgeItem("Bread Winner", Icons.bakery_dining, false),
+              _buildBadgeItem("Grill Pro", Icons.outdoor_grill, false),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadgeItem(String label, IconData icon, bool unlocked) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: unlocked
+                ? AppColors.zestyLime.withOpacity(0.1)
+                : Colors.white10,
+            shape: BoxShape.circle,
+            border: Border.all(
+                color: unlocked ? AppColors.zestyLime : Colors.white12),
+          ),
+          child: Icon(
+            icon,
+            color: unlocked ? AppColors.zestyLime : Colors.white24,
+            size: 24,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: unlocked ? Colors.white : Colors.white24,
+            fontSize: 12,
+          ),
+        ),
+      ],
     );
   }
 }

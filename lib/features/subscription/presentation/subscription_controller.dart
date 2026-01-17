@@ -2,13 +2,13 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'subscription_controller.g.dart';
 
-enum SubscriptionTier { free, pro, chef }
+enum SubscriptionTier { discover, chef, masterChef }
 
 @riverpod
 class SubscriptionController extends _$SubscriptionController {
   @override
   SubscriptionTier build() {
-    return SubscriptionTier.free; // Default to free
+    return SubscriptionTier.discover; // Default to discover
   }
 
   void upgrade(SubscriptionTier tier) {

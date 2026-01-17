@@ -35,6 +35,10 @@ class AuthRepository {
     );
   }
 
+  Future<void> signInAnonymously() async {
+    await _authClient.signInAnonymously();
+  }
+
   Future<UserResponse> updateUser(
       {String? fullName, String? password, Map<String, dynamic>? data}) async {
     final Map<String, dynamic> finalData = {...?data};

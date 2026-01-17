@@ -4,7 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/constants/supabase_constants.dart';
 import 'core/theme/app_theme.dart';
-import 'package:chefmind_ai/features/auth/presentation/auth_screen.dart';
+import 'package:chefmind_ai/features/onboarding/presentation/entry_orchestrator.dart';
+
 import 'package:chefmind_ai/features/home/home_screen.dart';
 import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart';
 import 'package:chefmind_ai/features/import/presentation/global_import_listener.dart';
@@ -44,7 +45,7 @@ class ChefMindApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'ChefMind AI',
+      title: 'ChefMindAI',
       navigatorKey: navigatorKey,
       theme: AppTheme.darkTheme,
       builder: (context, child) {
@@ -64,12 +65,11 @@ class ChefMindApp extends ConsumerWidget {
               if (session != null) {
                 return const HomeScreen();
               } else {
-                return const AuthScreen();
+                return const EntryOrchestrator();
               }
             },
-            loading: () => const Scaffold(
-                body: Center(child: CircularProgressIndicator())),
-            error: (_, __) => const AuthScreen(),
+            loading: () => const EntryOrchestrator(),
+            error: (_, __) => const EntryOrchestrator(),
           );
         },
       ),

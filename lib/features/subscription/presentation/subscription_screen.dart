@@ -41,7 +41,7 @@ class SubscriptionScreen extends ConsumerWidget {
                       IconButton(
                           icon: const Icon(Icons.close, color: Colors.white),
                           onPressed: () => Navigator.pop(context)),
-                      const Text('ChefMind Premium',
+                      const Text('ChefMindAI Premium',
                           style: TextStyle(
                               color: Colors.white,
                               fontSize: 20,
@@ -81,32 +81,17 @@ class SubscriptionScreen extends ConsumerWidget {
                   _buildTierCard(
                     ref,
                     context,
-                    tier: SubscriptionTier.free,
-                    title: 'Free',
+                    tier: SubscriptionTier.discover,
+                    title: 'Discover',
                     price: ref
                         .watch(currencyControllerProvider.notifier)
                         .formatPrice(0),
-                    features: ['3 Manual Recipes/mo', 'Basic Visuals', 'Ads'],
-                    current: currentTier == SubscriptionTier.free,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTierCard(
-                    ref,
-                    context,
-                    tier: SubscriptionTier.pro,
-                    title: 'Pro',
-                    price:
-                        '${ref.watch(currencyControllerProvider.notifier).formatPrice(12)} / mo',
-                    rawPrice: 12.00,
-                    variantId:
-                        'ef95ee63-3c1c-49e0-a519-226f8489bd26', // TODO: Lemon Squeezy Variant ID
                     features: [
-                      'Unlimited AI Scans',
-                      'Pantry Tracking',
-                      'Ad-free'
+                      'Browse 5 curated recipes/day',
+                      'Save up to 3 favorite recipes',
+                      'Basic Visuals'
                     ],
-                    current: currentTier == SubscriptionTier.pro,
-                    isPopular: true,
+                    current: currentTier == SubscriptionTier.discover,
                   ),
                   const SizedBox(height: 16),
                   _buildTierCard(
@@ -115,16 +100,37 @@ class SubscriptionScreen extends ConsumerWidget {
                     tier: SubscriptionTier.chef,
                     title: 'Chef',
                     price:
-                        '${ref.watch(currencyControllerProvider.notifier).formatPrice(25)} / mo',
-                    rawPrice: 25.00,
+                        '${ref.watch(currencyControllerProvider.notifier).formatPrice(9.99)} / mo',
+                    rawPrice: 9.99,
+                    variantId:
+                        'ef95ee63-3c1c-49e0-a519-226f8489bd26', // TODO: Lemon Squeezy Variant ID
+                    features: [
+                      'Unlimited Pantry AI generation',
+                      'Full Link Scraper access',
+                      'Unlimited Recipe Vault saves',
+                      'Advanced Dietary Intelligence'
+                    ],
+                    current: currentTier == SubscriptionTier.chef,
+                    isPopular: true,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTierCard(
+                    ref,
+                    context,
+                    tier: SubscriptionTier.masterChef,
+                    title: 'Master Chef',
+                    price:
+                        '${ref.watch(currencyControllerProvider.notifier).formatPrice(19.99)} / mo',
+                    rawPrice: 19.99,
                     variantId:
                         '9fab7912-5357-4015-b0a9-55b28f644329', // TODO: Lemon Squeezy Variant ID
                     features: [
-                      'Everything in Pro',
-                      'Real-time Voice Assistant',
-                      'Family Sharing'
+                      'High-speed AI generation',
+                      'Mood-Based recipe suggestions',
+                      'Family Sync (Kitchen Vault)',
+                      'IoT Integration API'
                     ],
-                    current: currentTier == SubscriptionTier.chef,
+                    current: currentTier == SubscriptionTier.masterChef,
                   ),
                 ],
               ),
@@ -149,28 +155,34 @@ class SubscriptionScreen extends ConsumerWidget {
   }) {
     return GestureDetector(
       onTap: () async {
-        if (tier == SubscriptionTier.free) {
+        if (tier == SubscriptionTier.discover) {
           ref.read(subscriptionControllerProvider.notifier).upgrade(tier);
           NanoToast.showSuccess(context, 'Switched to $title Plan!');
           return;
         }
 
-        // Lemon Squeezy Flow
-        if (variantId != null) {
-          final checkoutUrl = ref
-              .read(paymentServiceProvider)
-              .getCheckoutUrl(variantId, userEmail: "test@example.com");
-          final uri = Uri.parse(checkoutUrl);
+        // --- TEST MODE ENABLED (BYPASSING LEMON SQUEEZY) ---
+        // For testing purposes, we are directly upgrading the user
+        // effectively "mocking" a successful payment.
+        ref.read(subscriptionControllerProvider.notifier).upgrade(tier);
+        NanoToast.showSuccess(context, 'Test Mode: Upgraded to $title!');
 
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri,
-                mode: LaunchMode
-                    .externalApplication); // Use external browser for secure checkout
-          } else {
-            if (context.mounted)
-              NanoToast.showError(context, "Could not launch checkout");
-          }
-        }
+        // Lemon Squeezy Flow (DISABLED FOR TESTING)
+        // if (variantId != null) {
+        //   final checkoutUrl = ref
+        //       .read(paymentServiceProvider)
+        //       .getCheckoutUrl(variantId, userEmail: "test@example.com");
+        //   final uri = Uri.parse(checkoutUrl);
+        //
+        //   if (await canLaunchUrl(uri)) {
+        //     await launchUrl(uri,
+        //         mode: LaunchMode
+        //             .externalApplication); // Use external browser for secure checkout
+        //   } else {
+        //     if (context.mounted)
+        //       NanoToast.showError(context, "Could not launch checkout");
+        //   }
+        // }
       },
       child: Stack(
         clipBehavior: Clip.none,
