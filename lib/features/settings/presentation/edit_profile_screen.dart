@@ -265,7 +265,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            _buildTextField("Full Name", _nameController),
+            _buildTextField("Full Name", _nameController,
+                textCapitalization: TextCapitalization.words),
             const SizedBox(height: 16),
             _buildTextField("Email", _emailController,
                 readOnly: true, icon: Icons.lock_outline),
@@ -296,6 +297,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       {bool readOnly = false,
       bool isPassword = false,
       String? hint,
+      TextCapitalization textCapitalization = TextCapitalization.none,
       IconData? icon}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,6 +312,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           controller: controller,
           readOnly: readOnly,
           obscureText: isPassword,
+          textCapitalization: textCapitalization,
           style: TextStyle(color: readOnly ? Colors.white38 : Colors.white),
           cursorColor: AppColors.zestyLime,
           decoration: InputDecoration(

@@ -1,4 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'dart:io';
@@ -35,6 +38,11 @@ class AuthController extends _$AuthController {
         await prefs.setBool('remember_me', false);
         await prefs.remove('saved_email');
       }
+
+      final user = repo.currentUser;
+      final name = user?.userMetadata?['full_name'] ?? 'Chef';
+      ref.read(postLoginMessageProvider.notifier).state =
+          "Welcome back, $name!";
     });
   }
 
@@ -63,6 +71,9 @@ class AuthController extends _$AuthController {
       } catch (e) {
         rethrow;
       }
+
+      ref.read(postLoginMessageProvider.notifier).state =
+          "Account created! Welcome to ChefMind.";
     });
   }
 
@@ -74,6 +85,8 @@ class AuthController extends _$AuthController {
       // but Supabase persists the session automatically.
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remember_me', true);
+      ref.read(postLoginMessageProvider.notifier).state =
+          "Welcome, Guest Chef!";
     });
   }
 
@@ -165,8 +178,8 @@ class AuthController extends _$AuthController {
   }
 
   Future<void> authenticateWithBiometrics(String userId) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    try {
+      state = const AsyncLoading();
       final password = await _storage.read(key: 'biometric_pass_$userId');
 
       // Find email from accounts list
@@ -180,18 +193,57 @@ class AuthController extends _$AuthController {
       }
 
       final LocalAuthentication auth = LocalAuthentication();
-      final bool didAuthenticate = await auth.authenticate(
-        localizedReason: 'Please authenticate to log in',
-        options: const AuthenticationOptions(stickyAuth: true),
-      );
+      bool didAuthenticate = false;
+      try {
+        didAuthenticate = await auth.authenticate(
+          localizedReason: 'Please authenticate to log in',
+          options: const AuthenticationOptions(stickyAuth: true),
+        );
+      } catch (e) {
+        if (e is PlatformException) {
+          switch (e.code) {
+            case 'LockedOut':
+            case 'PermanentlyLockedOut':
+            case 'Other':
+            case 'auth_in_progress':
+              HapticFeedback.heavyImpact();
+              throw Exception("Biometric authentication failed");
+            case 'NotAvailable':
+            case 'PasscodeNotSet':
+            case 'NotEnrolled':
+              HapticFeedback.mediumImpact();
+              throw Exception("Biometrics not available");
+            default:
+              didAuthenticate = false;
+          }
+        } else {
+          didAuthenticate = false;
+        }
+      }
 
       if (didAuthenticate) {
-        // Proceed to sign in with stored credentials
         await ref.read(authRepositoryProvider).signInWithEmail(email, password);
+        final user = ref.read(authRepositoryProvider).currentUser;
+        final name = account['displayName'] ??
+            user?.userMetadata?['full_name'] ??
+            'Chef';
+        ref.read(postLoginMessageProvider.notifier).state =
+            "Welcome back, $name!";
+        state = const AsyncData(null);
       } else {
-        throw Exception("Biometric verification failed");
+        // User cancelled or silent failure.
+        // Reset state so loading spinner disappears if any, but do NOT show error.
+        state = const AsyncData(null);
       }
-    });
+    } catch (e, st) {
+      // Catch "Bad state: Future already completed" and ignore it
+      if (e.toString().contains("Bad state") ||
+          e.toString().contains("Future already completed")) {
+        state = const AsyncData(null);
+        return;
+      }
+      state = AsyncError(e, st);
+    }
   }
 
   // --- End Biometric Management ---
@@ -301,6 +353,8 @@ class AuthController extends _$AuthController {
         // For simplicity, we default to true for social auth for now.
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('remember_me', true);
+        ref.read(postLoginMessageProvider.notifier).state =
+            "Signed in with Google!";
       } catch (e) {
         // Propagate error but maybe map specific codes if needed
         if (e.toString().contains('10')) {
@@ -317,6 +371,8 @@ class AuthController extends _$AuthController {
       await ref.read(authRepositoryProvider).signInWithApple();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remember_me', true);
+      ref.read(postLoginMessageProvider.notifier).state =
+          "Signed in with Apple!";
     });
   }
 
@@ -326,3 +382,6 @@ class AuthController extends _$AuthController {
         () => ref.read(authRepositoryProvider).resetPassword(email));
   }
 }
+
+// Simple provider to pass success messages from AuthSheet (which unmounts) to HomeScreen
+final postLoginMessageProvider = StateProvider<String?>((ref) => null);

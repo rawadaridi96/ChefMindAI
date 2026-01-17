@@ -81,6 +81,7 @@ class _AddIngredientSheetState extends ConsumerState<AddIngredientSheet> {
                 icon: Icon(Icons.edit, color: AppColors.zestyLime),
               ),
               autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
             ),
           ),
 

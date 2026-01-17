@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
+import 'package:chefmind_ai/core/widgets/brand_logo.dart';
+import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
 import 'shopping_controller.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
@@ -30,93 +32,121 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Column(
+      appBar: AppBar(
+        title: const BrandLogo(fontSize: 24),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.white),
+            onPressed: () {
+              // Optional: History feature?
+            },
+          )
+        ],
+      ),
+      body: Stack(
         children: [
-          // Input Bar (Nano Banana Style)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: GlassContainer(
-              borderRadius: 16,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _inputController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        hintText: 'Add to cart...',
-                        hintStyle: TextStyle(color: Colors.white38),
-                        border: InputBorder.none,
-                      ),
-                      onSubmitted: (_) => _addItem(),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle,
-                        color: AppColors.zestyLime),
-                    onPressed: _addItem,
-                  ),
-                ],
-              ),
-            ),
+          // Watermark
+          const Positioned(
+            left: -40,
+            top: 100,
+            bottom: 100,
+            child: ChefMindWatermark(),
           ),
-
-          Expanded(
-            child: RefreshIndicator(
-              color: AppColors.zestyLime,
-              backgroundColor: AppColors.deepCharcoal,
-              onRefresh: () async {
-                ref.invalidate(shoppingControllerProvider);
-                await Future.delayed(const Duration(milliseconds: 500));
-              },
-              child: listState.when(
-                data: (items) {
-                  final active =
-                      items.where((i) => i['is_bought'] == false).toList();
-                  final bought =
-                      items.where((i) => i['is_bought'] == true).toList();
-
-                  if (items.isEmpty) {
-                    return const Center(
-                        child: Text("Cart is empty",
-                            style: TextStyle(color: Colors.white54)));
-                  }
-
-                  return ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+          Column(
+            children: [
+              // Input Bar (Nano Banana Style)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: GlassContainer(
+                  borderRadius: 16,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
                     children: [
-                      if (active.isNotEmpty) ...[
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Text("To Buy",
-                              style: TextStyle(
-                                  color: AppColors.zestyLime,
-                                  fontWeight: FontWeight.bold)),
+                      Expanded(
+                        child: TextField(
+                          controller: _inputController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            hintText: 'Add to cart...',
+                            hintStyle: TextStyle(color: Colors.white38),
+                            border: InputBorder.none,
+                          ),
+                          textCapitalization: TextCapitalization.sentences,
+                          onSubmitted: (_) => _addItem(),
                         ),
-                        ...active.map((item) => _buildCartItem(item, false)),
-                      ],
-                      if (bought.isNotEmpty) ...[
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Text("Recently Bought",
-                              style: TextStyle(
-                                  color: Colors.white38,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        ...bought.map((item) => _buildCartItem(item, true)),
-                      ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            color: AppColors.zestyLime),
+                        onPressed: _addItem,
+                      ),
                     ],
-                  );
-                },
-                error: (err, st) => Center(
-                    child: Text('Error: $err',
-                        style: const TextStyle(color: Colors.red))),
-                loading: () => const Center(
-                    child:
-                        CircularProgressIndicator(color: AppColors.zestyLime)),
+                  ),
+                ),
               ),
-            ),
+
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.zestyLime,
+                  backgroundColor: AppColors.deepCharcoal,
+                  onRefresh: () async {
+                    ref.invalidate(shoppingControllerProvider);
+                    await Future.delayed(const Duration(milliseconds: 500));
+                  },
+                  child: listState.when(
+                    data: (items) {
+                      final active =
+                          items.where((i) => i['is_bought'] == false).toList();
+                      final bought =
+                          items.where((i) => i['is_bought'] == true).toList();
+
+                      if (items.isEmpty) {
+                        return const Center(
+                            child: Text("Cart is empty",
+                                style: TextStyle(color: Colors.white54)));
+                      }
+
+                      return ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        children: [
+                          if (active.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Text("To Buy",
+                                  style: TextStyle(
+                                      color: AppColors.zestyLime,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                            ...active
+                                .map((item) => _buildCartItem(item, false)),
+                          ],
+                          if (bought.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Text("Recently Bought",
+                                  style: TextStyle(
+                                      color: Colors.white38,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                            ...bought.map((item) => _buildCartItem(item, true)),
+                          ],
+                        ],
+                      );
+                    },
+                    error: (err, st) => Center(
+                        child: Text('Error: $err',
+                            style: const TextStyle(color: Colors.red))),
+                    loading: () => const Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.zestyLime)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/features/auth/presentation/auth_controller.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:chefmind_ai/core/widgets/nano_toast.dart';
+import 'package:chefmind_ai/features/auth/data/auth_repository.dart';
 
 class AuthSheet extends ConsumerStatefulWidget {
-  const AuthSheet({super.key});
+  final bool isLogin;
+  const AuthSheet({super.key, this.isLogin = true});
 
   @override
   ConsumerState<AuthSheet> createState() => _AuthSheetState();
@@ -21,24 +24,35 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
   bool _isPasswordVisible = false;
 
   @override
+  void initState() {
+    super.initState();
+    _isLogin = widget.isLogin;
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
       if (_isLogin) {
-        ref.read(authControllerProvider.notifier).signIn(email, password);
+        await ref.read(authControllerProvider.notifier).signIn(email, password);
+        // Success handling moved to AuthController to avoid unmount issues
+        if (!mounted) return;
       } else {
         final name = _nameController.text.trim();
-        ref
+        await ref
             .read(authControllerProvider.notifier)
             .signUp(email, password, fullName: name.isNotEmpty ? name : null);
+
+        // Success handling moved to AuthController
+        if (!mounted) return;
       }
     }
   }
@@ -55,11 +69,26 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
         await ref
             .read(authControllerProvider.notifier)
             .authenticateWithBiometrics(userId);
+
+        // Success handling moved to AuthController
+        if (!mounted) return;
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('No biometric credentials found.')));
       }
     } catch (e) {
+      // Logic Fix: If we are actually authenticated (success), ignore the error.
+      // Sometimes local_auth or the controller's AsyncValue might bubble up a non-fatal issue
+      // or a race condition might occur.
+      final currentUser = ref.read(authRepositoryProvider).currentUser;
+      if (currentUser != null) return;
+
+      // Ignore "Bad state" errors that leak from local_auth cancellation
+      if (e.toString().contains("Bad state") ||
+          e.toString().contains("Future already completed")) {
+        return;
+      }
+
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Biometric Auth Failed: $e')));
     }
@@ -221,8 +250,8 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                           child: _SocialButton(
                             icon: FontAwesomeIcons.google,
                             label: 'Google',
-                            onTap: () {
-                              ref
+                            onTap: () async {
+                              await ref
                                   .read(authControllerProvider.notifier)
                                   .signInWithGoogle();
                             },
@@ -234,8 +263,8 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                           child: _SocialButton(
                             icon: FontAwesomeIcons.apple,
                             label: 'Apple',
-                            onTap: () {
-                              ref
+                            onTap: () async {
+                              await ref
                                   .read(authControllerProvider.notifier)
                                   .signInWithApple();
                             },
@@ -273,10 +302,16 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                     ),
 
                     TextButton(
-                      onPressed: () {
-                        ref
-                            .read(authControllerProvider.notifier)
-                            .signInAnonymously();
+                      onPressed: () async {
+                        try {
+                          await ref
+                              .read(authControllerProvider.notifier)
+                              .signInAnonymously();
+                        } catch (e) {
+                          if (mounted) {
+                            NanoToast.showError(context, e.toString());
+                          }
+                        }
                       },
                       child: const Text('Continue as Guest',
                           style: TextStyle(

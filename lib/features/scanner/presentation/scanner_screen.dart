@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
@@ -22,6 +23,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   bool _isCameraReady = false;
+  bool _cameraUnavailable = false;
 
   @override
   void initState() {
@@ -41,7 +43,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
   Future<void> _initCamera() async {
     final cameras = await availableCameras();
-    if (cameras.isEmpty) return;
+    if (cameras.isEmpty) {
+      if (mounted) setState(() => _cameraUnavailable = true);
+      return;
+    }
 
     final firstCamera = cameras.first;
     _controller = CameraController(
@@ -70,17 +75,28 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
     try {
       final image = await _controller!.takePicture();
-      final file = File(image.path);
-
-      // Trigger scan
-      ref.read(scannerControllerProvider.notifier).scanImage(file);
-
-      // Wait for result and show sheet
-      if (mounted) {
-        _waitForResultAndShowSheet();
-      }
+      _processImage(File(image.path));
     } catch (e) {
       NanoToast.showError(context, 'Error: $e');
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      _processImage(File(pickedFile.path));
+    }
+  }
+
+  Future<void> _processImage(File file) async {
+    // Trigger scan
+    ref.read(scannerControllerProvider.notifier).scanImage(file);
+
+    // Wait for result and show sheet
+    if (mounted) {
+      _waitForResultAndShowSheet();
     }
   }
 
@@ -90,6 +106,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       if (next.hasValue && next.value != null && !next.isLoading) {
         // Show review sheet
         _showReviewSheet(next.value!);
+      } else if (next.hasError && !next.isLoading) {
+        // Handle Error
+        NanoToast.showError(context, "Scan failed: ${next.error}");
+        // Reset state so user can try again
+        ref.read(scannerControllerProvider.notifier).reset();
       }
     });
   }
@@ -205,7 +226,32 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       body: Stack(
         children: [
           // Camera with Pulsing Border
-          if (_isCameraReady)
+          if (_cameraUnavailable)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.no_photography_outlined,
+                      size: 64, color: Colors.white24),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Camera Unavailable",
+                    style: TextStyle(color: Colors.white54, fontSize: 16),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _pickFromGallery,
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text("Pick from Gallery"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.zestyLime,
+                      foregroundColor: AppColors.deepCharcoal,
+                    ),
+                  )
+                ],
+              ),
+            )
+          else if (_isCameraReady)
             Center(
               child: AnimatedBuilder(
                 animation: _pulseAnimation,
@@ -225,7 +271,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               ),
             )
           else
-            const Center(child: CircularProgressIndicator()),
+            const Center(
+                child: CircularProgressIndicator(color: AppColors.zestyLime)),
 
           // UI Overlay
           SafeArea(
@@ -261,8 +308,21 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                 // Loading Text or Capture Button
                 if (scanState.isLoading)
                   _buildLoadingState()
-                else
-                  _buildCaptureButton(),
+                else if (!_cameraUnavailable)
+                  // Capture Button Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        onPressed: _pickFromGallery,
+                        icon: const Icon(Icons.photo_library,
+                            color: Colors.white, size: 32),
+                        tooltip: "Gallery",
+                      ),
+                      _buildCaptureButton(),
+                      const SizedBox(width: 48), // Balance spacing
+                    ],
+                  ),
 
                 const SizedBox(height: 32),
               ],

@@ -2,17 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/liquid_mesh_background.dart';
-import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart';
+import 'package:chefmind_ai/core/widgets/brand_logo.dart';
+import 'package:chefmind_ai/features/auth/presentation/auth_controller.dart';
+
 import 'package:chefmind_ai/features/auth/presentation/widgets/auth_sheet.dart';
 
 class EntryOrchestrator extends ConsumerStatefulWidget {
-  const EntryOrchestrator({super.key});
+  final bool isLogin;
+  final bool skipSplash;
+  const EntryOrchestrator({
+    super.key,
+    this.isLogin = true,
+    this.skipSplash = false,
+  });
 
   @override
   ConsumerState<EntryOrchestrator> createState() => _EntryOrchestratorState();
 }
 
 class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
+  // If we are navigating here specifically for auth (e.g. from guest mode), we might want to skip the wait.
+  // But for the cinematic effect, let's keep it but maybe shorter if coming from inside app?
+  // For now, consistent 3s is fine, or maybe 1s if mounted immediately.
   bool _isAuthReady = false;
 
   @override
@@ -20,23 +31,35 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
     super.initState();
     // Simulate initial loading / splash duration
     // In a real app, this might wait for some initialization logic
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() => _isAuthReady = true);
-      }
-    });
+    if (widget.skipSplash) {
+      _isAuthReady = true;
+    } else {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() => _isAuthReady = true);
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen for global success message (e.g. "Welcome back!")
+    // If it arrives, it means we successfully logged in/signed up.
+    // If we were pushed (Navigator.canPop), we should close this screen to reveal the previous one (which will also show the toast).
+    ref.listen<String?>(postLoginMessageProvider, (previous, next) {
+      if (next != null && next.isNotEmpty) {
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+      }
+    });
+
+    // If we are already authenticated, this Orchestrator is likely skipped by main.dart logic
     // If we are already authenticated, this Orchestrator is likely skipped by main.dart logic
     // But checking here ensures robustness.
-    final authState = ref.watch(authStateChangesProvider);
-
-    // Safety check: if logged in, do nothing (Main handles nav), or show empty to prevent flash
-    if (authState.asData?.value.session != null) {
-      return const SizedBox();
-    }
+    // REMOVED: Checking authState here breaks "Guest -> Login" flow because Guest has a session.
+    // main.dart handles the initial routing. Manual pushes should always show UI.
 
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -63,7 +86,7 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
 
           // 3. The Cinematic Logo (Moves from Center -> Top Center)
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 4000),
+            duration: const Duration(milliseconds: 3000),
             curve: Curves.elasticOut,
             // Centered initially (approx 45% down), then moves to top area (approx 53px down)
             top: _isAuthReady ? 53 : screenHeight * 0.40,
@@ -82,42 +105,30 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Logo Image
-                    Hero(
-                      tag: 'app_logo',
-                      child: Container(
-                        decoration:
-                            BoxDecoration(shape: BoxShape.circle, boxShadow: [
+                    // The App Icon
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
                           BoxShadow(
-                            color: AppColors.zestyLime
-                                .withOpacity(_isAuthReady ? 0.2 : 0.5),
-                            blurRadius: _isAuthReady ? 20 : 50,
-                            spreadRadius: _isAuthReady ? 2 : 10,
-                          )
-                        ]),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(100),
-                          child: Image.asset(
-                            'assets/app_icon.jpg',
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
+                            color: const Color(0xFFD1FF26).withOpacity(0.6),
+                            blurRadius: 30,
+                            spreadRadius: 2,
                           ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/app_icon.jpg',
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    // Title Text
-                    const Text(
-                      'ChefMindAI',
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w900,
-                        fontSize: 28,
-                        letterSpacing: 2,
-                        color: Colors.white,
-                      ),
-                    ),
+                    const SizedBox(height: 24),
+                    // Typographic Logo
+                    const BrandLogo(fontSize: 32, withGlow: true),
                   ],
                 ),
               ),
@@ -128,8 +139,8 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
           IgnorePointer(
             child: AnimatedOpacity(
               opacity: _isAuthReady ? 0.0 : 1.0,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOut,
+              duration: const Duration(milliseconds: 1600),
+              curve: Curves.fastOutSlowIn,
               child: const Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(

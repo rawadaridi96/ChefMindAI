@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
+import 'package:chefmind_ai/core/widgets/brand_logo.dart';
+import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'pantry_controller.dart';
@@ -22,16 +24,28 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
   bool _isFabExpanded = false;
   late AnimationController _fabController;
 
+  // Search State
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _fabController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 250));
+
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase().trim();
+      });
+    });
   }
 
   @override
   void dispose() {
     _fabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -42,6 +56,16 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
         _fabController.forward();
       } else {
         _fabController.reverse();
+      }
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        _searchQuery = '';
       }
     });
   }
@@ -85,41 +109,79 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+                decoration: const InputDecoration(
+                  hintText: 'Search pantry...',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  border: InputBorder.none,
+                ),
+              )
+            : const BrandLogo(fontSize: 24),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search,
+                color: Colors.white),
+            onPressed: _toggleSearch,
+          )
+        ],
+      ),
       floatingActionButton: _buildCircularFab(),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: RefreshIndicator(
-              color: AppColors.zestyLime,
-              backgroundColor: AppColors.deepCharcoal,
-              onRefresh: () async {
-                ref.invalidate(pantryControllerProvider);
-                await Future.delayed(const Duration(milliseconds: 500));
-              },
-              child: pantryState.when(
-                data: (items) => _buildList(items),
-                error: (err, st) {
-                  if (pantryState.hasValue) {
-                    return _buildList(pantryState.value!);
-                  }
-                  return Center(
-                      child: Text('Error: $err',
-                          style: const TextStyle(color: AppColors.errorRed)));
-                },
-                loading: () => pantryState.hasValue
-                    ? Stack(
-                        children: [
-                          _buildList(pantryState.value!),
-                          const Center(
-                              child: CircularProgressIndicator(
-                                  color: AppColors.zestyLime)),
-                        ],
-                      )
-                    : const Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.zestyLime)),
+          // Watermark
+          const Positioned(
+            left: -40,
+            top: 100,
+            bottom: 100,
+            child: ChefMindWatermark(),
+          ),
+          // Content
+          Column(
+            children: [
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.zestyLime,
+                  backgroundColor: AppColors.deepCharcoal,
+                  onRefresh: () async {
+                    ref.invalidate(pantryControllerProvider);
+                    await Future.delayed(const Duration(milliseconds: 500));
+                  },
+                  child: pantryState.when(
+                    data: (items) => _buildList(items),
+                    error: (err, st) {
+                      if (pantryState.hasValue) {
+                        return _buildList(pantryState.value!);
+                      }
+                      return Center(
+                          child: Text('Error: $err',
+                              style:
+                                  const TextStyle(color: AppColors.errorRed)));
+                    },
+                    loading: () => pantryState.hasValue
+                        ? Stack(
+                            children: [
+                              _buildList(pantryState.value!),
+                              const Center(
+                                  child: CircularProgressIndicator(
+                                      color: AppColors.zestyLime)),
+                            ],
+                          )
+                        : const Center(
+                            child: CircularProgressIndicator(
+                                color: AppColors.zestyLime)),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -127,16 +189,27 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
   }
 
   Widget _buildList(List<Map<String, dynamic>> items) {
-    if (items.isEmpty) {
+    // Filter items based on search query
+    final filteredItems = items.where((item) {
+      final name = (item['name'] ?? '').toString().toLowerCase();
+      return name.contains(_searchQuery);
+    }).toList();
+
+    if (filteredItems.isEmpty) {
+      if (_searchQuery.isNotEmpty) {
+        return const Center(
+            child: Text('No matching ingredients found.',
+                style: TextStyle(color: Colors.white54)));
+      }
       return const Center(
           child: Text('Your pantry is empty. Tap + to add ingredients!',
               style: TextStyle(color: Colors.white70)));
     }
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-      itemCount: items.length,
+      itemCount: filteredItems.length,
       itemBuilder: (context, index) {
-        final item = items[index];
+        final item = filteredItems[index];
         final createdString = item['created_at'] != null
             ? DateFormat('MMM d').format(DateTime.parse(item['created_at']))
             : 'Today';

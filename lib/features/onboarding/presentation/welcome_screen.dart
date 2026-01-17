@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/features/auth/presentation/auth_controller.dart';
-import 'package:chefmind_ai/features/auth/presentation/auth_screen.dart';
+import 'package:chefmind_ai/features/onboarding/presentation/entry_orchestrator.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class WelcomeScreen extends ConsumerStatefulWidget {
@@ -252,7 +252,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const AuthScreen(isLogin: true)),
+                        builder: (_) => const EntryOrchestrator(
+                              isLogin: true,
+                              skipSplash: true,
+                            )),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -281,7 +284,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const AuthScreen(isLogin: false)),
+                        builder: (_) => const EntryOrchestrator(
+                              isLogin: false,
+                              skipSplash: true,
+                            )),
                   );
                 },
                 style: ElevatedButton.styleFrom(

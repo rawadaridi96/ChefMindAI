@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/features/recipes/presentation/widgets/conflict_resolution_dialog.dart';
-import 'package:chefmind_ai/features/auth/presentation/auth_screen.dart';
+import '../../onboarding/presentation/entry_orchestrator.dart';
 import 'recipe_controller.dart';
 import '../../shopping/presentation/shopping_controller.dart';
 import 'package:confetti/confetti.dart';
@@ -117,6 +117,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     borderSide: BorderSide.none,
                   ),
                 ),
+                textCapitalization: TextCapitalization.sentences,
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -1141,7 +1142,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const AuthScreen(isLogin: false)),
+                            builder: (_) => const EntryOrchestrator(
+                                  isLogin: false,
+                                  skipSplash: true,
+                                )),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -1168,7 +1172,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const AuthScreen(isLogin: true)),
+                            builder: (_) => const EntryOrchestrator(
+                                  isLogin: true,
+                                  skipSplash: true,
+                                )),
                       );
                     },
                     child: const Text(

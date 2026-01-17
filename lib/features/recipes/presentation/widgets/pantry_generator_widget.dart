@@ -258,6 +258,7 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
+                  textCapitalization: TextCapitalization.sentences,
                   onChanged: (_) => setState(() {}),
                 ),
 

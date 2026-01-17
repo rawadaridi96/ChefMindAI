@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/brand_logo.dart';
+import '../../core/widgets/nano_toast.dart';
+import '../auth/presentation/auth_controller.dart';
 
 import '../scanner/presentation/scanner_screen.dart';
 import '../pantry/presentation/pantry_screen.dart';
@@ -28,6 +31,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Check for post-login message (e.g. "Welcome back")
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final msg = ref.read(postLoginMessageProvider);
+      if (msg != null && mounted) {
+        NanoToast.showSuccess(context, msg);
+        // Clear it so it doesn't show again on hot reload or re-mount
+        ref.read(postLoginMessageProvider.notifier).state = null;
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -35,6 +52,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(postLoginMessageProvider, (previous, next) {
+      if (next != null) {
+        NanoToast.showSuccess(context, next);
+        ref.read(postLoginMessageProvider.notifier).state = null;
+      }
+    });
+
     return Scaffold(
       body: Stack(
         children: [
@@ -102,10 +126,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       children: [
         AppBar(
-          title: const Text('ChefMindAI'),
+          title: const BrandLogo(fontSize: 24),
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
+            // Streak System (Commented out for now)
+            /*
             Container(
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -126,6 +152,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
+            */
             IconButton(
               icon: const Icon(Icons.link, color: AppColors.zestyLime),
               onPressed: _showUrlInputDialog,
@@ -172,6 +199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
         ),
+        // _buildSkillBadges(), (Commented out for now)
       ],
     );
   }
@@ -340,6 +368,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     hintStyle: TextStyle(color: Colors.white38),
                     border: InputBorder.none,
                   ),
+                  textCapitalization: TextCapitalization.sentences,
                   onChanged: (_) => setState(() {}),
                   onSubmitted: (value) => _performSearch(ref, value),
                 ),
@@ -385,7 +414,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
         ),
-        _buildSkillBadges(),
+        // _buildSkillBadges(), (Gamification disabled)
       ],
     );
   }

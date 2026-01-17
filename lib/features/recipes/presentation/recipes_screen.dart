@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/fun_loading_tips.dart';
+import 'package:chefmind_ai/core/widgets/brand_logo.dart';
+import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
@@ -24,20 +26,34 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
   bool _showVaultLinks = false;
 
+  // Vault Search State
+  final TextEditingController _vaultSearchController = TextEditingController();
+  String _vaultSearchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    _vaultSearchController.addListener(() {
+      setState(() {
+        _vaultSearchQuery = _vaultSearchController.text.toLowerCase().trim();
+      });
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _vaultSearchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch state here to use isLoading in AppBar
+    final state = ref.watch(recipeControllerProvider);
+
     ref.listen(recipeControllerProvider, (previous, next) {
       if (next.hasError && !next.isLoading) {
         NanoToast.showError(
@@ -48,8 +64,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('ChefMindAI Recipes',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: BrandLogo(
+          fontSize: 24,
+          isBusy: state.isLoading,
+        ),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         bottom: TabBar(
@@ -63,11 +82,23 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Stack(
         children: [
-          _buildResults(),
-          _buildVault(),
+          // Premium Watermark
+          const Positioned(
+            left: -40,
+            top: 100,
+            bottom: 100,
+            child: ChefMindWatermark(),
+          ),
+          // Content
+          TabBarView(
+            controller: _tabController,
+            children: [
+              _buildResults(),
+              _buildVault(),
+            ],
+          ),
         ],
       ),
     );
@@ -191,7 +222,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                               ),
 
                             const SizedBox(height: 12),
-                            Align(
+                            const Align(
                                 alignment: Alignment.centerRight,
                                 child: Text(
                                   "Tap for details & instructions >",
@@ -225,6 +256,45 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     return Column(
       children: [
         const SizedBox(height: 16),
+
+        // Vault Search Bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: GlassContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.search, color: AppColors.zestyLime, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _vaultSearchController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      hintText: 'Search stored recipes...',
+                      hintStyle: TextStyle(color: Colors.white38),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                ),
+                if (_vaultSearchQuery.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      _vaultSearchController.clear();
+                      FocusScope.of(context).unfocus();
+                    },
+                    child: const Icon(Icons.close,
+                        color: Colors.white54, size: 20),
+                  ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
         // Vault Filter Toggles
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -309,7 +379,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 5),
 
         Expanded(
           child: RefreshIndicator(
@@ -324,7 +394,25 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                 final recipes = allRecipes.where((r) {
                   final json = r['recipe_json'] ?? {};
                   final isLink = json['type'] == 'link';
-                  return _showVaultLinks ? isLink : !isLink;
+
+                  // Filter by Type
+                  if (_showVaultLinks && !isLink) return false;
+                  if (!_showVaultLinks && isLink) return false;
+
+                  // Filter by Search Query
+                  if (_vaultSearchQuery.isNotEmpty) {
+                    final title =
+                        (json['title'] ?? '').toString().toLowerCase();
+                    final platform =
+                        (json['platform'] ?? '').toString().toLowerCase();
+
+                    if (!title.contains(_vaultSearchQuery) &&
+                        !platform.contains(_vaultSearchQuery)) {
+                      return false;
+                    }
+                  }
+
+                  return true;
                 }).toList();
 
                 if (recipes.isEmpty) {

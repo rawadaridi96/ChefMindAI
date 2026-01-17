@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import '../../../../core/theme/app_colors.dart';
 // import '../../../../core/widgets/glass_container.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:chefmind_ai/core/services/payment_service.dart';
+
 import '../../auth/presentation/auth_controller.dart';
 import '../../auth/data/auth_repository.dart';
 import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/widgets/nano_toast.dart';
 import 'edit_profile_screen.dart';
-import '../../auth/presentation/dietary_preferences_screen.dart';
-import '../../auth/presentation/auth_screen.dart';
+
+import '../../onboarding/presentation/entry_orchestrator.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -313,8 +313,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) => const AuthScreen(
-                                        isLogin: false))); // Go to Sign Up
+                                    builder: (_) => const EntryOrchestrator(
+                                          isLogin: false,
+                                          skipSplash: true,
+                                        )));
                           } else {
                             Navigator.push(
                                 context,
@@ -380,8 +382,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ? Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) =>
-                                        const AuthScreen(isLogin: false)))
+                                    builder: (_) => const EntryOrchestrator(
+                                          isLogin: false,
+                                          skipSplash: true,
+                                        )))
                             : _showUserDetails(user),
                         child: Text(
                           isGuest
@@ -404,9 +408,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Consumer(
                 builder: (context, ref, _) {
-                  final user = ref
-                      .read(authRepositoryProvider)
-                      .currentUser; // Direct read for logic
+                  final authState = ref.watch(authStateChangesProvider);
+                  final user = authState.asData?.value.session?.user;
                   final isGuest = user?.isAnonymous ?? true;
 
                   return Column(
@@ -479,40 +482,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         trailing: const Icon(Icons.arrow_forward_ios,
                             color: Colors.white54, size: 16),
                         onTap: () async {
-                          if (isGuest) {
-                            NanoToast.showInfo(
-                                context, "Please sign up to subscribe.");
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const AuthScreen(isLogin: false)));
-                            return;
-                          }
-
-                          final url = ref
-                              .read(paymentServiceProvider)
-                              .getBillingPortalUrl();
-                          final uri = Uri.parse(url);
-                          try {
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
-                            } else {
-                              // Fallback
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              NanoToast.showError(
-                                  context, "Could not open billing portal");
-                            }
-                          }
+                          // Disconnected for now
+                          NanoToast.showInfo(
+                              context, "Subscription management coming soon!");
                         },
                       ),
 
                       const SizedBox(height: 24),
+                      // Personalization (Commented out for now)
+                      /*
                       if (!isGuest) ...[
                         const Text(
                           "Account",
@@ -539,6 +517,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 12),
                       ],
+                      */
 
                       // Sign Out / Log In
                       _SettingsTile(
@@ -556,8 +535,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) =>
-                                        const AuthScreen(isLogin: true)));
+                                    builder: (_) => const EntryOrchestrator(
+                                          isLogin: true,
+                                          skipSplash: true,
+                                        )));
                           } else {
                             ref.read(authControllerProvider.notifier).signOut();
                             Navigator.of(context)
