@@ -14,6 +14,7 @@ import 'edit_profile_screen.dart';
 import '../../subscription/presentation/subscription_controller.dart';
 import '../../onboarding/presentation/entry_orchestrator.dart';
 import '../../auth/presentation/dietary_preferences_screen.dart';
+import 'chef_labs_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -549,7 +550,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             },
                           );
                         }),
-                        const SizedBox(height: 12),
+
+                        const SizedBox(height: 8),
+
+                        // ChefLabs (Executive Only)
+                        Consumer(builder: (context, ref, _) {
+                          final subState =
+                              ref.watch(subscriptionControllerProvider);
+                          final tier =
+                              subState.valueOrNull ?? SubscriptionTier.homeCook;
+                          if (tier == SubscriptionTier.executiveChef) {
+                            return Column(
+                              children: [
+                                _SettingsTile(
+                                  icon: Icons.science,
+                                  title: "ChefLabs",
+                                  subtitle: const Text(
+                                    "Experimental Features",
+                                    style: TextStyle(
+                                        color: AppColors.zestyLime,
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic),
+                                  ),
+                                  iconColor: AppColors.zestyLime,
+                                  trailing: const Icon(Icons.arrow_forward_ios,
+                                      color: Colors.white54, size: 16),
+                                  onTap: () {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) =>
+                                                const ChefLabsScreen()));
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        }),
+
+                        const SizedBox(height: 15),
                       ],
 
                       // Sign Out / Log In

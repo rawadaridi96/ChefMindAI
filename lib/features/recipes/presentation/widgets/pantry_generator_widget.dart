@@ -4,6 +4,8 @@ import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/haptic_button.dart';
 import 'package:chefmind_ai/features/recipes/presentation/recipe_controller.dart';
 import 'package:chefmind_ai/features/pantry/presentation/pantry_controller.dart';
+import 'package:chefmind_ai/core/widgets/nano_toast.dart';
+import 'package:chefmind_ai/features/subscription/presentation/subscription_controller.dart';
 import 'package:toastification/toastification.dart';
 
 class PantryGeneratorWidget extends ConsumerStatefulWidget {
@@ -18,6 +20,7 @@ class PantryGeneratorWidget extends ConsumerStatefulWidget {
 
 class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
   String _mealType = 'Surprise Me';
+  String? _mood;
   final List<String> _selectedFilters = [];
   final TextEditingController _allergyController = TextEditingController();
 
@@ -28,6 +31,16 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
     'Dessert',
     'Snack'
   ];
+
+  final List<String> _moods = [
+    'Comfort',
+    'Date Night',
+    'Quick & Easy',
+    'Energetic',
+    'Adventurous',
+    'Fancy'
+  ];
+
   final List<String> _availableFilters = [
     'Gourmet',
     'Healthy',
@@ -51,93 +64,203 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
     final state = ref.watch(recipeControllerProvider);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Context Selector (Meal Type) - Horizontal List
+        // 1. Top Row: Meal Type & Filter Button
         SizedBox(
-          height: 40,
+          height: 38,
+          child: Row(
+            children: [
+              Expanded(
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _mealTypes.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final type = _mealTypes[index];
+                    final isSelected = type == _mealType;
+                    return GestureDetector(
+                      onTap: () => setState(() => _mealType = type),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected ? AppColors.zestyLime : Colors.white10,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(type,
+                            style: TextStyle(
+                                color: isSelected
+                                    ? AppColors.deepCharcoal
+                                    : Colors.white70,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _showFilterSheet,
+                child: Container(
+                  width: 38,
+                  decoration: BoxDecoration(
+                    color: (_selectedFilters.isNotEmpty ||
+                            _allergyController.text.isNotEmpty)
+                        ? AppColors.zestyLime.withOpacity(0.2)
+                        : Colors.white10,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.tune,
+                      size: 18,
+                      color: (_selectedFilters.isNotEmpty ||
+                              _allergyController.text.isNotEmpty)
+                          ? AppColors.zestyLime
+                          : Colors.white70),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 2. Mood Selector (Compact & Integrated)
+        SizedBox(
+          height: 36, // Compact height
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: _mealTypes.length,
+            itemCount: _moods.length + 1, // +1 for "Vibe" label
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
-              final type = _mealTypes[index];
-              final isSelected = type == _mealType;
-              return GestureDetector(
-                onTap: () => setState(() => _mealType = type),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.zestyLime : Colors.white10,
-                    borderRadius: BorderRadius.circular(20),
+              // Leading Label
+              if (index == 0) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.emoji_objects_outlined,
+                            size: 14, color: Colors.white54),
+                        const SizedBox(width: 4),
+                        Text(
+                          _mood == null ? "Vibe:" : "Vibe:",
+                          style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Text(type,
-                      style: TextStyle(
+                );
+              }
+
+              final mood = _moods[index - 1];
+              final isSelected = _mood == mood;
+              final subscriptionState =
+                  ref.watch(subscriptionControllerProvider);
+              final isExecutive = subscriptionState.valueOrNull ==
+                  SubscriptionTier.executiveChef;
+
+              // Icons for moods
+              IconData moodIcon;
+              switch (mood) {
+                case 'Comfort':
+                  moodIcon = Icons.fireplace;
+                  break;
+                case 'Date Night':
+                  moodIcon = Icons.wine_bar;
+                  break;
+                case 'Quick & Easy':
+                  moodIcon = Icons.bolt;
+                  break;
+                case 'Energetic':
+                  moodIcon = Icons.fitness_center;
+                  break;
+                case 'Adventurous':
+                  moodIcon = Icons.explore;
+                  break;
+                case 'Fancy':
+                  moodIcon = Icons.diamond;
+                  break;
+                default:
+                  moodIcon = Icons.star;
+              }
+
+              return GestureDetector(
+                onTap: () {
+                  if (!isExecutive) {
+                    NanoToast.showError(
+                        context, "Upgrade to Executive Chef to unlock Moods!");
+                    return;
+                  }
+                  setState(() {
+                    if (isSelected) {
+                      _mood = null;
+                    } else {
+                      _mood = mood;
+                    }
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.zestyLime
+                        : Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: Colors.white12, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(moodIcon,
+                          size: 14,
                           color: isSelected
                               ? AppColors.deepCharcoal
-                              : Colors.white70,
-                          fontWeight: FontWeight.bold)),
+                              : Colors.white54),
+                      const SizedBox(width: 6),
+                      Text(mood,
+                          style: TextStyle(
+                              color: isSelected
+                                  ? AppColors.deepCharcoal
+                                  : Colors.white70,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12)),
+                      if (!isExecutive) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.lock,
+                            size: 10,
+                            color: isSelected
+                                ? AppColors.deepCharcoal
+                                : Colors.white30)
+                      ]
+                    ],
+                  ),
                 ),
               );
             },
           ),
         ),
 
-        const SizedBox(height: 16),
-
-        // Filter Summary & Edit Button
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      if (_selectedFilters.isEmpty &&
-                          _allergyController.text.isEmpty)
-                        const Text("No extra filters",
-                            style: TextStyle(
-                                color: Colors.white30,
-                                fontStyle: FontStyle.italic)),
-                      ..._selectedFilters.map((f) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Chip(
-                                label: Text(f),
-                                backgroundColor: Colors.white10,
-                                labelStyle: const TextStyle(
-                                    fontSize: 12, color: Colors.white)),
-                          )),
-                      if (_allergyController.text.isNotEmpty)
-                        Chip(
-                            label:
-                                Text("Restricted: ${_allergyController.text}"),
-                            backgroundColor:
-                                AppColors.errorRed.withOpacity(0.2),
-                            labelStyle: const TextStyle(
-                                fontSize: 12, color: AppColors.errorRed)),
-                    ],
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: _showFilterSheet,
-                icon: const Icon(Icons.tune, color: AppColors.zestyLime),
-              )
-            ],
-          ),
-        ),
-
         const SizedBox(height: 24),
 
-        // Generate Button
+        // 3. Generate Button
         if (state.isLoading)
-          const CircularProgressIndicator(color: AppColors.zestyLime)
+          const Center(
+              child: CircularProgressIndicator(color: AppColors.zestyLime))
         else
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          SizedBox(
+            width: double.infinity,
             child: HapticButton(
               onTap: () {
                 FocusScope.of(context).unfocus(); // Dismiss keyboard
@@ -170,6 +293,7 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
                       mode: 'pantry_chef',
                       filters: _selectedFilters,
                       mealType: _mealType,
+                      mood: _mood,
                       allergies: _allergyController.text.isNotEmpty
                           ? _allergyController.text
                           : null,

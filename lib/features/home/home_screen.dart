@@ -225,6 +225,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   bool _isPantryMode = false; // Default: Discover Mode
   bool _applyDietaryProfile = false; // Default: Off for Discover Mode
+  String? _mood;
 
   void _dispose() {
     _searchController.dispose();
@@ -465,23 +466,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               }),
 
-              // History Button
-              TextButton.icon(
-                onPressed: () => _showHistorySheet(context, ref),
-                icon:
-                    const Icon(Icons.history, size: 16, color: Colors.white38),
-                label: const Text(
-                  "Recent",
-                  style: TextStyle(color: Colors.white38, fontSize: 13),
-                ),
-                style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: const BorderSide(color: Colors.white10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Mood Button
+                  GestureDetector(
+                    onTap: () => _showMoodSheet(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _mood != null
+                            ? AppColors.zestyLime.withOpacity(0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: _mood != null
+                                ? AppColors.zestyLime
+                                : Colors.white10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                              _mood != null
+                                  ? Icons.emoji_objects
+                                  : Icons.emoji_objects_outlined,
+                              size: 16,
+                              color: _mood != null
+                                  ? AppColors.zestyLime
+                                  : Colors.white38),
+                          if (_mood != null) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              _mood!,
+                              style: const TextStyle(
+                                  color: AppColors.zestyLime,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ]
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+
+                  const SizedBox(width: 8),
+
+                  // History Button
+                  GestureDetector(
+                    onTap: () => _showHistorySheet(context, ref),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: const Icon(Icons.history,
+                          size: 16, color: Colors.white38),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -576,6 +621,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mode: 'discover',
             query: query,
             includeGlobalDiet: _applyDietaryProfile, // Optional
+            mood: _mood,
           );
     }
 
@@ -836,6 +882,123 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  final List<String> _moods = [
+    'Comfort',
+    'Date Night',
+    'Quick & Easy',
+    'Energetic',
+    'Adventurous',
+    'Fancy'
+  ];
+
+  void _showMoodSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.deepCharcoal,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final subscriptionState = ref.watch(subscriptionControllerProvider);
+            final isExecutive =
+                subscriptionState.valueOrNull == SubscriptionTier.executiveChef;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Set the Mood",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
+                    if (_mood != null)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _mood = null);
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Clear",
+                            style: TextStyle(color: Colors.white54)),
+                      )
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _moods.map((mood) {
+                    final isSelected = _mood == mood;
+                    return GestureDetector(
+                      onTap: () {
+                        if (!isExecutive) {
+                          Navigator.pop(context); // Close sheet first
+                          PremiumPaywall.show(context,
+                              featureName: "Mood-Based Suggestions",
+                              message:
+                                  "Unlock precise mood-based cooking with Executive Chef.");
+                          return;
+                        }
+                        setState(() {
+                          if (isSelected) {
+                            _mood = null;
+                          } else {
+                            _mood = mood;
+                          }
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.zestyLime
+                              : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(20),
+                          border: isSelected
+                              ? null
+                              : Border.all(color: Colors.white12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(mood,
+                                style: TextStyle(
+                                    color: isSelected
+                                        ? AppColors.deepCharcoal
+                                        : Colors.white70,
+                                    fontWeight: FontWeight.w600)),
+                            if (!isExecutive) ...[
+                              const SizedBox(width: 6),
+                              Icon(Icons.lock,
+                                  size: 12,
+                                  color: isSelected
+                                      ? AppColors.deepCharcoal
+                                      : Colors.white30)
+                            ]
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }

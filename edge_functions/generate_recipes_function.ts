@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { mode, search_query, filters, meal_type, allergies, recipe_context, user_question } = await req.json()
+    const { mode, search_query, filters, meal_type, allergies, mood, recipe_context, user_question, is_executive } = await req.json()
     const apiKey = Deno.env.get('GEMINI_API_KEY')
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
@@ -21,6 +21,11 @@ serve(async (req) => {
     // Auth check
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('Missing Authorization header')
+
+    // Determine Model based on Tier
+    // Executive Chefs get the cutting-edge 2.5 Flash
+    // Others get the previous high-speed version (2.0 Flash)
+    const modelVersion = is_executive ? 'gemini-2.5-flash' : 'gemini-2.0-flash-exp';
     
     // --- MODE 3: CONSULT CHEF (Substitution Assistant) ---
     if (mode === 'consult_chef') {
@@ -49,12 +54,18 @@ serve(async (req) => {
 
 
        // Use Gemini to answer
-       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=${apiKey}`
        const response = await fetch(url, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
        })
+       
+       if (!response.ok) {
+           const errText = await response.text();
+           console.error(`Gemini API Error (${modelVersion}):`, errText);
+           throw new Error(`Gemini API Failed: ${errText}`);
+       }
        
        const data = await response.json()
        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}"
@@ -143,6 +154,16 @@ serve(async (req) => {
     if (allergies) {
         promptText += `\nSTRICT ALLERGIES/EXCLUSIONS: ${allergies}`
     }
+    if (mood) {
+        promptText += `\n\nUSER MOOD: ${mood}.
+        The user is in a "${mood}" mood. Ensure the recipes align with this vibe.
+        - Comfort: Hearty, warm, nostalgic.
+        - Date Night: Impressive, romantic, plating-focused.
+        - Quick & Easy: Minimal prep, fast cooking.
+        - Energetic: Light, fresh, high protein/healthy fats.
+        - Adventurous: Bold flavors, unique ingredients or combinations.
+        - Fancy: Gourmet techniques, elegant presentation.`
+    }
 
     // --- COMMON CONTEXT & FORMAT ---
     promptText += `\n\nUser's Pantry List: [${pantryString}]`
@@ -176,8 +197,8 @@ serve(async (req) => {
     }
     Do not add markdown.`
 
-    // Using gemini-2.5-flash
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+    // Using configured model version
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=${apiKey}`
     
     // Retry logic for 503
     let response;
@@ -203,9 +224,10 @@ serve(async (req) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
-
+    
     if (!response || !response.ok) {
         const errData = response ? await response.text() : "Unknown error"
+        console.error(`Gemini API Failed (${modelVersion}):`, errData);
         throw new Error(`Google API Error: ${errData}`)
     }
 
@@ -216,11 +238,7 @@ serve(async (req) => {
     const text = candidate.content?.parts?.[0]?.text
     if (!text) throw new Error("No text returned from Gemini")
     
-    // Aggressive cleanup: remove JSON markdown blocks if present to leave just text + (implicit) json
-    // But wait, our parsing relies on text being separate? 
-    // Actually, we want to return the raw text including the JSON so the frontend can split it.
-    // The previous regex removed ```json and ``` but effectively merged them.
-    // Let's just remove the markers but keep the content.
+    // Aggressive cleanup
     const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
     return new Response(cleanedText, {
@@ -228,8 +246,11 @@ serve(async (req) => {
     })
 
   } catch (error) {
+    console.error("Edge Function Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
+      // Use 400 so client libraries might read the body, though Flutter client might still throw generic FunctionException.
+      // But at least logging is improved.
+      status: 400, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }

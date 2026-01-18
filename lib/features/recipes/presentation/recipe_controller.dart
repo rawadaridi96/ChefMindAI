@@ -20,6 +20,7 @@ class RecipeController extends _$RecipeController {
     List<String>? filters,
     String? mealType,
     String? allergies,
+    String? mood,
     bool includeGlobalDiet = false,
   }) async {
     state = const AsyncLoading();
@@ -33,6 +34,16 @@ class RecipeController extends _$RecipeController {
       SubscriptionTier currentTier = SubscriptionTier.homeCook;
       if (!isGuest) {
         currentTier = await ref.read(subscriptionControllerProvider.future);
+      }
+
+      // Enforce Executive Chef for Mood
+      if (mood != null && mood.isNotEmpty) {
+        if (currentTier != SubscriptionTier.executiveChef) {
+          throw PremiumLimitReachedException(
+            "Mood-based suggestions require an Executive Chef plan.",
+            "Executive Feature",
+          );
+        }
       }
 
       // Handle Global Dietary Preferences
@@ -98,6 +109,8 @@ class RecipeController extends _$RecipeController {
             filters: filters,
             mealType: mealType,
             allergies: finalAllergies,
+            mood: mood,
+            isExecutive: currentTier == SubscriptionTier.executiveChef,
           );
 
       if (isGuest) {

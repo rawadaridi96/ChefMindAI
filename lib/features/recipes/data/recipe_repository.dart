@@ -19,6 +19,8 @@ class RecipeRepository {
     List<String>? filters,
     String? mealType,
     String? allergies,
+    String? mood,
+    bool isExecutive = false,
   }) async {
     final response = await _client.functions.invoke(
       'generate-recipes',
@@ -28,6 +30,10 @@ class RecipeRepository {
         if (filters != null && filters.isNotEmpty) 'filters': filters,
         if (mealType != null && mealType.isNotEmpty) 'meal_type': mealType,
         if (allergies != null && allergies.isNotEmpty) 'allergies': allergies,
+        if (mealType != null && mealType.isNotEmpty) 'meal_type': mealType,
+        if (allergies != null && allergies.isNotEmpty) 'allergies': allergies,
+        if (mood != null && mood.isNotEmpty) 'mood': mood,
+        'is_executive': isExecutive,
       },
     );
 
