@@ -24,8 +24,7 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
   final List<String> _mealTypes = [
     'Surprise Me',
     'Breakfast',
-    'Lunch',
-    'Dinner',
+    'Main Meal',
     'Dessert',
     'Snack'
   ];
@@ -174,6 +173,8 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
                       allergies: _allergyController.text.isNotEmpty
                           ? _allergyController.text
                           : null,
+                      includeGlobalDiet:
+                          true, // Strict enforcement for Pantry Chef
                     );
 
                 // Callback to navigate

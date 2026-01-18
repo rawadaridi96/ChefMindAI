@@ -236,12 +236,21 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {
-                            if (_emailController.text.isNotEmpty) {
-                              ref
-                                  .read(authControllerProvider.notifier)
-                                  .resetPassword(_emailController.text.trim());
-                              // Maybe show toast here?
+                          onPressed: () async {
+                            final email = _emailController.text.trim();
+                            if (email.isEmpty) {
+                              NanoToast.showError(
+                                  context, 'Please enter your email address');
+                              return;
+                            }
+                            await ref
+                                .read(authControllerProvider.notifier)
+                                .resetPassword(email);
+
+                            if (mounted &&
+                                !ref.read(authControllerProvider).hasError) {
+                              NanoToast.showSuccess(context,
+                                  'Password reset link sent to $email');
                             }
                           },
                           child: const Text('Forgot Password?',

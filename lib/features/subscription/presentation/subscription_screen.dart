@@ -19,8 +19,6 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _isYearly = false;
-  SubscriptionTier? _selectedTier;
-
   @override
   Widget build(BuildContext context) {
     final subscriptionState = ref.watch(subscriptionControllerProvider);
@@ -207,22 +205,20 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     bool isSerif = false,
     bool forceGhost = false,
   }) {
-    final isSelected = _selectedTier == tier;
-
     // Determine Button State
     final String buttonText = isCurrent ? 'Current Plan' : defaultButtonText;
     final bool isGhost =
         isCurrent || forceGhost; // Current plan always shows as Ghost button
 
-    // Scale and Border Logic
-    final double scale = isSelected ? 1.05 : 1.0;
-    final BorderSide borderSide = (isSelected || hasGlowBorder)
+    // Scale and Border Logic (Now based on isCurrent instead of selection)
+    final double scale = isCurrent ? 1.05 : 1.0;
+    final BorderSide borderSide = (isCurrent || hasGlowBorder)
         ? BorderSide(
-            color: AppColors.zestyLime.withOpacity(isSelected ? 0.8 : 0.5),
-            width: isSelected ? 2 : 1)
+            color: AppColors.zestyLime.withOpacity(isCurrent ? 0.8 : 0.5),
+            width: isCurrent ? 2 : 1)
         : BorderSide(color: Colors.white.withOpacity(0.1));
 
-    final BoxShadow? glowShadow = (isSelected || hasGlowBorder)
+    final BoxShadow? glowShadow = (isCurrent || hasGlowBorder)
         ? BoxShadow(
             color: AppColors.zestyLime.withOpacity(0.3),
             blurRadius: 20,
@@ -242,132 +238,125 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             fontWeight: FontWeight.bold,
           );
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTier = tier;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        transform: Matrix4.identity()..scale(scale),
-        transformAlignment: Alignment.center,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Glass Container
-            GlassContainer(
-              borderRadius: 24,
-              padding: const EdgeInsets.all(0),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.deepCharcoal.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.fromBorderSide(borderSide),
-                  boxShadow: glowShadow != null ? [glowShadow] : [],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Title
-                    Text(
-                      title,
-                      style: titleStyle,
-                      textAlign: TextAlign.center,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      transform: Matrix4.identity()..scale(scale),
+      transformAlignment: Alignment.center,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Glass Container
+          GlassContainer(
+            borderRadius: 24,
+            padding: const EdgeInsets.all(0),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.deepCharcoal.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.fromBorderSide(borderSide),
+                boxShadow: glowShadow != null ? [glowShadow] : [],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Title
+                  Text(
+                    title,
+                    style: titleStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  // Price
+                  Text(
+                    price,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(height: 8),
-                    // Price
+                    textAlign: TextAlign.center,
+                  ),
+                  if (billingNote != null) ...[
+                    const SizedBox(height: 4),
                     Text(
-                      price,
+                      billingNote,
                       style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.white54,
+                        fontSize: 12,
                       ),
                       textAlign: TextAlign.center,
-                    ),
-                    if (billingNote != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        billingNote,
-                        style: GoogleFonts.inter(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    // Features
-                    ...features.map((f) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check, color: checkColor, size: 18),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  f,
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-                    const SizedBox(height: 24),
-                    // Button
-                    _buildActionButton(
-                      context: context,
-                      text: buttonText,
-                      isGhost: isGhost,
-                      color: buttonColor,
-                      textColor: buttonTextColor,
-                      onTap: () {
-                        if (isCurrent) return;
-                        _handlePayment(context, tier);
-                      },
                     ),
                   ],
+                  const SizedBox(height: 24),
+                  // Features
+                  ...features.map((f) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check, color: checkColor, size: 18),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                f,
+                                style: GoogleFonts.inter(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                  const SizedBox(height: 24),
+                  // Button
+                  _buildActionButton(
+                    context: context,
+                    text: buttonText,
+                    isGhost: isGhost,
+                    color: buttonColor,
+                    textColor: buttonTextColor,
+                    onTap: () {
+                      if (isCurrent) return;
+                      _handlePayment(context, tier);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Most Popular Ribbon
+          if (isPopular)
+            Positioned(
+              top: -12,
+              right: 20,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.zestyLime,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
+                ),
+                child: Text(
+                  'MOST POPULAR',
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ),
-            // Most Popular Ribbon
-            if (isPopular)
-              Positioned(
-                top: -12,
-                right: 20,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.zestyLime,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      )
-                    ],
-                  ),
-                  child: Text(
-                    'MOST POPULAR',
-                    style: GoogleFonts.inter(
-                      color: Colors.black,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }

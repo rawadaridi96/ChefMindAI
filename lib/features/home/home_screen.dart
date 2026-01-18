@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/widgets/nano_toast.dart';
 import '../auth/presentation/auth_controller.dart';
+import '../auth/data/auth_repository.dart';
 
 import '../scanner/presentation/scanner_screen.dart';
 import '../pantry/presentation/pantry_screen.dart';
@@ -11,13 +12,15 @@ import '../recipes/presentation/recipes_screen.dart';
 import '../recipes/presentation/recipe_controller.dart';
 import '../subscription/presentation/subscription_screen.dart';
 import '../shopping/presentation/shopping_screen.dart';
+import '../settings/presentation/settings_screen.dart';
+import '../subscription/presentation/subscription_controller.dart';
+import '../../core/widgets/premium_paywall.dart';
 import '../../core/widgets/glass_container.dart';
 
 import 'widgets/pulse_microphone_button.dart';
 
 import '../import/presentation/import_controller.dart';
 import '../recipes/presentation/widgets/pantry_generator_widget.dart';
-import '../settings/presentation/settings_screen.dart';
 import 'presentation/history_controller.dart';
 import 'dart:ui'; // For ImageFilter
 
@@ -221,6 +224,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   bool _isPantryMode = false; // Default: Discover Mode
+  bool _applyDietaryProfile = false; // Default: Off for Discover Mode
 
   void _dispose() {
     _searchController.dispose();
@@ -368,27 +372,119 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         const SizedBox(height: 16),
 
-        // History Button (Right Aligned)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton.icon(
-              onPressed: () => _showHistorySheet(context, ref),
-              icon: const Icon(Icons.history, size: 16, color: Colors.white38),
-              label: const Text(
-                "Recent",
-                style: TextStyle(color: Colors.white38, fontSize: 13),
-              ),
-              style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: const BorderSide(color: Colors.white10),
+        // Controls Row (Dietary Toggle + History)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Dietary Toggle
+              Consumer(builder: (context, ref, _) {
+                final user = ref.watch(authRepositoryProvider).currentUser;
+                final subState = ref.watch(subscriptionControllerProvider);
+                final tier = subState.valueOrNull ?? SubscriptionTier.homeCook;
+                final isPremium = tier != SubscriptionTier.homeCook;
+
+                final prefs = user?.userMetadata?['dietary_preferences'];
+                final hasPreferences =
+                    prefs != null && prefs is List && prefs.isNotEmpty;
+
+                final isEnabled = hasPreferences && isPremium;
+
+                return Opacity(
+                  opacity: isEnabled ? 1.0 : 0.5,
+                  child: Row(
+                    children: [
+                      Transform.scale(
+                        scale: 0.8,
+                        child: Switch(
+                          value: isEnabled && _applyDietaryProfile,
+                          activeColor: AppColors.zestyLime,
+                          activeTrackColor:
+                              AppColors.zestyLime.withOpacity(0.3),
+                          inactiveThumbColor: Colors.white54,
+                          inactiveTrackColor: Colors.white10,
+                          onChanged: (val) {
+                            if (!isPremium) {
+                              PremiumPaywall.show(context,
+                                  featureName: "Advanced Dietary Intelligence",
+                                  message:
+                                      "Unlock personalized dietary AI with our Sous Chef plan.");
+                              return;
+                            }
+                            if (!hasPreferences) {
+                              NanoToast.showInfo(context,
+                                  "Set your profile in Settings first 🧑‍🍳");
+                              return;
+                            }
+                            setState(() => _applyDietaryProfile = val);
+                          },
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          if (!isPremium) {
+                            PremiumPaywall.show(context,
+                                featureName: "Advanced Dietary Intelligence",
+                                message:
+                                    "Unlock personalized dietary AI with our Sous Chef plan.");
+                            return;
+                          }
+                          if (!hasPreferences) {
+                            NanoToast.showInfo(context,
+                                "Set your profile in Settings first 🧑‍🍳");
+                            return;
+                          }
+                          setState(() =>
+                              _applyDietaryProfile = !_applyDietaryProfile);
+                        },
+                        child: Row(
+                          children: [
+                            Text(
+                              "Dietary Profile",
+                              style: TextStyle(
+                                color: (isEnabled && _applyDietaryProfile)
+                                    ? Colors.white
+                                    : Colors.white54,
+                                fontSize: 13,
+                                fontWeight: (isEnabled && _applyDietaryProfile)
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            if (!isPremium) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.lock_outline,
+                                  color: AppColors.zestyLime, size: 12),
+                            ]
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+
+              // History Button
+              TextButton.icon(
+                onPressed: () => _showHistorySheet(context, ref),
+                icon:
+                    const Icon(Icons.history, size: 16, color: Colors.white38),
+                label: const Text(
+                  "Recent",
+                  style: TextStyle(color: Colors.white38, fontSize: 13),
+                ),
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: const BorderSide(color: Colors.white10),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
 
         const SizedBox(height: 8),
@@ -472,12 +568,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(recipeControllerProvider.notifier).generate(
             mode: 'pantry_chef',
             query: query,
+            includeGlobalDiet: true, // Strict enforcement
           );
     } else {
       // Discover Mode: Pure generation
       ref.read(recipeControllerProvider.notifier).generate(
             mode: 'discover',
             query: query,
+            includeGlobalDiet: _applyDietaryProfile, // Optional
           );
     }
 

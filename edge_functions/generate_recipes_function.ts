@@ -123,7 +123,19 @@ serve(async (req) => {
 
     // --- APPLY FILTERS & CONTEXT ---
     if (meal_type) {
-        promptText += `\nTarget Meal Type: ${meal_type} (Ensure ingredients differ appropriately, e.g. no garlic in dessert).`
+        let cleanMealType = meal_type.trim();
+        // Typos handling
+        if (cleanMealType.toLowerCase() === 'launch') cleanMealType = 'Lunch';
+
+        promptText += `\nTarget Meal Type: ${cleanMealType}`;
+        
+        // Strict Negative Constraints
+        const lowerType = cleanMealType.toLowerCase();
+        if (lowerType === 'lunch' || lowerType === 'dinner' || lowerType === 'main meal') {
+             promptText += `\nCRITICAL: User specifically requested ${cleanMealType}. DO NOT PROVIDE DESSERTS, smoothies, or sweet snacks. Provide savory main courses only.`;
+        } else if (lowerType === 'dessert') {
+             promptText += `\nCRITICAL: User specifically requested Dessert. DO NOT PROVIDE SAVORY DISHES.`;
+        }
     }
     if (filters && filters.length > 0) {
         promptText += `\nStyle/Dietary Filters: ${filters.join(', ')}`

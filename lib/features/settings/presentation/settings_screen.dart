@@ -13,6 +13,7 @@ import '../../../core/widgets/nano_toast.dart';
 import 'edit_profile_screen.dart';
 import '../../subscription/presentation/subscription_controller.dart';
 import '../../onboarding/presentation/entry_orchestrator.dart';
+import '../../auth/presentation/dietary_preferences_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -513,8 +514,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
 
                       const SizedBox(height: 24),
-                      // Personalization (Commented out for now)
-                      /*
                       if (!isGuest) ...[
                         const Text(
                           "Account",
@@ -524,24 +523,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 16),
-                        _SettingsTile(
-                          icon: Icons.auto_awesome,
-                          title: "Personalize AI Chef",
-                          trailing: const Icon(Icons.arrow_forward_ios,
-                              color: Colors.white54, size: 16),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const DietaryPreferencesScreen(),
-                              ),
-                            );
-                          },
-                        ),
+                        Consumer(builder: (context, ref, _) {
+                          final subState =
+                              ref.watch(subscriptionControllerProvider);
+                          final tier =
+                              subState.valueOrNull ?? SubscriptionTier.homeCook;
+                          final isPremium = tier != SubscriptionTier.homeCook;
+
+                          return _SettingsTile(
+                            icon: Icons.auto_awesome,
+                            title: "Personalize AI Chef",
+                            subtitle: _buildDietarySummary(user, isPremium),
+                            trailing: const Icon(Icons.arrow_forward_ios,
+                                color: Colors.white54, size: 16),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const DietaryPreferencesScreen(),
+                                ),
+                              ).then((_) => setState(() {
+                                    // Refresh to show updates
+                                  }));
+                            },
+                          );
+                        }),
                         const SizedBox(height: 12),
                       ],
-                      */
 
                       // Sign Out / Log In
                       _SettingsTile(
@@ -582,6 +591,67 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
   }
+
+  Widget? _buildDietarySummary(User? user, bool isPremium) {
+    // Premium Badge Widget
+    final premiumBadge = Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.zestyLime.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppColors.zestyLime.withOpacity(0.5)),
+      ),
+      child: const Text(
+        "Sous Chef+",
+        style: TextStyle(
+            color: AppColors.zestyLime,
+            fontSize: 10,
+            fontWeight: FontWeight.bold),
+      ),
+    );
+
+    if (user == null) {
+      // Just show badge if not logged in (should require login anyway but safe fallback)
+      return !isPremium ? premiumBadge : null;
+    }
+
+    final metadata = user.userMetadata;
+    List<String> items = [];
+
+    if (metadata != null && metadata.containsKey('dietary_preferences')) {
+      final prefs = metadata['dietary_preferences'];
+      if (prefs is List && prefs.isNotEmpty) {
+        items = prefs.map((e) => e.toString()).toList();
+      }
+    }
+
+    if (items.isEmpty) {
+      return !isPremium ? premiumBadge : null;
+    }
+
+    String text;
+    if (items.length <= 2) {
+      text = items.join(", ");
+    } else {
+      text = "${items.take(2).join(', ')} +${items.length - 2} more";
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          text,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (!isPremium) ...[
+          const SizedBox(height: 4),
+          premiumBadge,
+        ]
+      ],
+    );
+  }
 }
 
 class _SettingsTile extends StatelessWidget {
@@ -591,6 +661,7 @@ class _SettingsTile extends StatelessWidget {
   final VoidCallback? onTap;
   final Color? iconColor;
   final Color? textColor;
+  final Widget? subtitle;
 
   const _SettingsTile({
     required this.icon,
@@ -599,6 +670,7 @@ class _SettingsTile extends StatelessWidget {
     this.onTap,
     this.iconColor,
     this.textColor,
+    this.subtitle,
   });
 
   @override
@@ -631,13 +703,22 @@ class _SettingsTile extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: textColor ?? Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: textColor ?? Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      subtitle!,
+                    ]
+                  ],
                 ),
               ),
               trailing,

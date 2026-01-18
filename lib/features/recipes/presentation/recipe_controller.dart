@@ -20,6 +20,7 @@ class RecipeController extends _$RecipeController {
     List<String>? filters,
     String? mealType,
     String? allergies,
+    bool includeGlobalDiet = false,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -28,12 +29,43 @@ class RecipeController extends _$RecipeController {
       bool isGuest = user == null || user.isAnonymous;
       int guestGenCount = prefs.getInt('guest_gen_count') ?? 0;
 
+      // Fetch tier early for feature gating
+      SubscriptionTier currentTier = SubscriptionTier.homeCook;
+      if (!isGuest) {
+        currentTier = await ref.read(subscriptionControllerProvider.future);
+      }
+
+      // Handle Global Dietary Preferences
+      String? finalAllergies = allergies;
+
+      if (includeGlobalDiet && user != null && !isGuest) {
+        // Enforce ADI Restriction
+        if (currentTier == SubscriptionTier.homeCook) {
+          throw PremiumLimitReachedException(
+            "Advanced Dietary Intelligence requires a Sous Chef plan.",
+            "Advanced Intelligence",
+          );
+        }
+
+        final userMetadata = user.userMetadata;
+        final dietaryPrefs = userMetadata?['dietary_preferences'];
+
+        if (dietaryPrefs != null &&
+            dietaryPrefs is List &&
+            dietaryPrefs.isNotEmpty) {
+          final globalPrefsString = dietaryPrefs.join(", ");
+          if (finalAllergies != null && finalAllergies.isNotEmpty) {
+            finalAllergies = "$finalAllergies, $globalPrefsString";
+          } else {
+            finalAllergies = globalPrefsString;
+          }
+        }
+      }
+
       // Enforce Subscription Limits BEFORE generation
       int dailyCount = 0;
       if (!isGuest) {
-        // Ensure subscription tier is loaded before checking limits
-        // This prevents 'valueOrNull' from being null (loading) which defaults to Home Cook
-        final textTier = await ref.read(subscriptionControllerProvider.future);
+        // Tier already fetched above
 
         final today = DateTime.now().toIso8601String().split('T')[0];
         final lastGenDate = prefs.getString('gen_date') ?? '';
@@ -45,8 +77,8 @@ class RecipeController extends _$RecipeController {
           await prefs.setInt('daily_gen_count', 0);
         }
 
-        final limit = (textTier == SubscriptionTier.sousChef ||
-                textTier == SubscriptionTier.executiveChef)
+        final limit = (currentTier == SubscriptionTier.sousChef ||
+                currentTier == SubscriptionTier.executiveChef)
             ? 2147483647
             : ref
                 .read(subscriptionControllerProvider.notifier)
@@ -65,7 +97,7 @@ class RecipeController extends _$RecipeController {
             query: query,
             filters: filters,
             mealType: mealType,
-            allergies: allergies,
+            allergies: finalAllergies,
           );
 
       if (isGuest) {

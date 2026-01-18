@@ -557,6 +557,7 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
               const SizedBox(height: 16),
               TextField(
                 controller: _nameCtrl,
+                textCapitalization: TextCapitalization.sentences,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: "Ingredient Name",
