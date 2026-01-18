@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 // import '../../../../core/widgets/glass_container.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../auth/presentation/auth_controller.dart';
 import '../../auth/data/auth_repository.dart';
@@ -12,7 +11,7 @@ import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart'
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/widgets/nano_toast.dart';
 import 'edit_profile_screen.dart';
-
+import '../../subscription/presentation/subscription_controller.dart';
 import '../../onboarding/presentation/entry_orchestrator.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -34,10 +33,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
-    });
+    final user = ref.read(authRepositoryProvider).currentUser;
+    if (user != null) {
+      final accounts = await ref
+          .read(authControllerProvider.notifier)
+          .getBiometricAccounts();
+      final isEnrolled = accounts.any((acc) => acc['userId'] == user.id);
+      if (mounted) {
+        setState(() {
+          _biometricEnabled = isEnrolled;
+        });
+      }
+    }
   }
 
   Future<void> _toggleBiometrics(bool value) async {
@@ -208,8 +215,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const Divider(color: Colors.white10),
             _buildDetailRow("Email", email),
             const Divider(color: Colors.white10),
-            _buildDetailRow(
-                "Plan", "Pro Member"), // Placeholder until subscription sync
+            Consumer(builder: (context, ref, _) {
+              final tierAsync = ref.watch(subscriptionControllerProvider);
+              final planName = tierAsync.when(
+                data: (tier) {
+                  switch (tier) {
+                    case SubscriptionTier.chef:
+                      return 'Chef Plan';
+                    case SubscriptionTier.masterChef:
+                      return 'Pro Member';
+                    case SubscriptionTier.discover:
+                    default:
+                      return 'Free Tier';
+                  }
+                },
+                loading: () => 'Loading...',
+                error: (_, __) => 'Free Tier',
+              );
+              return _buildDetailRow("Plan", planName);
+            }),
             const Divider(color: Colors.white10),
             _buildDetailRow("Member ID", memberId),
             const SizedBox(height: 32),

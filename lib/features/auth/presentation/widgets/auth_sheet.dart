@@ -6,6 +6,7 @@ import 'package:chefmind_ai/features/auth/presentation/auth_controller.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
 import 'package:chefmind_ai/features/auth/data/auth_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthSheet extends ConsumerStatefulWidget {
   final bool isLogin;
@@ -23,6 +24,10 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
 
+  // Custom Error State
+  String? _emailError;
+  String? _passwordError;
+
   @override
   void initState() {
     super.initState();
@@ -33,11 +38,41 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
+  void _clearErrors() {
+    setState(() {
+      _emailError = null;
+      _passwordError = null;
+    });
+  }
+
+  bool _validate() {
+    _clearErrors();
+    bool isValid = true;
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty) {
+      setState(() => _emailError = 'Email is required');
+      isValid = false;
+    } else if (!email.contains('@')) {
+      setState(() => _emailError = 'Invalid email address');
+      isValid = false;
+    }
+
+    if (password.isEmpty) {
+      setState(() => _passwordError = 'Password is required');
+      isValid = false;
+    }
+
+    return isValid;
+  }
+
   Future<void> _submit() async {
-    if (_formKey.currentState!.validate()) {
+    if (_validate()) {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
@@ -63,6 +98,9 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
       final accounts = await ref
           .read(authControllerProvider.notifier)
           .getBiometricAccounts();
+
+      if (!mounted) return;
+
       if (accounts.isNotEmpty) {
         // Use the most recent or first one
         final userId = accounts.first['userId'];
@@ -73,8 +111,7 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
         // Success handling moved to AuthController
         if (!mounted) return;
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No biometric credentials found.')));
+        NanoToast.showError(context, 'No biometric credentials found');
       }
     } catch (e) {
       // Logic Fix: If we are actually authenticated (success), ignore the error.
@@ -89,13 +126,49 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Biometric Auth Failed: $e')));
+      if (mounted) {
+        NanoToast.showError(context, 'Biometric Auth Failed: $e');
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen for Auth Controller errors
+    ref.listen<AsyncValue>(authControllerProvider, (previous, next) {
+      if (next.hasError && !next.isLoading) {
+        final error = next.error;
+        String errorMsg;
+
+        // Try to extract a clean message
+        if (error is AuthException) {
+          errorMsg = error.message;
+        } else {
+          errorMsg = error.toString();
+          if (errorMsg.startsWith('Exception: ')) {
+            errorMsg = errorMsg.replaceAll('Exception: ', '');
+          }
+        }
+
+        // Map errors to fields with friendly messages
+        final lowerMsg = errorMsg.toLowerCase();
+
+        if (lowerMsg.contains('invalid login credentials')) {
+          setState(() => _passwordError = 'Incorrect email or password');
+        } else if (lowerMsg.contains('password')) {
+          setState(() => _passwordError = 'Incorrect password');
+        } else if (lowerMsg.contains('user not found') ||
+            lowerMsg.contains('email not found')) {
+          setState(() => _emailError = 'No account found with this email');
+        } else if (lowerMsg.contains('email')) {
+          setState(() => _emailError = errorMsg);
+        } else {
+          // Fallback to Toaster
+          NanoToast.showError(context, errorMsg);
+        }
+      }
+    });
+
     // Glassmorphic Sheet
     return Align(
       alignment: Alignment.bottomCenter,
@@ -134,6 +207,12 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                       label: 'Email',
                       icon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
+                      errorText: _emailError,
+                      onChanged: (_) {
+                        if (_emailError != null) {
+                          setState(() => _emailError = null);
+                        }
+                      },
                     ),
                     const SizedBox(height: 16),
                     _buildGlassTextField(
@@ -144,6 +223,12 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                       isPasswordVisible: _isPasswordVisible,
                       onTogglePassword: () => setState(
                           () => _isPasswordVisible = !_isPasswordVisible),
+                      errorText: _passwordError,
+                      onChanged: (_) {
+                        if (_passwordError != null) {
+                          setState(() => _passwordError = null);
+                        }
+                      },
                     ),
 
                     // --- Forgot Password (Log In only) ---
@@ -281,6 +366,7 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                         setState(() {
                           _isLogin = !_isLogin;
                           _formKey.currentState?.reset();
+                          _clearErrors();
                         });
                       },
                       child: RichText(
@@ -336,45 +422,71 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
     VoidCallback? onTogglePassword,
     TextInputType? keyboardType,
     TextCapitalization textCapitalization = TextCapitalization.none,
+    String? errorText,
+    ValueChanged<String>? onChanged,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword && !isPasswordVisible,
-        keyboardType: keyboardType,
-        textCapitalization: textCapitalization,
-        style: const TextStyle(color: Colors.white),
-        cursorColor: AppColors.zestyLime,
-        validator: (val) {
-          if (val == null || val.isEmpty) return '$label is required';
-          if (label == 'Email' && !val.contains('@')) return 'Invalid email';
-          return null;
-        },
-        decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colors.white38),
-          suffixIcon: isPassword
-              ? IconButton(
-                  icon: Icon(
-                      isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                      color: Colors.white38),
-                  onPressed: onTogglePassword,
-                )
-              : null,
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white38),
-          floatingLabelStyle: const TextStyle(color: AppColors.zestyLime),
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    final hasError = errorText != null && errorText.isNotEmpty;
+    // We remove the default validator to use our custom error UI
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: hasError
+                ? AppColors.errorRed.withOpacity(0.05)
+                : Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color:
+                  hasError ? AppColors.errorRed : Colors.white.withOpacity(0.1),
+            ),
+          ),
+          child: TextFormField(
+            controller: controller,
+            obscureText: isPassword && !isPasswordVisible,
+            keyboardType: keyboardType,
+            textCapitalization: textCapitalization,
+            style: const TextStyle(color: Colors.white),
+            cursorColor: AppColors.zestyLime,
+            onChanged: onChanged,
+            // Disable default validation logic since we handle it manually
+            validator: null,
+            decoration: InputDecoration(
+              prefixIcon: Icon(icon, color: Colors.white38),
+              suffixIcon: isPassword
+                  ? IconButton(
+                      icon: Icon(
+                          isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: Colors.white38),
+                      onPressed: onTogglePassword,
+                    )
+                  : null,
+              labelText: label,
+              labelStyle: const TextStyle(color: Colors.white38),
+              floatingLabelStyle: TextStyle(
+                color: hasError ? AppColors.errorRed : AppColors.zestyLime,
+              ),
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            ),
+          ),
         ),
-      ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 6),
+            child: Text(
+              errorText,
+              style: const TextStyle(
+                color: AppColors.errorRed,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

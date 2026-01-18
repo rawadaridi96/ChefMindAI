@@ -16,14 +16,25 @@ class ShoppingScreen extends ConsumerStatefulWidget {
 }
 
 class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
-  final _inputController = TextEditingController();
+  void _openManualEntry() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _ManualEntryModal(
+        onAdd: (name, qty, unit) async {
+          final fullAmount = qty != null && qty.isNotEmpty ? "$qty $unit" : "1";
 
-  void _addItem() {
-    final text = _inputController.text.trim();
-    if (text.isNotEmpty) {
-      ref.read(shoppingControllerProvider.notifier).addItem(text);
-      _inputController.clear();
-    }
+          await ref.read(shoppingControllerProvider.notifier).addItem(
+                name,
+                amount: fullAmount,
+              );
+
+          Navigator.pop(ctx);
+          if (mounted) NanoToast.showInfo(context, "Added $name to Cart");
+        },
+      ),
+    );
   }
 
   @override
@@ -39,18 +50,67 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.history, color: Colors.white),
+            icon: const Icon(Icons.delete_outline, color: Colors.white70),
             onPressed: () {
-              // Optional: History feature?
+              // Confirm Dialog
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: AppColors.deepCharcoal,
+                  title: const Text("Clear Shopping List?",
+                      style: TextStyle(color: Colors.white)),
+                  content: const Text(
+                      "This will remove all items from your cart. This action cannot be undone.",
+                      style: TextStyle(color: Colors.white70)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel",
+                          style: TextStyle(color: Colors.white54)),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context); // Close dialog
+                        ref
+                            .read(shoppingControllerProvider.notifier)
+                            .clearAll();
+                      },
+                      child: const Text("Clear All",
+                          style: TextStyle(color: AppColors.errorRed)),
+                    ),
+                  ],
+                ),
+              );
             },
           )
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(
+            height: 1.0,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  Colors.white.withOpacity(0.2),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openManualEntry,
+        backgroundColor: AppColors.zestyLime,
+        child: const Icon(Icons.add, color: AppColors.deepCharcoal),
       ),
       body: Stack(
         children: [
           // Watermark
           const Positioned(
-            left: -40,
+            left: -24,
             top: 100,
             bottom: 100,
             child: ChefMindWatermark(),
@@ -58,36 +118,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
           Column(
             children: [
               // Input Bar (Nano Banana Style)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: GlassContainer(
-                  borderRadius: 16,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _inputController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            hintText: 'Add to cart...',
-                            hintStyle: TextStyle(color: Colors.white38),
-                            border: InputBorder.none,
-                          ),
-                          textCapitalization: TextCapitalization.sentences,
-                          onSubmitted: (_) => _addItem(),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle,
-                            color: AppColors.zestyLime),
-                        onPressed: _addItem,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
 
               Expanded(
                 child: RefreshIndicator(
@@ -166,7 +196,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
               children: [
                 SlidableAction(
                   onPressed: (context) {
-                    _confirmDelete(item['id']);
+                    _confirmDelete(item['id'], item['item_name'] ?? 'Item');
                   },
                   backgroundColor: AppColors.errorRed,
                   foregroundColor: Colors.white,
@@ -179,78 +209,298 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
               borderRadius: 0, // Wrapped by ClipRRect via Slidable
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               // isBought styling handled by text opacity mostly, or we can use another widget if needed
-              child: Row(
-                children: [
-                  // Custom Checkbox
-                  GestureDetector(
-                    onTap: () {
-                      ref
-                          .read(shoppingControllerProvider.notifier)
-                          .toggleItem(item['id'], isBought);
-                    },
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color:
-                                isBought ? Colors.white38 : AppColors.zestyLime,
-                            width: 2),
-                        color: isBought ? Colors.white12 : null,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Row(
+                  children: [
+                    // Custom Checkbox
+                    GestureDetector(
+                      onTap: () {
+                        ref
+                            .read(shoppingControllerProvider.notifier)
+                            .toggleItem(item['id'], isBought);
+                      },
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: isBought
+                                  ? Colors.white38
+                                  : AppColors.zestyLime,
+                              width: 2),
+                          color: isBought ? Colors.white12 : null,
+                        ),
+                        child: isBought
+                            ? const Icon(Icons.check,
+                                size: 16, color: Colors.white38)
+                            : null,
                       ),
-                      child: isBought
-                          ? const Icon(Icons.check,
-                              size: 16, color: Colors.white38)
-                          : null,
                     ),
-                  ),
-                  const SizedBox(width: 12),
+                    const SizedBox(width: 12),
 
-                  // Text
-                  Expanded(
-                    child: Text(
-                      item['item_name'] ?? 'Unknown',
-                      style: TextStyle(
-                        color: isBought ? Colors.white38 : Colors.white,
-                        decoration:
-                            isBought ? TextDecoration.lineThrough : null,
-                        decorationColor: Colors.white38,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+                    // Text
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['item_name'] ?? 'Unknown',
+                            style: TextStyle(
+                              color: isBought ? Colors.white38 : Colors.white,
+                              decoration:
+                                  isBought ? TextDecoration.lineThrough : null,
+                              decorationColor: Colors.white38,
+                              fontSize: 16,
+                            ),
+                          ),
+                          if (item['recipe_source'] != null)
+                            Builder(builder: (context) {
+                              final rawSource =
+                                  item['recipe_source']!.toString();
+                              final sources = rawSource
+                                  .split(',')
+                                  .map((e) => e.trim())
+                                  .where((e) => e.isNotEmpty)
+                                  .toList();
 
-                  // Amount
-                  if (item['amount'] != null && item['amount'] != '1')
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white10,
-                        borderRadius: BorderRadius.circular(8),
+                              if (sources.isEmpty)
+                                return const SizedBox.shrink();
+
+                              if (sources.length == 1) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 2.0),
+                                  child: Text(
+                                    "Needed for: ${sources.first}",
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        color: Colors.white38, fontSize: 10),
+                                  ),
+                                );
+                              }
+
+                              // Multiple sources
+                              return GestureDetector(
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      backgroundColor: AppColors.deepCharcoal,
+                                      title: const Text("Recipe Sources",
+                                          style:
+                                              TextStyle(color: Colors.white)),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: sources
+                                            .map((s) => Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 4),
+                                                  child: Text("• $s",
+                                                      style: const TextStyle(
+                                                          color:
+                                                              Colors.white70)),
+                                                ))
+                                            .toList(),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: const Text("Close",
+                                                style: TextStyle(
+                                                    color:
+                                                        AppColors.zestyLime)))
+                                      ],
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 2.0),
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: "Needed for: ${sources.first} ",
+                                          style: const TextStyle(
+                                              color: Colors.white38,
+                                              fontSize: 10),
+                                        ),
+                                        WidgetSpan(
+                                          alignment:
+                                              PlaceholderAlignment.middle,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 4, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white24,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              "+${sources.length - 1}",
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              );
+                            }),
+                        ],
                       ),
-                      child: Text(item['amount'],
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12)),
                     ),
-                ],
+
+                    // Quantity Stepper
+                    // Trailing Action
+                    if (!isBought) ...[
+                      if (item['amount'] != null &&
+                          item['amount'].toString().trim().isNotEmpty)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white10,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildStepperBtn(
+                                  Icons.remove,
+                                  Colors.white54,
+                                  () => _updateQuantity(
+                                      item['id'], item['amount'] ?? '1', -1)),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                child: ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 60),
+                                  child: Text(
+                                    item['amount'] ?? '1',
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                              _buildStepperBtn(
+                                  Icons.add,
+                                  AppColors.zestyLime,
+                                  () => _updateQuantity(
+                                      item['id'], item['amount'] ?? '1', 1)),
+                            ],
+                          ),
+                        )
+                      else
+                        IconButton(
+                          onPressed: () {
+                            // Initialize to 1
+                            // We call updateQuantity with current='', change=1 -> result '1'
+                            _updateQuantity(item['id'], '', 1);
+                          },
+                          icon: const Icon(Icons.add_circle_outline,
+                              color: AppColors.zestyLime),
+                          tooltip: "Add Quantity",
+                        )
+                    ] else if (item['amount'] != null &&
+                        item['amount'].toString().isNotEmpty &&
+                        item['amount'] != '1')
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildStepperBtn(
+                                Icons.remove,
+                                Colors.white54,
+                                () => _updateQuantity(
+                                    item['id'], item['amount'] ?? '1', -1)),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 60),
+                                child: Text(
+                                  item['amount'] ?? '1',
+                                  textAlign: TextAlign.center,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            _buildStepperBtn(
+                                Icons.add,
+                                AppColors.zestyLime,
+                                () => _updateQuantity(
+                                    item['id'], item['amount'] ?? '1', 1)),
+                          ],
+                        ),
+                      )
+                    else if (item['amount'] != null && item['amount'] != '1')
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(item['amount'],
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 12)),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
         ));
   }
 
-  Future<void> _confirmDelete(dynamic id) async {
+  Future<void> _updateQuantity(int id, String currentAmount, int change) async {
+    await ref
+        .read(shoppingControllerProvider.notifier)
+        .updateQuantity(id, currentAmount, change);
+  }
+
+  Widget _buildStepperBtn(IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: Icon(icon, size: 16, color: color),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(dynamic id, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.deepCharcoal,
         title:
-            const Text("Remove Item?", style: TextStyle(color: Colors.white)),
-        content: const Text(
-            "Are you sure you want to remove this from your cart?",
-            style: TextStyle(color: Colors.white70)),
+            Text("Remove $name?", style: const TextStyle(color: Colors.white)),
+        content: Text("Are you sure you want to remove $name from your cart?",
+            style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -268,5 +518,191 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       await ref.read(shoppingControllerProvider.notifier).deleteItem(id);
       if (mounted) NanoToast.showInfo(context, "Item removed from cart");
     }
+  }
+}
+
+class _ManualEntryModal extends StatefulWidget {
+  final Function(String name, String? qty, String unit) onAdd;
+  final String? initialName;
+
+  const _ManualEntryModal({required this.onAdd, this.initialName});
+
+  @override
+  State<_ManualEntryModal> createState() => _ManualEntryModalState();
+}
+
+class _ManualEntryModalState extends State<_ManualEntryModal> {
+  late TextEditingController _nameCtrl;
+  final _qtyCtrl = TextEditingController();
+  String _selectedUnit = 'pcs';
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.initialName);
+  }
+
+  final List<String> _units = [
+    'g',
+    'kg',
+    'oz',
+    'lb',
+    'ml',
+    'L',
+    'tsp',
+    'tbsp',
+    'cup',
+    'pcs',
+    'doz',
+    'Bottle',
+    'Box',
+    'Bag',
+    'Can',
+    'Jar',
+    'Packet'
+  ];
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _qtyCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    widget.onAdd(name, _qtyCtrl.text.trim(), _selectedUnit);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: GlassContainer(
+          borderRadius: 24,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text("Add to Cart",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Item Name",
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.08),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _qtyCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: "Quantity (Opt.)",
+                          labelStyle: const TextStyle(color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.08),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedUnit,
+                            dropdownColor: AppColors.surfaceDark,
+                            isExpanded: true,
+                            style: const TextStyle(color: Colors.white),
+                            icon: const Icon(Icons.arrow_drop_down,
+                                color: AppColors.zestyLime),
+                            items: _units
+                                .map((u) => DropdownMenuItem(
+                                      value: u,
+                                      child: Text(u),
+                                    ))
+                                .toList(),
+                            onChanged: (val) {
+                              if (val != null)
+                                setState(() => _selectedUnit = val);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.zestyLime,
+                    foregroundColor: AppColors.deepCharcoal,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text("Add to Cart",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

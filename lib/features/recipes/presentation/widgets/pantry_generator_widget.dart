@@ -140,6 +140,7 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: HapticButton(
               onTap: () {
+                FocusScope.of(context).unfocus(); // Dismiss keyboard
                 // Pantry Check
                 final pantryItems =
                     ref.read(pantryControllerProvider).valueOrNull ?? [];

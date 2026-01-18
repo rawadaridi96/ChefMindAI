@@ -14,6 +14,8 @@ import '../../../../core/widgets/nano_toast.dart';
 import 'vault_controller.dart';
 import '../../auth/presentation/auth_state_provider.dart'; // Import provider
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../shopping/data/retail_unit_helper.dart';
+import 'package:toastification/toastification.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> recipe;
@@ -776,19 +778,40 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       int addedCount = 0;
                       for (var item in ingredients) {
                         if (item is Map && item['is_missing'] == true) {
+                          // Extract core name
+                          final rawName = item['name'].toString();
+                          final coreName =
+                              RetailUnitHelper.extractCoreIngredientName(
+                                  rawName);
+
                           ref.read(shoppingControllerProvider.notifier).addItem(
-                              item['name'].toString(),
-                              amount: item['amount']?.toString() ?? '1',
-                              category: 'Recipe Import' // Or dynamic category
+                              coreName,
+                              amount: '', // Explicitly empty per user request
+                              category: 'Recipe Import',
+                              recipeSource:
+                                  recipe['title'] // Add source tracking!
                               );
                           addedCount++;
                         }
                       }
                       if (addedCount > 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                                  'Added $addedCount items to Shopping Cart!')),
+                        toastification.show(
+                          context: context,
+                          type: ToastificationType.success,
+                          style: ToastificationStyle.flat,
+                          title: Text("Added $addedCount items to Cart!"),
+                          description: const Text("Ready for checkout."),
+                          alignment: Alignment.bottomCenter,
+                          autoCloseDuration: const Duration(seconds: 4),
+                          backgroundColor: AppColors.deepCharcoal,
+                          primaryColor: AppColors.zestyLime,
+                          foregroundColor: Colors.white,
+                          showProgressBar: false,
+                          icon: const Icon(Icons.shopping_cart_checkout,
+                              color: AppColors.zestyLime),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: AppColors.zestyLime),
                         );
                       } else {
                         NanoToast.showInfo(

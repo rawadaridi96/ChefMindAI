@@ -71,24 +71,44 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.zestyLime,
-          labelColor: AppColors.zestyLime,
-          unselectedLabelColor: Colors.white54,
-          tabs: const [
-            Tab(text: 'Current Results'),
-            Tab(text: 'The Vault'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(50), // Standard TabBar + 1px
+          child: Column(
+            children: [
+              Container(
+                height: 1.0,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      Colors.white.withOpacity(0.2),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ),
+                ),
+              ),
+              TabBar(
+                controller: _tabController,
+                indicatorColor: AppColors.zestyLime,
+                labelColor: AppColors.zestyLime,
+                unselectedLabelColor: Colors.white54,
+                tabs: const [
+                  Tab(text: 'Current Results'),
+                  Tab(text: 'The Vault'),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       body: Stack(
         children: [
           // Premium Watermark
           const Positioned(
-            left: -40,
-            top: 100,
-            bottom: 100,
+            left: -24,
+            top: 76, // Compensate for TabBar height to match other screens
+            bottom: 76,
             child: ChefMindWatermark(),
           ),
           // Content
@@ -454,7 +474,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                             children: [
                               SlidableAction(
                                 onPressed: (context) {
-                                  _confirmDelete(output['recipe_id']);
+                                  _confirmDelete(output['recipe_id'],
+                                      recipe['title'] ?? 'this item');
                                 },
                                 backgroundColor: AppColors.errorRed,
                                 foregroundColor: Colors.white,
@@ -680,7 +701,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     );
   }
 
-  Future<void> _confirmDelete(dynamic id) async {
+  Future<void> _confirmDelete(dynamic id, String title) async {
     if (id == null) return;
 
     final confirm = await showDialog<bool>(
@@ -688,10 +709,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.deepCharcoal,
         title:
-            const Text("Delete Recipe?", style: TextStyle(color: Colors.white)),
-        content: const Text(
-            "Are you sure you want to remove this from your Vault?",
-            style: TextStyle(color: Colors.white70)),
+            Text("Delete $title?", style: const TextStyle(color: Colors.white)),
+        content: Text("Are you sure you want to remove $title from your Vault?",
+            style: const TextStyle(color: Colors.white70)),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

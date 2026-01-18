@@ -24,6 +24,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   late Animation<double> _pulseAnimation;
   bool _isCameraReady = false;
   bool _cameraUnavailable = false;
+  File? _capturedImage;
+  bool _isPickingImage = false;
 
   @override
   void initState() {
@@ -75,18 +77,38 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
     try {
       final image = await _controller!.takePicture();
-      _processImage(File(image.path));
+      final file = File(image.path);
+      setState(() => _capturedImage = file); // Freeze UI
+      _processImage(file);
     } catch (e) {
       NanoToast.showError(context, 'Error: $e');
     }
   }
 
   Future<void> _pickFromGallery() async {
+    setState(() => _isPickingImage = true); // Show spinner
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
-      _processImage(File(pickedFile.path));
+      final file = File(pickedFile.path);
+
+      // Preload image to avoid black screen / double loading
+      if (mounted) {
+        await precacheImage(FileImage(file), context);
+      }
+
+      setState(() {
+        _capturedImage = file;
+        _isPickingImage = false;
+      }); // Show Image
+
+      // Small delay to let UI render the image before showing "Analyzing" overlay
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      _processImage(file); // Start Analysis
+    } else {
+      if (mounted) setState(() => _isPickingImage = false);
     }
   }
 
@@ -111,13 +133,25 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         NanoToast.showError(context, "Scan failed: ${next.error}");
         // Reset state so user can try again
         ref.read(scannerControllerProvider.notifier).reset();
+        setState(() => _capturedImage = null); // Unfreeze UI
       }
     });
   }
 
   void _showReviewSheet(List<String> detectedItems) {
-    // Need a local state for selection
-    final selectedItems = Set<String>.from(detectedItems);
+    // 1. Get current pantry items to find duplicates
+    final pantryItems = ref.read(pantryControllerProvider).value ?? [];
+    final existingNames = pantryItems
+        .map((item) => (item['name'] as String).toLowerCase())
+        .toSet();
+
+    // 2. Initialize selection (Only check NEW items)
+    final selectedItems = <String>{};
+    for (var item in detectedItems) {
+      if (!existingNames.contains(item.toLowerCase())) {
+        selectedItems.add(item);
+      }
+    }
 
     showModalBottomSheet(
       context: context,
@@ -156,24 +190,49 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                       itemCount: detectedItems.length,
                       itemBuilder: (context, index) {
                         final item = detectedItems[index];
+                        final isDuplicate =
+                            existingNames.contains(item.toLowerCase());
                         final isSelected = selectedItems.contains(item);
+
                         return CheckboxListTile(
-                          value: isSelected,
+                          value: isDuplicate ? false : isSelected,
+                          // Disable if duplicate
+                          onChanged: isDuplicate
+                              ? null
+                              : (val) {
+                                  setSheetState(() {
+                                    if (val == true) {
+                                      selectedItems.add(item);
+                                    } else {
+                                      selectedItems.remove(item);
+                                    }
+                                  });
+                                },
                           activeColor: AppColors.zestyLime,
                           checkColor: AppColors.deepCharcoal,
-                          title: Text(item,
-                              style: const TextStyle(color: Colors.white)),
-                          onChanged: (val) {
-                            setSheetState(() {
-                              if (val == true) {
-                                selectedItems.add(item);
-                              } else {
-                                selectedItems.remove(item);
-                              }
-                            });
-                          },
-                          secondary: const Icon(Icons.food_bank,
-                              color: Colors.white54),
+                          title: Text(
+                            item,
+                            style: TextStyle(
+                              color:
+                                  isDuplicate ? Colors.white38 : Colors.white,
+                              decoration: isDuplicate
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          subtitle: isDuplicate
+                              ? const Text(
+                                  "Item already in the pantry",
+                                  style: TextStyle(
+                                      color: Colors.white54,
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 12),
+                                )
+                              : null,
+                          secondary: Icon(Icons.food_bank,
+                              color: isDuplicate
+                                  ? Colors.white24
+                                  : Colors.white54),
                         );
                       },
                     ),
@@ -192,17 +251,26 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: () {
-                        ref
-                            .read(pantryControllerProvider.notifier)
-                            .addIngredients(selectedItems.toList());
-                        Navigator.pop(context); // Close sheet
-                        Navigator.pop(context); // Close scanner
-                        NanoToast.showSuccess(context,
-                            'Added ${selectedItems.length} items to Pantry!');
-                        // Reset scanner
-                        ref.read(scannerControllerProvider.notifier).reset();
-                      },
+                      onPressed: selectedItems.isEmpty
+                          ? null
+                          : () async {
+                              final addedCount = await ref
+                                  .read(pantryControllerProvider.notifier)
+                                  .addIngredients(selectedItems.toList());
+
+                              Navigator.pop(context); // Close sheet
+                              Navigator.pop(context); // Close scanner
+
+                              NanoToast.showSuccess(context,
+                                  'Added $addedCount items to Pantry!');
+
+                              // Reset scanner
+                              ref
+                                  .read(scannerControllerProvider.notifier)
+                                  .reset();
+                              setState(
+                                  () => _capturedImage = null); // Unfreeze UI
+                            },
                       child: Text('Add ${selectedItems.length} Items to Pantry',
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold)),
@@ -226,7 +294,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       body: Stack(
         children: [
           // Camera with Pulsing Border
-          if (_cameraUnavailable)
+          if (_isPickingImage)
+            const Center(
+                child: CircularProgressIndicator(color: AppColors.zestyLime))
+          else if (_cameraUnavailable)
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -251,6 +322,22 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                 ],
               ),
             )
+          else if (_capturedImage != null)
+            Center(
+                child: Image.file(
+              _capturedImage!,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                if (wasSynchronouslyLoaded || frame != null) {
+                  return child;
+                }
+                return const Center(
+                    child:
+                        CircularProgressIndicator(color: AppColors.zestyLime));
+              },
+            ))
           else if (_isCameraReady)
             Center(
               child: AnimatedBuilder(

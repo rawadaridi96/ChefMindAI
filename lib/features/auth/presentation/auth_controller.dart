@@ -73,7 +73,7 @@ class AuthController extends _$AuthController {
       }
 
       ref.read(postLoginMessageProvider.notifier).state =
-          "Account created! Welcome to ChefMind.";
+          "Account created! Welcome to ChefMindAI.";
     });
   }
 

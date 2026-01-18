@@ -18,6 +18,8 @@ import 'widgets/pulse_microphone_button.dart';
 import '../import/presentation/import_controller.dart';
 import '../recipes/presentation/widgets/pantry_generator_widget.dart';
 import '../settings/presentation/settings_screen.dart';
+import 'presentation/history_controller.dart';
+import 'dart:ui'; // For ImageFilter
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -109,6 +111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
               backgroundColor: AppColors.zestyLime,
+              heroTag: 'home_scan_fab',
               child:
                   const Icon(Icons.camera_alt, color: AppColors.deepCharcoal),
               onPressed: () {
@@ -177,6 +180,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
             ),
           ],
+        ),
+        Container(
+          height: 1.0,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.transparent,
+                Colors.white.withOpacity(0.2),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
         ),
         Expanded(
           child: Padding(
@@ -352,9 +368,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         const SizedBox(height: 16),
 
+        // History Button (Right Aligned)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton.icon(
+              onPressed: () => _showHistorySheet(context, ref),
+              icon: const Icon(Icons.history, size: 16, color: Colors.white38),
+              label: const Text(
+                "Recent",
+                style: TextStyle(color: Colors.white38, fontSize: 13),
+              ),
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(color: Colors.white10),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+
         // Discover Search UI
         GlassContainer(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.only(left: 16, right: 8, top: 4, bottom: 4),
           child: Row(
             children: [
               const Icon(Icons.search, color: AppColors.zestyLime),
@@ -436,6 +477,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             query: query,
           );
     }
+
+    // Save to History
+    ref.read(historyControllerProvider.notifier).addPrompt(query);
 
     // Switch to Recipes tab
     setState(() => _currentIndex = 2);
@@ -553,6 +597,144 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showHistorySheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.6,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F0F0F).withOpacity(0.8),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(30)),
+              border: Border.all(color: Colors.white12),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Consumer(builder: (context, ref, child) {
+              final historyAsync = ref.watch(historyControllerProvider);
+
+              return historyAsync.when(
+                loading: () => const Center(
+                    child: CircularProgressIndicator(color: Colors.white24)),
+                error: (err, stack) => Center(
+                    child: Text("Error: $err",
+                        style: const TextStyle(color: Colors.red))),
+                data: (history) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Handle Bar
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Header Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Recent Ideas",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          if (history.isNotEmpty)
+                            TextButton(
+                              onPressed: () {
+                                final backup = [...history];
+                                ref
+                                    .read(historyControllerProvider.notifier)
+                                    .clearAll();
+                                Navigator.pop(context); // Close sheet
+
+                                // Show Undo SnackBar
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: const Color(0xFF202020),
+                                    content: const Text("History cleared",
+                                        style: TextStyle(color: Colors.white)),
+                                    action: SnackBarAction(
+                                      label: "UNDO",
+                                      textColor: const Color(
+                                          0xFFD1FF26), // AppColors.zestyLime
+                                      onPressed: () {
+                                        ref
+                                            .read(historyControllerProvider
+                                                .notifier)
+                                            .restore(backup);
+                                      },
+                                    ),
+                                    duration: const Duration(seconds: 5),
+                                  ),
+                                );
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor:
+                                    Colors.redAccent.withOpacity(0.8),
+                              ),
+                              child: const Text("Clear All"),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      Expanded(
+                        child: history.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  "No recent history",
+                                  style: TextStyle(color: Colors.white24),
+                                ),
+                              )
+                            : ListView.separated(
+                                itemCount: history.length,
+                                separatorBuilder: (_, __) =>
+                                    const Divider(color: Colors.white10),
+                                itemBuilder: (context, index) {
+                                  final prompt = history[index];
+                                  return ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const Icon(Icons.schedule,
+                                        color: Colors.white38, size: 20),
+                                    title: Text(
+                                      prompt,
+                                      style: const TextStyle(
+                                          color: Colors.white70),
+                                    ),
+                                    onTap: () {
+                                      setState(() {
+                                        _searchController.text = prompt;
+                                      });
+                                      Navigator.pop(context);
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 }

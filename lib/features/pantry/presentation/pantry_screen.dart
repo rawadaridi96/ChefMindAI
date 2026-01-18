@@ -84,14 +84,20 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _ManualEntryModal(
-        onAdd: (name, qty, unit) {
+        onAdd: (name, qty, unit) async {
           final fullText =
               qty != null && qty.isNotEmpty ? "$qty $unit $name" : name;
-          ref
+          final success = await ref
               .read(pantryControllerProvider.notifier)
               .addIngredient(fullText, 'General');
+
           Navigator.pop(ctx);
-          NanoToast.showSuccess(context, "Added $name to Pantry!");
+
+          if (success) {
+            NanoToast.showSuccess(context, "Added $name to Pantry!");
+          } else {
+            NanoToast.showInfo(context, "$name is already in your pantry.");
+          }
         },
       ),
     );
@@ -133,13 +139,29 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
             onPressed: _toggleSearch,
           )
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(
+            height: 1.0,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  Colors.white.withOpacity(0.2),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+          ),
+        ),
       ),
       floatingActionButton: _buildCircularFab(),
       body: Stack(
         children: [
           // Watermark
           const Positioned(
-            left: -40,
+            left: -24,
             top: 100,
             bottom: 100,
             child: ChefMindWatermark(),
@@ -197,13 +219,36 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
 
     if (filteredItems.isEmpty) {
       if (_searchQuery.isNotEmpty) {
-        return const Center(
-            child: Text('No matching ingredients found.',
-                style: TextStyle(color: Colors.white54)));
+        return LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: const Center(
+                child: Text(
+                  'No matching ingredients found.',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+            ),
+          ),
+        );
       }
-      return const Center(
-          child: Text('Your pantry is empty. Tap + to add ingredients!',
-              style: TextStyle(color: Colors.white70)));
+      return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: const Center(
+              child: Text(
+                'Your pantry is empty. Tap + to add ingredients!',
+                style: TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      );
     }
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
@@ -223,8 +268,22 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
             parts.length > 1) {
           displayQty = parts[0];
           if (parts.length > 2 &&
-              ['g', 'kg', 'ml', 'l', 'oz', 'lb', 'pcs', 'doz']
-                  .contains(parts[1].toLowerCase())) {
+              [
+                'g',
+                'kg',
+                'ml',
+                'l',
+                'oz',
+                'lb',
+                'pcs',
+                'doz',
+                'bottle',
+                'box',
+                'can',
+                'jar',
+                'bag',
+                'pack'
+              ].contains(parts[1].toLowerCase().replaceAll('s', ''))) {
             displayQty += " ${parts[1]}";
             displayName = parts.sublist(2).join(' ');
           } else {
@@ -244,7 +303,7 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
                 children: [
                   SlidableAction(
                     onPressed: (context) {
-                      _confirmDelete(item['id']);
+                      _confirmDelete(item['id'], displayName);
                     },
                     backgroundColor: AppColors.errorRed,
                     foregroundColor: Colors.white,
@@ -315,15 +374,15 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
     }).join(' ');
   }
 
-  Future<void> _confirmDelete(dynamic id) async {
+  Future<void> _confirmDelete(dynamic id, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.deepCharcoal,
         title:
-            const Text("Delete Item?", style: TextStyle(color: Colors.white)),
-        content: const Text("Remove this ingredient from your pantry?",
-            style: TextStyle(color: Colors.white70)),
+            Text("Delete $name?", style: const TextStyle(color: Colors.white)),
+        content: Text("Are you sure you want to remove $name from your pantry?",
+            style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -440,7 +499,13 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
     'tbsp',
     'cup',
     'pcs',
-    'doz'
+    'doz',
+    'Bottle',
+    'Box',
+    'Can',
+    'Jar',
+    'Bag',
+    'Pack'
   ];
 
   @override
@@ -505,57 +570,63 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                 autofocus: true,
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: TextField(
-                      controller: _qtyCtrl,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: "Quantity (Opt.)",
-                        labelStyle: const TextStyle(color: Colors.white54),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.08),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedUnit,
-                          dropdownColor: AppColors.surfaceDark,
-                          isExpanded: true,
-                          style: const TextStyle(color: Colors.white),
-                          icon: const Icon(Icons.arrow_drop_down,
-                              color: AppColors.zestyLime),
-                          items: _units
-                              .map((u) => DropdownMenuItem(
-                                    value: u,
-                                    child: Text(u),
-                                  ))
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null)
-                              setState(() => _selectedUnit = val);
-                          },
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _qtyCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: "Quantity (Opt.)",
+                          labelStyle: const TextStyle(color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.08),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedUnit,
+                            dropdownColor: AppColors.surfaceDark,
+                            isExpanded: true,
+                            style: const TextStyle(color: Colors.white),
+                            icon: const Icon(Icons.arrow_drop_down,
+                                color: AppColors.zestyLime),
+                            items: _units
+                                .map((u) => DropdownMenuItem(
+                                      value: u,
+                                      child: Text(u),
+                                    ))
+                                .toList(),
+                            onChanged: (val) {
+                              if (val != null)
+                                setState(() => _selectedUnit = val);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               SizedBox(

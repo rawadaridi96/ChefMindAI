@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
-import 'package:chefmind_ai/core/services/payment_service.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'subscription_controller.dart';
 import 'currency_controller.dart';
 import '../../../../core/widgets/nano_toast.dart';
@@ -13,7 +11,9 @@ class SubscriptionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentTier = ref.watch(subscriptionControllerProvider);
+    final subscriptionState = ref.watch(subscriptionControllerProvider);
+    final currentTier =
+        subscriptionState.valueOrNull ?? SubscriptionTier.discover;
 
     return Scaffold(
       backgroundColor:
@@ -102,8 +102,6 @@ class SubscriptionScreen extends ConsumerWidget {
                     price:
                         '${ref.watch(currencyControllerProvider.notifier).formatPrice(9.99)} / mo',
                     rawPrice: 9.99,
-                    variantId:
-                        'ef95ee63-3c1c-49e0-a519-226f8489bd26', // TODO: Lemon Squeezy Variant ID
                     features: [
                       'Unlimited Pantry AI generation',
                       'Full Link Scraper access',
@@ -122,8 +120,6 @@ class SubscriptionScreen extends ConsumerWidget {
                     price:
                         '${ref.watch(currencyControllerProvider.notifier).formatPrice(19.99)} / mo',
                     rawPrice: 19.99,
-                    variantId:
-                        '9fab7912-5357-4015-b0a9-55b28f644329', // TODO: Lemon Squeezy Variant ID
                     features: [
                       'High-speed AI generation',
                       'Mood-Based recipe suggestions',
@@ -148,41 +144,25 @@ class SubscriptionScreen extends ConsumerWidget {
     required String title,
     required String price,
     double? rawPrice,
-    String? variantId,
     required List<String> features,
     required bool current,
     bool isPopular = false,
   }) {
     return GestureDetector(
       onTap: () async {
-        if (tier == SubscriptionTier.discover) {
-          ref.read(subscriptionControllerProvider.notifier).upgrade(tier);
-          NanoToast.showSuccess(context, 'Switched to $title Plan!');
-          return;
+        if (current) return;
+
+        try {
+          // Directly upgrade the user (Test Mode)
+          await ref.read(subscriptionControllerProvider.notifier).upgrade(tier);
+          if (context.mounted) {
+            NanoToast.showSuccess(context, 'Success: Upgraded to $title!');
+          }
+        } catch (e) {
+          if (context.mounted) {
+            NanoToast.showError(context, 'Upgrade Failed: $e');
+          }
         }
-
-        // --- TEST MODE ENABLED (BYPASSING LEMON SQUEEZY) ---
-        // For testing purposes, we are directly upgrading the user
-        // effectively "mocking" a successful payment.
-        ref.read(subscriptionControllerProvider.notifier).upgrade(tier);
-        NanoToast.showSuccess(context, 'Test Mode: Upgraded to $title!');
-
-        // Lemon Squeezy Flow (DISABLED FOR TESTING)
-        // if (variantId != null) {
-        //   final checkoutUrl = ref
-        //       .read(paymentServiceProvider)
-        //       .getCheckoutUrl(variantId, userEmail: "test@example.com");
-        //   final uri = Uri.parse(checkoutUrl);
-        //
-        //   if (await canLaunchUrl(uri)) {
-        //     await launchUrl(uri,
-        //         mode: LaunchMode
-        //             .externalApplication); // Use external browser for secure checkout
-        //   } else {
-        //     if (context.mounted)
-        //       NanoToast.showError(context, "Could not launch checkout");
-        //   }
-        // }
       },
       child: Stack(
         clipBehavior: Clip.none,

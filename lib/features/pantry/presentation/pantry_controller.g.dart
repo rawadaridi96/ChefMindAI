@@ -6,7 +6,7 @@ part of 'pantry_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pantryControllerHash() => r'dc1f66aa455238094dea47703b42349a5adb90a9';
+String _$pantryControllerHash() => r'14227c022986eccc15eecfacda22755205d22251';
 
 /// See also [PantryController].
 @ProviderFor(PantryController)

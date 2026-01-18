@@ -7,11 +7,11 @@ part of 'subscription_controller.dart';
 // **************************************************************************
 
 String _$subscriptionControllerHash() =>
-    r'45774931162655a0d911f39447f4a348c50a93ea';
+    r'daf677de66cd4da8ca3e339727ff4c8a0f4b26b4';
 
 /// See also [SubscriptionController].
 @ProviderFor(SubscriptionController)
-final subscriptionControllerProvider = AutoDisposeNotifierProvider<
+final subscriptionControllerProvider = AutoDisposeAsyncNotifierProvider<
     SubscriptionController, SubscriptionTier>.internal(
   SubscriptionController.new,
   name: r'subscriptionControllerProvider',
@@ -22,6 +22,6 @@ final subscriptionControllerProvider = AutoDisposeNotifierProvider<
   allTransitiveDependencies: null,
 );
 
-typedef _$SubscriptionController = AutoDisposeNotifier<SubscriptionTier>;
+typedef _$SubscriptionController = AutoDisposeAsyncNotifier<SubscriptionTier>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
