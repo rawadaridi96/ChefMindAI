@@ -16,6 +16,8 @@ import '../../auth/presentation/auth_state_provider.dart'; // Import provider
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../shopping/data/retail_unit_helper.dart';
 import 'package:toastification/toastification.dart';
+import '../../../../core/widgets/premium_paywall.dart';
+import '../../../../core/exceptions/premium_limit_exception.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> recipe;
@@ -576,9 +578,23 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             recipeToSave['original_version'] = _originalRecipe;
                           }
 
-                          await ref
-                              .read(vaultControllerProvider.notifier)
-                              .saveRecipe(recipeToSave);
+                          try {
+                            await ref
+                                .read(vaultControllerProvider.notifier)
+                                .saveRecipe(recipeToSave);
+                          } on PremiumLimitReachedException catch (e) {
+                            if (context.mounted) {
+                              PremiumPaywall.show(context,
+                                  message: e.message,
+                                  featureName: e.featureName);
+                            }
+                            return; // Stop execution (confetti, success toast)
+                          } catch (e) {
+                            if (context.mounted) {
+                              NanoToast.showError(context, e.toString());
+                            }
+                            return;
+                          }
 
                           // Sync generated ID back to current recipe state so UI updates
                           if (recipeToSave['id'] != null) {

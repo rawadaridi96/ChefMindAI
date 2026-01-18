@@ -461,7 +461,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _performSearch(WidgetRef ref, String query) {
-    if (query.trim().isEmpty) return;
+    if (query.trim().isEmpty) {
+      NanoToast.showInfo(context, "Tell me what to cook first! 🍳");
+      return;
+    }
 
     // Logic Branching
     if (_isPantryMode) {

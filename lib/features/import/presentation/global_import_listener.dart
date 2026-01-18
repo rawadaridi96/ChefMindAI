@@ -7,6 +7,8 @@ import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/features/recipes/presentation/vault_controller.dart';
 import 'dart:ui'; // For default blur
 import '../../../../core/widgets/nano_toast.dart';
+import '../../../../core/widgets/premium_paywall.dart';
+import '../../../../core/exceptions/premium_limit_exception.dart';
 
 class GlobalImportListener extends ConsumerStatefulWidget {
   final Widget child;
@@ -40,6 +42,15 @@ class _GlobalImportListenerState extends ConsumerState<GlobalImportListener> {
         if (next.startsWith("ERROR:")) {
           final errorMsg = next.substring(6);
           _showSnackBar(errorMsg, Colors.red);
+          ref.read(importUrlStateProvider.notifier).clear();
+        } else if (next.startsWith("PREMIUM_LIMIT:")) {
+          final msg = next.substring(14);
+          // Show paywall
+          final navContext = widget.navigatorKey.currentContext;
+          if (navContext != null) {
+            PremiumPaywall.show(navContext,
+                message: msg, featureName: "Link Scraper");
+          }
           ref.read(importUrlStateProvider.notifier).clear();
         } else if (next.startsWith("SUCCESS:")) {
           final msg = next.substring(8);
@@ -139,6 +150,12 @@ class _SaveLinkDialogState extends ConsumerState<_SaveLinkDialog> {
           Navigator.pop(context); // Close dialog
           NanoToast.showSuccess(context, "Link Saved to Vault! 📂");
         }
+      }
+    } on PremiumLimitReachedException catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+        PremiumPaywall.show(context,
+            message: e.message, featureName: e.featureName);
       }
     } catch (e) {
       if (mounted) {

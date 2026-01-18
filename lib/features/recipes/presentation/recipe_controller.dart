@@ -2,6 +2,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../recipes/data/recipe_repository.dart';
 import '../../auth/data/auth_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../subscription/presentation/subscription_controller.dart';
+import '../../../core/exceptions/premium_limit_exception.dart';
 
 part 'recipe_controller.g.dart';
 
@@ -26,6 +28,38 @@ class RecipeController extends _$RecipeController {
       bool isGuest = user == null || user.isAnonymous;
       int guestGenCount = prefs.getInt('guest_gen_count') ?? 0;
 
+      // Enforce Subscription Limits BEFORE generation
+      int dailyCount = 0;
+      if (!isGuest) {
+        // Ensure subscription tier is loaded before checking limits
+        // This prevents 'valueOrNull' from being null (loading) which defaults to Home Cook
+        final textTier = await ref.read(subscriptionControllerProvider.future);
+
+        final today = DateTime.now().toIso8601String().split('T')[0];
+        final lastGenDate = prefs.getString('gen_date') ?? '';
+        dailyCount = prefs.getInt('daily_gen_count') ?? 0;
+
+        if (lastGenDate != today) {
+          dailyCount = 0;
+          await prefs.setString('gen_date', today);
+          await prefs.setInt('daily_gen_count', 0);
+        }
+
+        final limit = (textTier == SubscriptionTier.sousChef ||
+                textTier == SubscriptionTier.executiveChef)
+            ? 2147483647
+            : ref
+                .read(subscriptionControllerProvider.notifier)
+                .dailyRecipeGenerationLimit;
+
+        if (dailyCount >= limit) {
+          throw PremiumLimitReachedException(
+            "You've reached your daily limit of $limit recipes.",
+            "Daily Recipe Limit",
+          );
+        }
+      }
+
       final recipes = await ref.read(recipeRepositoryProvider).generateRecipes(
             mode: mode,
             query: query,
@@ -40,6 +74,9 @@ class RecipeController extends _$RecipeController {
           return recipes.map((r) => {...r, 'is_locked': true}).toList();
         }
         await prefs.setInt('guest_gen_count', guestGenCount + 1);
+      } else {
+        // Increment usage only after successful generation
+        await prefs.setInt('daily_gen_count', dailyCount + 1);
       }
 
       return recipes;

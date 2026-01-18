@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/features/auth/presentation/auth_controller.dart';
 import 'package:chefmind_ai/features/onboarding/presentation/entry_orchestrator.dart';
+import 'package:chefmind_ai/core/widgets/liquid_mesh_background.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class WelcomeScreen extends ConsumerStatefulWidget {
@@ -41,7 +42,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
       body: Stack(
         children: [
           // 1. Liquid Mesh Gradient Background
-          const _LiquidMeshBackground(),
+          const LiquidMeshBackground(),
 
           // 2. Content Layer
           SafeArea(
@@ -381,120 +382,5 @@ class _GlassSocialButton extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _LiquidMeshBackground extends StatelessWidget {
-  const _LiquidMeshBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Base
-        Container(color: const Color(0xFF0A0F0A)),
-
-        // Animated Blob 1 (Zesty Lime)
-        const Positioned(
-          top: -100,
-          right: -50,
-          child: _AnimatedBlob(
-            color: Color(0xFFD1FF26),
-            width: 400,
-            height: 400,
-          ),
-        ),
-
-        // Animated Blob 2 (Emerald)
-        const Positioned(
-          bottom: 100,
-          left: -100,
-          child: _AnimatedBlob(
-            color: Color(0xFF2D5A27),
-            width: 500,
-            height: 500,
-            delay: Duration(seconds: 2),
-          ),
-        ),
-
-        // Animated Blob 3 (Deep Forest Accent)
-        const Positioned(
-          top: 300,
-          left: 50,
-          child: _AnimatedBlob(
-            color: Color(0xFF1A331A),
-            width: 300,
-            height: 300,
-            delay: Duration(seconds: 1),
-          ),
-        ),
-
-        // Blur Overlay to fuse blobs into "Mesh"
-        BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-          child: Container(color: Colors.transparent),
-        ),
-
-        // Floating Glass Orbs (Visual Depth)
-        Positioned(
-          top: 150,
-          right: 40,
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.1),
-                    Colors.white.withOpacity(0.0)
-                  ]),
-            ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true)).moveY(
-              begin: 0, end: 20, duration: 4.seconds, curve: Curves.easeInOut),
-        ),
-      ],
-    );
-  }
-}
-
-class _AnimatedBlob extends StatelessWidget {
-  final Color color;
-  final double width;
-  final double height;
-  final Duration delay;
-
-  const _AnimatedBlob({
-    required this.color,
-    required this.width,
-    required this.height,
-    this.delay = Duration.zero,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.6),
-        shape: BoxShape.circle,
-      ),
-    )
-        .animate(onPlay: (controller) => controller.repeat(reverse: true))
-        .scale(
-            begin: const Offset(1, 1),
-            end: const Offset(1.2, 1.2),
-            duration: 4.seconds,
-            delay: delay,
-            curve: Curves.easeInOut)
-        .move(
-            begin: const Offset(0, 0),
-            end: const Offset(30, -30), // Subtle drift
-            duration: 4.seconds,
-            delay: delay,
-            curve: Curves.easeInOut);
   }
 }

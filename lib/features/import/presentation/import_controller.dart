@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../subscription/presentation/subscription_controller.dart';
 
 part 'import_controller.g.dart';
 
@@ -91,6 +92,21 @@ class ImportController extends _$ImportController {
 
   void _extractAndImportUrl(String sharedText) {
     debugPrint("Shared content received: $sharedText");
+
+    // Enforce Subscription Limit for Scraper
+    final canUseScraper =
+        ref.read(subscriptionControllerProvider.notifier).canUseLinkScraper;
+    if (!canUseScraper) {
+      // We can't throw here because this is a void method called from a stream listener
+      // So we set a special state that the UI (ImportOverlay or similar) must listen for.
+      // OR better, we use the URL state to trigger the Paywall?
+      // "ERROR:Link Scraper..." was used before.
+      // Let's keep using the state but with a specific prefix that the UI can catch to show the sheet.
+      ref
+          .read(importUrlStateProvider.notifier)
+          .setUrl("PREMIUM_LIMIT:Link Scraper is a Sous Chef feature.");
+      return;
+    }
 
     // Robust Regex: Match http/https followed by non-whitespace characters
     final RegExp urlRegExp = RegExp(

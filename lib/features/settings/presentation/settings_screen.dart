@@ -220,13 +220,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               final planName = tierAsync.when(
                 data: (tier) {
                   switch (tier) {
-                    case SubscriptionTier.chef:
-                      return 'Chef Plan';
-                    case SubscriptionTier.masterChef:
-                      return 'Pro Member';
-                    case SubscriptionTier.discover:
+                    case SubscriptionTier.sousChef:
+                      return 'Sous Chef';
+                    case SubscriptionTier.executiveChef:
+                      return 'Executive Chef';
+                    case SubscriptionTier.homeCook:
                     default:
-                      return 'Free Tier';
+                      return 'Home Cook';
                   }
                 },
                 loading: () => 'Loading...',

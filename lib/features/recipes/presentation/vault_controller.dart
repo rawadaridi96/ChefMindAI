@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/vault_repository.dart';
+import '../../subscription/presentation/subscription_controller.dart';
+import '../../../core/exceptions/premium_limit_exception.dart';
 
 part 'vault_controller.g.dart';
 
@@ -21,6 +23,22 @@ class VaultController extends _$VaultController {
   }
 
   Future<void> saveRecipe(Map<String, dynamic> recipe) async {
+    // Ensure subscription tier is loaded
+    final textTier = await ref.read(subscriptionControllerProvider.future);
+
+    final limit = (textTier == SubscriptionTier.sousChef ||
+            textTier == SubscriptionTier.executiveChef)
+        ? 2147483647
+        : ref.read(subscriptionControllerProvider.notifier).vaultSaveLimit;
+    final currentCount = state.value?.length ?? 0;
+
+    if (currentCount >= limit) {
+      throw PremiumLimitReachedException(
+        "Vault is full ($limit items).",
+        "Vault Limit Reached",
+      );
+    }
+
     state = const AsyncLoading(); // Feedback
     try {
       await ref.read(vaultRepositoryProvider).saveRecipe(recipe);
@@ -35,6 +53,22 @@ class VaultController extends _$VaultController {
   }
 
   Future<void> saveLink(String url, {String? title}) async {
+    // Ensure subscription tier is loaded
+    final textTier = await ref.read(subscriptionControllerProvider.future);
+
+    final limit = (textTier == SubscriptionTier.sousChef ||
+            textTier == SubscriptionTier.executiveChef)
+        ? 2147483647
+        : ref.read(subscriptionControllerProvider.notifier).vaultSaveLimit;
+    final currentCount = state.value?.length ?? 0;
+
+    if (currentCount >= limit) {
+      throw PremiumLimitReachedException(
+        "Vault is full ($limit items).",
+        "Vault Limit Reached",
+      );
+    }
+
     await AsyncValue.guard(() async {
       await ref.read(vaultRepositoryProvider).saveLink(url, title: title);
       state = await AsyncValue.guard(

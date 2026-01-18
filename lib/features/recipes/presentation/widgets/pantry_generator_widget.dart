@@ -17,11 +17,12 @@ class PantryGeneratorWidget extends ConsumerStatefulWidget {
 }
 
 class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
-  String _mealType = 'Dinner';
+  String _mealType = 'Surprise Me';
   final List<String> _selectedFilters = [];
   final TextEditingController _allergyController = TextEditingController();
 
   final List<String> _mealTypes = [
+    'Surprise Me',
     'Breakfast',
     'Lunch',
     'Dinner',

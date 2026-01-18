@@ -145,7 +145,12 @@ class _ToastAnimatorState extends State<_ToastAnimator>
             child: Center(
               child: FractionallySizedBox(
                 widthFactor: 0.85, // 85% width
-                child: widget.child,
+                child: Dismissible(
+                  key: UniqueKey(),
+                  direction: DismissDirection.up,
+                  onDismissed: (_) => widget.onDismissed(),
+                  child: widget.child,
+                ),
               ),
             ),
           ),

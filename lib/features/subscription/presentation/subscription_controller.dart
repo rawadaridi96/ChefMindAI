@@ -4,7 +4,7 @@ import '../data/subscription_repository.dart';
 
 part 'subscription_controller.g.dart';
 
-enum SubscriptionTier { discover, chef, masterChef }
+enum SubscriptionTier { homeCook, sousChef, executiveChef }
 
 @riverpod
 class SubscriptionController extends _$SubscriptionController {
@@ -26,5 +26,34 @@ class SubscriptionController extends _$SubscriptionController {
       state = AsyncError(e, st);
       rethrow;
     }
+  }
+
+  // Feature Limits
+  int get dailyRecipeGenerationLimit {
+    final tier = state.valueOrNull ?? SubscriptionTier.homeCook;
+    switch (tier) {
+      case SubscriptionTier.homeCook:
+        return 5;
+      case SubscriptionTier.sousChef:
+      case SubscriptionTier.executiveChef:
+        return 2147483647; // Effectively unlimited (max int)
+    }
+  }
+
+  int get vaultSaveLimit {
+    final tier = state.valueOrNull ?? SubscriptionTier.homeCook;
+    switch (tier) {
+      case SubscriptionTier.homeCook:
+        return 3;
+      case SubscriptionTier.sousChef:
+      case SubscriptionTier.executiveChef:
+        return 2147483647; // Unlimited
+    }
+  }
+
+  bool get canUseLinkScraper {
+    final tier = state.valueOrNull ?? SubscriptionTier.homeCook;
+    // Only paid plans can use scraper
+    return tier != SubscriptionTier.homeCook;
   }
 }

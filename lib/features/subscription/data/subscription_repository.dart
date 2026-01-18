@@ -16,7 +16,7 @@ class SubscriptionRepository {
 
   Future<SubscriptionTier> getSubscriptionTier() async {
     final user = _client.auth.currentUser;
-    if (user == null) return SubscriptionTier.discover;
+    if (user == null) return SubscriptionTier.homeCook;
 
     try {
       final response = await _client
@@ -25,13 +25,13 @@ class SubscriptionRepository {
           .eq('id', user.id)
           .maybeSingle();
 
-      if (response == null) return SubscriptionTier.discover;
+      if (response == null) return SubscriptionTier.homeCook;
 
       final tierStr = response['subscription_tier'] as String?;
       return _parseTier(tierStr);
     } catch (e) {
       // If table doesn't exist or other error, default to free
-      return SubscriptionTier.discover;
+      return SubscriptionTier.homeCook;
     }
   }
 
@@ -54,24 +54,24 @@ class SubscriptionRepository {
 
   SubscriptionTier _parseTier(String? tier) {
     switch (tier) {
-      case 'chef':
-        return SubscriptionTier.chef;
-      case 'master_chef':
-        return SubscriptionTier.masterChef;
-      case 'discover':
+      case 'sous_chef':
+        return SubscriptionTier.sousChef;
+      case 'executive_chef':
+        return SubscriptionTier.executiveChef;
+      case 'home_cook':
       default:
-        return SubscriptionTier.discover;
+        return SubscriptionTier.homeCook;
     }
   }
 
   String _tierToString(SubscriptionTier tier) {
     switch (tier) {
-      case SubscriptionTier.chef:
-        return 'chef';
-      case SubscriptionTier.masterChef:
-        return 'master_chef';
-      case SubscriptionTier.discover:
-        return 'discover';
+      case SubscriptionTier.sousChef:
+        return 'sous_chef';
+      case SubscriptionTier.executiveChef:
+        return 'executive_chef';
+      case SubscriptionTier.homeCook:
+        return 'home_cook';
     }
   }
 }

@@ -12,6 +12,8 @@ import '../../../../core/widgets/nano_toast.dart';
 import 'recipe_controller.dart';
 import 'vault_controller.dart';
 import 'recipe_detail_screen.dart';
+import '../../../../core/widgets/premium_paywall.dart';
+import '../../../../core/exceptions/premium_limit_exception.dart';
 
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
@@ -56,8 +58,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
     ref.listen(recipeControllerProvider, (previous, next) {
       if (next.hasError && !next.isLoading) {
-        NanoToast.showError(
-            context, next.error.toString().replaceAll('Exception: ', ''));
+        if (next.error is PremiumLimitReachedException) {
+          final e = next.error as PremiumLimitReachedException;
+          PremiumPaywall.show(context,
+              message: e.message, featureName: e.featureName);
+        } else {
+          NanoToast.showError(
+              context, next.error.toString().replaceAll('Exception: ', ''));
+        }
       }
     });
 
@@ -160,6 +168,46 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                     if (i is Map && i['is_missing'] == true) {
                       missingCount++;
                     }
+                  }
+
+                  final isLimitation = recipe['title'] == "Chef's Limitation";
+
+                  if (isLimitation) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: GlassContainer(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.info_outline,
+                                    color: AppColors.zestyLime, size: 24),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    recipe['title'] ?? 'Generic',
+                                    style: const TextStyle(
+                                        color: AppColors.zestyLime,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              recipe['description'] ?? '',
+                              style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 15,
+                                  height: 1.4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   }
 
                   int haveCount = totalIngredients - missingCount;

@@ -135,11 +135,12 @@ serve(async (req) => {
     // --- COMMON CONTEXT & FORMAT ---
     promptText += `\n\nUser's Pantry List: [${pantryString}]`
     promptText += `\n\nCRITICAL OUTPUT RULES:
-    1. Return strictly valid JSON.
-    2. For every ingredient, check if it exists (or is a close match) in the Pantry List. Set "is_missing" to true if NOT in pantry.
-    3. Include detailed step-by-step instructions.
-    4. List required kitchen equipment.
-    5. Provide a macro breakdown (protein, carbs, fat).
+    1. **STRICT RECIPES ONLY:** If the user's request is NOT related to cooking, food, or recipes (e.g., "write an essay", "math homework", "code"), you must REFUSE to generate the requested content. Instead, return a single recipe titled "Chef's Limitation" with the description "I am a Chef AI. I can only help you cook! Please ask me for a recipe." and empty ingredients/instructions.
+    2. Return strictly valid JSON.
+    3. For every ingredient, check if it exists (or is a close match) in the Pantry List. Set "is_missing" to true if NOT in pantry.
+    4. Include detailed step-by-step instructions.
+    5. List required kitchen equipment.
+    6. Provide a macro breakdown (protein, carbs, fat).
     
     JSON Structure:
     {
