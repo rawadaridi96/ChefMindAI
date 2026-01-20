@@ -6,8 +6,25 @@ part of 'shopping_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$shoppingSyncEnabledHash() =>
+    r'0f75fe3ce3094bb06ec22864dd131f7e0ca4ed50';
+
+/// See also [ShoppingSyncEnabled].
+@ProviderFor(ShoppingSyncEnabled)
+final shoppingSyncEnabledProvider =
+    AutoDisposeNotifierProvider<ShoppingSyncEnabled, bool>.internal(
+  ShoppingSyncEnabled.new,
+  name: r'shoppingSyncEnabledProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$shoppingSyncEnabledHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$ShoppingSyncEnabled = AutoDisposeNotifier<bool>;
 String _$shoppingControllerHash() =>
-    r'c2adbeb54800801536deb38614ec07e51df0947c';
+    r'c59555a96d39ca400e4a087d3846179b04573936';
 
 /// See also [ShoppingController].
 @ProviderFor(ShoppingController)

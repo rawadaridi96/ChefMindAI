@@ -2,157 +2,172 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/shopping_repository.dart';
 import '../data/retail_unit_helper.dart';
 
+import '../../settings/presentation/household_controller.dart';
+
 part 'shopping_controller.g.dart';
+
+@riverpod
+class ShoppingSyncEnabled extends _$ShoppingSyncEnabled {
+  @override
+  bool build() => false; // Default to private
+
+  void toggle() => state = !state;
+  void set(bool value) => state = value;
+}
 
 @riverpod
 class ShoppingController extends _$ShoppingController {
   @override
-  FutureOr<List<Map<String, dynamic>>> build() {
-    return ref.read(shoppingRepositoryProvider).getItems();
+  FutureOr<List<Map<String, dynamic>>> build() async {
+    // Check Toggle State
+    final isSyncEnabled = ref.watch(shoppingSyncEnabledProvider);
+
+    String? householdId;
+    if (isSyncEnabled) {
+      // Get Household Context only if sync is enabled
+      final household = await ref.watch(householdControllerProvider.future);
+      householdId = household?['id'] as String?;
+    }
+
+    // Subscribe to realtime stream
+    // If householdId is null (either disabled or not in one), repo uses user_id
+    final stream = ref
+        .read(shoppingRepositoryProvider)
+        .getCartStream(householdId: householdId);
+
+    final sub = stream.listen((data) {
+      state = AsyncValue.data(data);
+    });
+
+    // Ensure subscription is cancelled when provider is destroyed
+    ref.onDispose(() => sub.cancel());
+
+    return stream.first;
   }
 
   Future<void> addItem(String name,
       {String amount = '1',
       String category = 'General',
       String? recipeSource}) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final repo = ref.read(shoppingRepositoryProvider);
-      final currentItems = await repo.getItems();
-      final normalizedName = name.toLowerCase().trim();
+    // We don't set state manually anymore, the stream will update.
+    // However, we still want to guard the async operation to handle errors.
+    final repo = ref.read(shoppingRepositoryProvider);
 
-      // Check for existing item to consolidate
-      final existingItem = currentItems.firstWhere(
-        (item) =>
-            (item['item_name'] as String).toLowerCase().trim() ==
-                normalizedName &&
-            (item['is_bought'] == false),
-        orElse: () => {},
-      );
+    // Check Toggle State for ADD operation
+    final isSyncEnabled = ref.read(shoppingSyncEnabledProvider);
 
-      // Apply Retail Mapping
-      // If we are consolidating, we might need a smarter merge, but for now:
-      // If it exists, we try to merge amounts.
-      // If not, we map the incoming amount.
+    // Get Household ID for ensuring we add to the right list/sync
+    String? householdId;
+    if (isSyncEnabled) {
+      final household = await ref.read(householdControllerProvider.future);
+      householdId = household?['id'] as String?;
+    }
 
-      if (existingItem.isNotEmpty) {
-        // Consolidation Logic
-        // Very basic: if amount is just a number, add them.
-        // If it's a string like "1 Bottle", we probably step up the count.
-        // For this task, "1/2 onion + 1/2 onion = 1 Onion" is requested.
+    // FETCH current items just for the logic of consolidation (snapshot interaction)
+    // Note: This relies on a single-point-in-time fetch.
+    // In a high-frequency realtime env, this might have race conditions, but acceptable for this scale.
+    // We must pass householdId to getItems if we want to check duplicates correctly?
+    // repo.getItems() currently only fetches by USER_ID.
+    // FIXME: repo.getItems() ALSO needs to support householdId if we are in household mode!
+    // However, if we are in household mode, the stream has the data.
+    // We can check 'state.value' instead of repo.getItems()!
+    // Using 'state.value' is much better for consistency with the stream.
 
-        String currentAmountStr = existingItem['amount'] ?? '1';
-        // Try parsing fractions
-        double currentVal = _parseAmount(currentAmountStr);
-        double incomingVal = _parseAmount(amount);
+    final currentItems = state.value ?? [];
+    // Fallback to repo if state is null? async fetch?
+    // If state is null, we might be loading.
+    // Let's assume state has data if we are calling addItem, or we fetch from repo (but repo needs update).
+    // Let's rely on repo.getItems() for now but we need to update repo.getItems() too?
+    // Actually, let's just use the current List if available.
 
-        if (currentVal > 0 && incomingVal > 0) {
-          double total = currentVal + incomingVal;
-          // Format back to string, removing .0 if integer
-          String newAmount =
-              total % 1 == 0 ? total.toInt().toString() : total.toString();
+    final normalizedName = name.toLowerCase().trim();
 
-          // After consolidation, check retail unit again?
-          // Usually retail unit depends on the name, e.g. "Onion".
-          // If total is 1, and name is Onion, result is "1".
-          // If name is Salt, result might be "1 Box".
+    final existingItem = currentItems.firstWhere(
+      (item) =>
+          (item['item_name'] as String).toLowerCase().trim() ==
+              normalizedName &&
+          (item['is_bought'] == false),
+      orElse: () => {},
+    );
 
-          // Apply retail mapping to the consolidated amount
-          String finalAmount = RetailUnitHelper.toRetailUnit(name, newAmount);
+    if (existingItem.isNotEmpty) {
+      String currentAmountStr = existingItem['amount'] ?? '1';
+      double currentVal = _parseAmount(currentAmountStr);
+      double incomingVal = _parseAmount(amount);
 
-          // Merge Recipe Sources
-          String? currentSource = existingItem['recipe_source'];
-          String? finalSource = currentSource;
+      if (currentVal > 0 && incomingVal > 0) {
+        double total = currentVal + incomingVal;
+        String newAmount =
+            total % 1 == 0 ? total.toInt().toString() : total.toString();
+        String finalAmount = RetailUnitHelper.toRetailUnit(name, newAmount);
 
-          if (recipeSource != null) {
-            if (currentSource == null || currentSource.isEmpty) {
-              finalSource = recipeSource;
-            } else {
-              // Avoid duplicates (e.g. "Pancakes, Pancakes")
-              // Split, trim, check, join.
-              List<String> sources =
-                  currentSource.split(',').map((s) => s.trim()).toList();
-              if (!sources.contains(recipeSource)) {
-                sources.add(recipeSource);
-                finalSource = sources.join(', ');
-              }
+        String? currentSource = existingItem['recipe_source'];
+        String? finalSource = currentSource;
+
+        if (recipeSource != null) {
+          if (currentSource == null || currentSource.isEmpty) {
+            finalSource = recipeSource;
+          } else {
+            List<String> sources =
+                currentSource.split(',').map((s) => s.trim()).toList();
+            if (!sources.contains(recipeSource)) {
+              sources.add(recipeSource);
+              finalSource = sources.join(', ');
             }
           }
-
-          await repo.updateAmountAndSource(existingItem['id'], finalAmount,
-              newSource: finalSource);
-        } else {
-          // Fallback: just append text if we can't parse? or just add as new?
-          // Requirement: "If user adds two recipes... merge".
-          // If we can't parse, we might just leave it or overwrite?
-          // Let's safe-fail by adding as new if we can't merge, OR just overwrite.
-          // For now, let's just add it as a separate item if we can't merge math.
-          // But wait, user wants merge. Let's assume simple numbers or fractions.
-          // If complex, we skip merge to be safe.
-          await repo.addItem(
-              name, RetailUnitHelper.toRetailUnit(name, amount), category,
-              recipeSource: recipeSource);
         }
-      } else {
-        // New Item
-        String finalAmount = RetailUnitHelper.toRetailUnit(name, amount);
-        await repo.addItem(name, finalAmount, category,
-            recipeSource: recipeSource);
-      }
 
-      return repo.getItems();
-    });
+        await repo.updateAmountAndSource(existingItem['id'], finalAmount,
+            newSource: finalSource);
+      } else {
+        await repo.addItem(
+            name, RetailUnitHelper.toRetailUnit(name, amount), category,
+            recipeSource: recipeSource, householdId: householdId);
+      }
+    } else {
+      String finalAmount = RetailUnitHelper.toRetailUnit(name, amount);
+      await repo.addItem(name, finalAmount, category,
+          recipeSource: recipeSource, householdId: householdId);
+    }
   }
 
   Future<void> updateQuantity(int id, String currentAmount, int change) async {
-    // Logic to increment/decrement "1 Bottle", "2 Onions", etc.
-    // We assume the amount string starts with a number.
     double val = 0;
     if (currentAmount.trim().isEmpty) {
       val = 0;
     } else {
       val = _parseAmount(currentAmount);
-      if (val <= 0) val = 1; // Default start if parse fails but text exists
+      if (val <= 0) val = 1;
     }
 
     double newVal = val + change;
-
     String newAmountStr;
     if (newVal <= 0) {
       newAmountStr = '';
     } else {
       newAmountStr =
           newVal % 1 == 0 ? newVal.toInt().toString() : newVal.toString();
-
-      // Preserve unit if it exists (e.g. "2 Bottles" -> "3 Bottles")
-      // Simple heuristic: split by space.
       if (currentAmount.trim().isNotEmpty) {
         List<String> parts = currentAmount.split(' ');
         if (parts.length > 1) {
-          // Re-attach the suffix
           String suffix = parts.sublist(1).join(' ');
           newAmountStr = "$newAmountStr $suffix";
         }
       }
     }
 
-    state = await AsyncValue.guard(() async {
-      await ref.read(shoppingRepositoryProvider).updateAmount(id, newAmountStr);
-      return ref.read(shoppingRepositoryProvider).getItems();
-    });
+    await ref.read(shoppingRepositoryProvider).updateAmount(id, newAmountStr);
   }
 
   double _parseAmount(String amount) {
     try {
       final clean = amount.toLowerCase().trim();
-      // Handle fractions
       if (clean.contains('/')) {
         final parts = clean.split('/');
         if (parts.length == 2) {
           return double.parse(parts[0]) / double.parse(parts[1]);
         }
       }
-      // Handle "1 Bottle" -> take "1"
       final match = RegExp(r'^(\d+(\.\d+)?)').firstMatch(clean);
       if (match != null) {
         return double.parse(match.group(1)!);
@@ -164,27 +179,14 @@ class ShoppingController extends _$ShoppingController {
   }
 
   Future<void> toggleItem(int id, bool currentValue) async {
-    // Optimistic update could happen here, but standard reload for safety
-    state = await AsyncValue.guard(() async {
-      await ref
-          .read(shoppingRepositoryProvider)
-          .toggleStatus(id, !currentValue);
-      return ref.read(shoppingRepositoryProvider).getItems();
-    });
+    await ref.read(shoppingRepositoryProvider).toggleStatus(id, !currentValue);
   }
 
   Future<void> deleteItem(int id) async {
-    state = await AsyncValue.guard(() async {
-      await ref.read(shoppingRepositoryProvider).deleteItem(id);
-      return ref.read(shoppingRepositoryProvider).getItems();
-    });
+    await ref.read(shoppingRepositoryProvider).deleteItem(id);
   }
 
   Future<void> clearAll() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await ref.read(shoppingRepositoryProvider).clearAllItems();
-      return []; // Return empty list directly
-    });
+    await ref.read(shoppingRepositoryProvider).clearAllItems();
   }
 }

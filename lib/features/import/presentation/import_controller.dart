@@ -69,14 +69,24 @@ class ImportController extends _$ImportController {
     });
 
     // Check initial share from custom channel
-    platform.invokeMethod("getSharedText").then((value) {
-      debugPrint("DEBUG: Initial getSharedText result: $value");
-      if (value != null && value is String && value.isNotEmpty) {
-        _extractAndImportUrl(value);
-      }
-    }).catchError((e) {
-      debugPrint("Custom Share Channel Error: $e");
-    });
+    // Check initial share from custom channel
+    try {
+      platform.invokeMethod("getSharedText").then((value) {
+        debugPrint("DEBUG: Initial getSharedText result: $value");
+        if (value != null && value is String && value.isNotEmpty) {
+          _extractAndImportUrl(value);
+        }
+      }).catchError((e) {
+        // Suppress MissingPluginException on iOS Simulator or real devices without native impl
+        if (e is MissingPluginException) {
+          debugPrint("Custom Share Channel not implemented: ${e.message}");
+        } else {
+          debugPrint("Custom Share Channel Error: $e");
+        }
+      });
+    } catch (e) {
+      debugPrint("Custom Share Channel Init Error: $e");
+    }
 
     // Cleanup subscription (onDispose)
     ref.onDispose(() {
@@ -128,6 +138,21 @@ class ImportController extends _$ImportController {
 
       _lastProcessedUrl = extractedUrl;
       _lastProcessedTime = DateTime.now();
+
+      // Check for Universal Share Deep Link
+      // Format: chefmind://share/universal?token=...
+      if (extractedUrl.contains('chefmind://share/universal') ||
+          extractedUrl.contains('share/universal')) {
+        final uri = Uri.parse(extractedUrl);
+        final token = uri.queryParameters['token'];
+        if (token != null) {
+          // Navigate to Recipe Detail Screen with Token
+          ref
+              .read(importUrlStateProvider.notifier)
+              .setUrl("SHARED_PREVIEW:$token");
+          return;
+        }
+      }
 
       debugPrint("Extracted URL: $extractedUrl");
       _handleImport(extractedUrl);

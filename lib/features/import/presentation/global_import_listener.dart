@@ -9,6 +9,7 @@ import 'dart:ui'; // For default blur
 import '../../../../core/widgets/nano_toast.dart';
 import '../../../../core/widgets/premium_paywall.dart';
 import '../../../../core/exceptions/premium_limit_exception.dart';
+import '../../recipes/data/vault_repository.dart';
 
 class GlobalImportListener extends ConsumerStatefulWidget {
   final Widget child;
@@ -63,6 +64,10 @@ class _GlobalImportListenerState extends ConsumerState<GlobalImportListener> {
           final url = next.substring(13);
           _showSaveLinkDialog(url);
           ref.read(importUrlStateProvider.notifier).clear();
+        } else if (next.startsWith("SHARED_PREVIEW:")) {
+          final token = next.substring(15);
+          _showSharedPreviewDialog(token);
+          ref.read(importUrlStateProvider.notifier).clear();
         } else {
           _showImportDialog(next);
         }
@@ -111,6 +116,106 @@ class _GlobalImportListenerState extends ConsumerState<GlobalImportListener> {
       context: navContext,
       barrierDismissible: false,
       builder: (context) => _SaveLinkDialog(url: url),
+    );
+  }
+
+  void _showSharedPreviewDialog(String token) {
+    ref.read(importUrlStateProvider.notifier).clear();
+    final navContext = widget.navigatorKey.currentContext;
+    if (navContext == null) return;
+
+    showDialog(
+      context: navContext,
+      barrierDismissible: false,
+      builder: (context) => _SharedPreviewDialog(token: token),
+    );
+  }
+}
+
+class _SharedPreviewDialog extends ConsumerStatefulWidget {
+  final String token;
+  const _SharedPreviewDialog({required this.token});
+
+  @override
+  ConsumerState<_SharedPreviewDialog> createState() =>
+      _SharedPreviewDialogState();
+}
+
+class _SharedPreviewDialogState extends ConsumerState<_SharedPreviewDialog> {
+  String _status = "Loading Shared Recipe...";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAndOpen();
+  }
+
+  Future<void> _fetchAndOpen() async {
+    try {
+      final recipe =
+          await ref.read(vaultRepositoryProvider).getSharedRecipe(widget.token);
+
+      if (recipe != null) {
+        if (mounted) {
+          Navigator.pop(context); // Close dialog
+          // Navigate to preview
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => RecipeDetailScreen(
+                      recipe: recipe, isSharedPreview: true)));
+        }
+      } else {
+        if (mounted) {
+          setState(() => _status = "Recipe not found or expired.");
+          await Future.delayed(const Duration(seconds: 2));
+          if (mounted) Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _status = "Error: $e");
+        await Future.delayed(const Duration(seconds: 3));
+        if (mounted) Navigator.pop(context);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+            color: AppColors.deepCharcoal.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.zestyLime.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(
+                  color: AppColors.zestyLime.withOpacity(0.2), blurRadius: 20)
+            ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            const SizedBox(
+              height: 50,
+              width: 50,
+              child: CircularProgressIndicator(
+                  color: AppColors.zestyLime, strokeWidth: 3),
+            ),
+            const SizedBox(height: 24),
+            Text("Shared Recipe",
+                style: AppTheme.darkTheme.textTheme.headlineSmall
+                    ?.copyWith(color: Colors.white)),
+            const SizedBox(height: 8),
+            Text(_status,
+                style: const TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      ),
     );
   }
 }

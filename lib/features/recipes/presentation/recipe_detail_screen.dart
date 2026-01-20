@@ -17,12 +17,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../shopping/data/retail_unit_helper.dart';
 import 'package:toastification/toastification.dart';
 import '../../../../core/widgets/premium_paywall.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/exceptions/premium_limit_exception.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> recipe;
+  final bool isSharedPreview;
 
-  const RecipeDetailScreen({super.key, required this.recipe});
+  const RecipeDetailScreen({
+    super.key,
+    required this.recipe,
+    this.isSharedPreview = false,
+  });
 
   @override
   ConsumerState<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
@@ -62,6 +68,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       _currentRecipe['is_locked'] = false;
     }
 
+    // If shared preview, force unlock if possible or relevant
+    if (widget.isSharedPreview) {
+      _currentRecipe['is_locked'] = false;
+    }
+
     if (_currentRecipe['is_locked'] == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showLockedContentModal();
@@ -70,6 +81,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   void _toggleView() {
+    if (widget.isSharedPreview) return; // Disable toggle in preview
     setState(() {
       _showOriginal = !_showOriginal;
     });
@@ -449,182 +461,345 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           // Save Button
           // Save Button
           // Save Button
-          if (recipe['is_locked'] != true)
+          // Actions
+          if (widget.isSharedPreview) ...[
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.zestyLime,
+                      foregroundColor: AppColors.deepCharcoal,
+                    ),
+                    icon: const Icon(Icons.download, size: 18),
+                    label: const Text("Save to Vault"),
+                    onPressed: () async {
+                      // Save logic for shared recipe
+                      final recipeToSave =
+                          Map<String, dynamic>.from(_currentRecipe);
+                      recipeToSave.remove('id'); // Force new ID
+
+                      try {
+                        await ref
+                            .read(vaultControllerProvider.notifier)
+                            .saveRecipe(recipeToSave);
+                        if (mounted) {
+                          _confettiController.play();
+                          NanoToast.showSuccess(
+                              context, "Recipe saved to your Vault!");
+                          // Close and maybe route to vault? Or just stay?
+                          // For now stay. Maybe change button state?
+                        }
+                      } on PremiumLimitReachedException catch (e) {
+                        if (context.mounted) {
+                          PremiumPaywall.show(context,
+                              message: e.message, featureName: e.featureName);
+                        }
+                      } catch (e) {
+                        if (context.mounted)
+                          NanoToast.showError(context, e.toString());
+                      }
+                    },
+                  ),
+                  ConfettiWidget(
+                    confettiController: _confettiController,
+                    blastDirectionality: BlastDirectionality.explosive,
+                    shouldLoop: false,
+                    colors: const [
+                      AppColors.zestyLime,
+                      Colors.white,
+                      AppColors.electricBlue
+                    ],
+                    numberOfParticles: 20,
+                    gravity: 0.1,
+                  ),
+                ],
+              ),
+            ),
+          ] else if (recipe['is_locked'] != true)
             Consumer(
               builder: (context, ref, child) {
                 final vaultState = ref.watch(vaultControllerProvider);
                 final savedRecipes = vaultState.valueOrNull ?? [];
 
-                // Check if saved by matching ID or Title (fallback for legacy)
-                final isSaved = savedRecipes.any((r) {
-                  final idMatch = r['recipe_id'] != null &&
-                      r['recipe_id'] == _currentRecipe['id'];
-                  // If ID is missing (fresh generation), we can't match by ID yet, returning false.
-                  // Unless we matched by title? But titles can be duplicates.
-                  // Relying on ID is safer. If it has no ID, it's likely not saved.
-                  return idMatch;
-                });
+                // Check if saved
+                final savedItem = savedRecipes.firstWhere(
+                  (r) => r['recipe_id'] == _currentRecipe['id'],
+                  orElse: () => {},
+                );
+                final isSaved =
+                    savedItem.isNotEmpty && savedItem['recipe_id'] != null;
+                final isShared = isSaved && savedItem['is_shared'] == true;
 
-                return Stack(
-                  alignment: Alignment.center,
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      // Ensure filled icon when saved
-                      icon: Icon(
-                          isSaved ? Icons.bookmark : Icons.bookmark_border),
-                      color: AppColors.zestyLime,
-                      onPressed: () async {
-                        if (isSaved) {
-                          // Start delete flow
-                          final savedItem = savedRecipes.firstWhere(
-                              (r) => r['recipe_id'] == _currentRecipe['id'],
-                              orElse: () => {});
-                          if (savedItem.isNotEmpty &&
-                              savedItem['recipe_id'] != null) {
-                            final shouldDelete = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                backgroundColor: AppColors.deepCharcoal,
-                                title: const Text("Delete Recipe?",
-                                    style: TextStyle(color: Colors.white)),
-                                content: const Text(
-                                    "Are you sure you want to remove this from your Vault?",
-                                    style: TextStyle(color: Colors.white70)),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text("Cancel",
+                    // Share Button (Only visual if saved)
+                    if (isSaved)
+                      IconButton(
+                        icon:
+                            Icon(isShared ? Icons.share : Icons.share_outlined),
+                        color: isShared ? AppColors.zestyLime : Colors.white70,
+                        tooltip: "Share Recipe",
+                        onPressed: () async {
+                          // Show Share Options Modal
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: AppColors.deepCharcoal,
+                            shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(20))),
+                            builder: (modalContext) => SafeArea(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.people,
+                                        color: AppColors.zestyLime),
+                                    title: const Text("Share with Household",
+                                        style: TextStyle(color: Colors.white)),
+                                    subtitle: Text(
+                                        isShared
+                                            ? "Already shared with your household"
+                                            : "Make visible to family members",
+                                        style: const TextStyle(
+                                            color: Colors.white54)),
+                                    onTap: () async {
+                                      Navigator.pop(modalContext);
+
+                                      try {
+                                        if (mounted) {
+                                          NanoToast.showInfo(context,
+                                              "Sharing with household...");
+                                        }
+                                        await ref
+                                            .read(vaultControllerProvider
+                                                .notifier)
+                                            .shareRecipe(
+                                                savedItem['recipe_id']);
+                                        // Use 'mounted' from State class, and outer 'context'
+                                        if (mounted) {
+                                          NanoToast.showSuccess(context,
+                                              "Shared with Household!");
+                                        }
+                                      } catch (e) {
+                                        if (mounted) {
+                                          final msg = e
+                                              .toString()
+                                              .replaceAll("Exception: ", "");
+                                          NanoToast.showInfo(context, msg);
+                                        }
+                                      }
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.link,
+                                        color: AppColors.electricBlue),
+                                    title: const Text("Share via Link",
+                                        style: TextStyle(color: Colors.white)),
+                                    subtitle: const Text(
+                                        "Create a public link to share with anyone",
                                         style:
                                             TextStyle(color: Colors.white54)),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: const Text("Delete",
-                                        style: TextStyle(
-                                            color: AppColors.errorRed,
-                                            fontWeight: FontWeight.bold)),
+                                    onTap: () async {
+                                      Navigator.pop(modalContext);
+
+                                      try {
+                                        // Generate Universal Link
+                                        final link = await ref
+                                            .read(vaultControllerProvider
+                                                .notifier)
+                                            .createUniversalLink(
+                                                _currentRecipe);
+
+                                        // Share using Share Plus
+                                        await Share.share(
+                                            "Check out this recipe I found on ChefMindAI: $link");
+                                      } catch (e) {
+                                        if (mounted)
+                                          NanoToast.showError(
+                                              context, "Error: $e");
+                                      }
+                                    },
                                   ),
                                 ],
                               ),
-                            );
+                            ),
+                          );
+                        },
+                      ),
 
-                            if (shouldDelete == true) {
-                              await ref
+                    // Save Button (Wrap in Stack for Confetti)
+
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        IconButton(
+                          // Ensure filled icon when saved
+                          icon: Icon(
+                              isSaved ? Icons.bookmark : Icons.bookmark_border),
+                          color: AppColors.zestyLime,
+                          onPressed: () async {
+                            if (isSaved) {
+                              // Start delete flow
+                              final savedItem = savedRecipes.firstWhere(
+                                  (r) => r['recipe_id'] == _currentRecipe['id'],
+                                  orElse: () => {});
+                              if (savedItem.isNotEmpty &&
+                                  savedItem['recipe_id'] != null) {
+                                final shouldDelete = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    backgroundColor: AppColors.deepCharcoal,
+                                    title: const Text("Delete Recipe?",
+                                        style: TextStyle(color: Colors.white)),
+                                    content: const Text(
+                                        "Are you sure you want to remove this from your Vault?",
+                                        style:
+                                            TextStyle(color: Colors.white70)),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text("Cancel",
+                                            style: TextStyle(
+                                                color: Colors.white54)),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: const Text("Delete",
+                                            style: TextStyle(
+                                                color: AppColors.errorRed,
+                                                fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (shouldDelete == true) {
+                                  await ref
+                                      .read(vaultControllerProvider.notifier)
+                                      .deleteRecipe(savedItem['recipe_id']);
+                                  if (mounted) {
+                                    NanoToast.showInfo(
+                                        context, 'Recipe removed from Vault');
+                                  }
+                                }
+                              }
+                            } else {
+                              // Save flow
+                              // 1. Check for duplicate title first
+                              final title = _currentRecipe['title'];
+                              final existingId = await ref
                                   .read(vaultControllerProvider.notifier)
-                                  .deleteRecipe(savedItem['recipe_id']);
+                                  .checkForDuplicate(title);
+
+                              // If existingId found AND it's different from our current ID
+                              // (meaning not just re-saving the same file we already have open)
+                              if (existingId != null &&
+                                  existingId != _currentRecipe['id']) {
+                                // Conflict Detected!
+                                final choice = await showDialog<String>(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) =>
+                                      ConflictResolutionDialog(
+                                    title: title,
+                                    onOverwrite: () =>
+                                        Navigator.pop(context, 'overwrite'),
+                                    onSaveAsNew: () =>
+                                        Navigator.pop(context, 'new'),
+                                    onCancel: () =>
+                                        Navigator.pop(context, 'cancel'),
+                                  ),
+                                );
+
+                                if (choice == 'cancel' || choice == null)
+                                  return;
+
+                                if (choice == 'overwrite') {
+                                  // Use existing ID to overwrite
+                                  _currentRecipe['id'] = existingId;
+                                } else if (choice == 'new') {
+                                  // Smart Versioning: Check if title ends with " V<number>"
+                                  final versionRegex = RegExp(r' V(\d+)$');
+                                  final match = versionRegex.firstMatch(title);
+
+                                  if (match != null) {
+                                    // Has version, increment it
+                                    final version = int.parse(match.group(1)!);
+                                    _currentRecipe['title'] =
+                                        title.replaceFirst(
+                                            versionRegex, " V${version + 1}");
+                                  } else {
+                                    // No version, append V2
+                                    _currentRecipe['title'] = "$title V2";
+                                  }
+                                  _currentRecipe.remove(
+                                      'id'); // Ensure fresh ID generation
+                                }
+                              }
+
+                              // Prepare recipe for saving
+                              final recipeToSave =
+                                  Map<String, dynamic>.from(_currentRecipe);
+                              if (_isEdited) {
+                                recipeToSave['original_version'] =
+                                    _originalRecipe;
+                              }
+
+                              try {
+                                await ref
+                                    .read(vaultControllerProvider.notifier)
+                                    .saveRecipe(recipeToSave);
+                              } on PremiumLimitReachedException catch (e) {
+                                if (context.mounted) {
+                                  PremiumPaywall.show(context,
+                                      message: e.message,
+                                      featureName: e.featureName);
+                                }
+                                return; // Stop execution (confetti, success toast)
+                              } catch (e) {
+                                if (context.mounted) {
+                                  NanoToast.showError(context, e.toString());
+                                }
+                                return;
+                              }
+
+                              // Sync generated ID back to current recipe state so UI updates
+                              if (recipeToSave['id'] != null) {
+                                _currentRecipe['id'] = recipeToSave['id'];
+                              }
+
                               if (mounted) {
-                                NanoToast.showInfo(
-                                    context, 'Recipe removed from Vault');
+                                _confettiController.play();
+                                NanoToast.showSuccess(
+                                    context, 'Recipe saved to Vault!');
+                                // Force rebuild to pick up new ID if it was assigned on the map
+                                setState(() {});
                               }
                             }
-                          }
-                        } else {
-                          // Save flow
-                          // 1. Check for duplicate title first
-                          final title = _currentRecipe['title'];
-                          final existingId = await ref
-                              .read(vaultControllerProvider.notifier)
-                              .checkForDuplicate(title);
-
-                          // If existingId found AND it's different from our current ID
-                          // (meaning not just re-saving the same file we already have open)
-                          if (existingId != null &&
-                              existingId != _currentRecipe['id']) {
-                            // Conflict Detected!
-                            final choice = await showDialog<String>(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (context) => ConflictResolutionDialog(
-                                title: title,
-                                onOverwrite: () =>
-                                    Navigator.pop(context, 'overwrite'),
-                                onSaveAsNew: () =>
-                                    Navigator.pop(context, 'new'),
-                                onCancel: () =>
-                                    Navigator.pop(context, 'cancel'),
-                              ),
-                            );
-
-                            if (choice == 'cancel' || choice == null) return;
-
-                            if (choice == 'overwrite') {
-                              // Use existing ID to overwrite
-                              _currentRecipe['id'] = existingId;
-                            } else if (choice == 'new') {
-                              // Smart Versioning: Check if title ends with " V<number>"
-                              final versionRegex = RegExp(r' V(\d+)$');
-                              final match = versionRegex.firstMatch(title);
-
-                              if (match != null) {
-                                // Has version, increment it
-                                final version = int.parse(match.group(1)!);
-                                _currentRecipe['title'] = title.replaceFirst(
-                                    versionRegex, " V${version + 1}");
-                              } else {
-                                // No version, append V2
-                                _currentRecipe['title'] = "$title V2";
-                              }
-                              _currentRecipe
-                                  .remove('id'); // Ensure fresh ID generation
-                            }
-                          }
-
-                          // Prepare recipe for saving
-                          final recipeToSave =
-                              Map<String, dynamic>.from(_currentRecipe);
-                          if (_isEdited) {
-                            recipeToSave['original_version'] = _originalRecipe;
-                          }
-
-                          try {
-                            await ref
-                                .read(vaultControllerProvider.notifier)
-                                .saveRecipe(recipeToSave);
-                          } on PremiumLimitReachedException catch (e) {
-                            if (context.mounted) {
-                              PremiumPaywall.show(context,
-                                  message: e.message,
-                                  featureName: e.featureName);
-                            }
-                            return; // Stop execution (confetti, success toast)
-                          } catch (e) {
-                            if (context.mounted) {
-                              NanoToast.showError(context, e.toString());
-                            }
-                            return;
-                          }
-
-                          // Sync generated ID back to current recipe state so UI updates
-                          if (recipeToSave['id'] != null) {
-                            _currentRecipe['id'] = recipeToSave['id'];
-                          }
-
-                          if (mounted) {
-                            _confettiController.play();
-                            NanoToast.showSuccess(
-                                context, 'Recipe saved to Vault!');
-                            // Force rebuild to pick up new ID if it was assigned on the map
-                            setState(() {});
-                          }
-                        }
-                      },
-                    ),
-                    ConfettiWidget(
-                      confettiController: _confettiController,
-                      blastDirectionality: BlastDirectionality.explosive,
-                      shouldLoop: false,
-                      colors: const [
-                        AppColors.zestyLime,
-                        Colors.white,
-                        AppColors.electricBlue
-                      ],
-                      numberOfParticles: 20,
-                      gravity: 0.1,
-                    ),
-                  ],
-                );
+                          },
+                        ),
+                        ConfettiWidget(
+                          confettiController: _confettiController,
+                          blastDirectionality: BlastDirectionality.explosive,
+                          shouldLoop: false,
+                          colors: const [
+                            AppColors.zestyLime,
+                            Colors.white,
+                            AppColors.electricBlue
+                          ],
+                          numberOfParticles: 20,
+                          gravity: 0.1,
+                        ), // ConfettiWidget
+                      ], // Stack children
+                    ), // Stack
+                  ], // Row children
+                ); // Row
               },
             ),
         ],

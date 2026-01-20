@@ -26,22 +26,44 @@ class ShoppingRepository {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  Stream<List<Map<String, dynamic>>> getCartStream({String? householdId}) {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return const Stream.empty();
+
+    // Stream ALL allowed items (filtered by RLS) and filter client-side
+    // This bypasses potential Realtime filter matching issues for INSERTS
+    return _client
+        .from('shopping_cart')
+        .stream(primaryKey: ['id'])
+        .order('is_bought', ascending: true)
+        .order('created_at', ascending: false)
+        .map((items) {
+          if (householdId != null) {
+            // Household Cart: Only items with matching household_id
+            return items
+                .where((i) => i['household_id'] == householdId)
+                .toList();
+          } else {
+            // Personal Cart: Only items with NO household_id
+            return items.where((i) => i['household_id'] == null).toList();
+          }
+        });
+  }
+
   Future<void> addItem(String name, String amount, String category,
-      {String? recipeSource}) async {
+      {String? recipeSource, String? householdId}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return;
 
-    // Temporary fix: 'recipe_source' column missing in DB.
     final data = {
       'user_id': userId,
       'item_name': name,
       'amount': amount,
       'category': category,
       'is_bought': false,
+      if (householdId != null) 'household_id': householdId,
+      if (recipeSource != null) 'recipe_source': recipeSource,
     };
-    if (recipeSource != null) {
-      data['recipe_source'] = recipeSource;
-    }
 
     await _client.from('shopping_cart').insert(data);
   }
@@ -71,19 +93,31 @@ class ShoppingRepository {
     await _client.from('shopping_cart').delete().eq('id', id);
   }
 
-  Future<void> clearBoughtItems() async {
+  Future<void> clearBoughtItems({String? householdId}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return;
-    await _client
-        .from('shopping_cart')
-        .delete()
-        .eq('user_id', userId)
-        .eq('is_bought', true);
+
+    var query = _client.from('shopping_cart').delete().eq('is_bought', true);
+
+    if (householdId != null) {
+      // Clear shared bought items
+      await query.eq('household_id', householdId);
+    } else {
+      // Clear personal bought items
+      await query.eq('user_id', userId).filter('household_id', 'is', 'null');
+    }
   }
 
-  Future<void> clearAllItems() async {
+  Future<void> clearAllItems({String? householdId}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return;
-    await _client.from('shopping_cart').delete().eq('user_id', userId);
+
+    var query = _client.from('shopping_cart').delete();
+
+    if (householdId != null) {
+      await query.eq('household_id', householdId);
+    } else {
+      await query.eq('user_id', userId).filter('household_id', 'is', 'null');
+    }
   }
 }

@@ -14,6 +14,7 @@ import 'vault_controller.dart';
 import 'recipe_detail_screen.dart';
 import '../../../../core/widgets/premium_paywall.dart';
 import '../../../../core/exceptions/premium_limit_exception.dart';
+import '../../settings/presentation/household_controller.dart';
 
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
@@ -36,6 +37,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
 
     _vaultSearchController.addListener(() {
       setState(() {
@@ -55,6 +59,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   Widget build(BuildContext context) {
     // Watch state here to use isLoading in AppBar
     final state = ref.watch(recipeControllerProvider);
+    final householdState = ref.watch(householdControllerProvider);
+    final isSyncEnabled = ref.watch(vaultSyncEnabledProvider);
 
     ref.listen(recipeControllerProvider, (previous, next) {
       if (next.hasError && !next.isLoading) {
@@ -79,6 +85,102 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: (householdState.valueOrNull != null &&
+                _tabController.index == 1)
+            ? IconButton(
+                icon: Icon(
+                  isSyncEnabled ? Icons.diversity_3 : Icons.person,
+                  color: isSyncEnabled ? AppColors.zestyLime : Colors.white70,
+                ),
+                onPressed: () {
+                  ref.read(vaultSyncEnabledProvider.notifier).state =
+                      !isSyncEnabled;
+                },
+                tooltip: isSyncEnabled
+                    ? "Viewing Household Vault"
+                    : "Viewing Personal Vault",
+              )
+            : null,
+        actions: [
+          if (isSyncEnabled && _tabController.index == 1)
+            Consumer(
+              builder: (context, ref, child) {
+                final membersState = ref.watch(householdMembersProvider);
+                return membersState.when(
+                  data: (members) {
+                    if (members.isEmpty) return const SizedBox.shrink();
+
+                    // Take max 3 or 4 to avoid overflow
+                    final displayMembers = members.take(4).toList();
+                    final double overlap = 12.0;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 12.0),
+                      child: SizedBox(
+                        height: 32,
+                        width: (32.0 * displayMembers.length) -
+                            (overlap * (displayMembers.length - 1)),
+                        child: Stack(
+                          children:
+                              List.generate(displayMembers.length, (index) {
+                            final member = displayMembers[index];
+                            final name = member['display_name'] ??
+                                member['email'] ??
+                                'User';
+                            final initial =
+                                name.isNotEmpty ? name[0].toUpperCase() : '?';
+                            final photoUrl = member['avatar_url'] as String?;
+
+                            return Positioned(
+                              left: index * (32.0 - overlap),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors
+                                        .deepCharcoal, // Gap color matching bg
+                                    width: 2,
+                                  ),
+                                  color: AppColors.surfaceDark,
+                                ),
+                                child: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor:
+                                      AppColors.zestyLime.withOpacity(0.2),
+                                  backgroundImage:
+                                      photoUrl != null && photoUrl.isNotEmpty
+                                          ? NetworkImage(photoUrl)
+                                          : null,
+                                  child: photoUrl == null || photoUrl.isEmpty
+                                      ? Text(initial,
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.zestyLime,
+                                              fontWeight: FontWeight.bold))
+                                      : null,
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    );
+                  },
+                  error: (_, __) => const SizedBox.shrink(),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                );
+              },
+            ),
+          const SizedBox(width: 16),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50), // Standard TabBar + 1px
           child: Column(
@@ -320,407 +422,432 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
   Widget _buildVault() {
     final vaultState = ref.watch(vaultControllerProvider);
+    final isSyncEnabled = ref.watch(vaultSyncEnabledProvider);
 
-    return Column(
-      children: [
-        const SizedBox(height: 16),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: isSyncEnabled
+            ? Border.all(
+                color: AppColors.zestyLime.withOpacity(0.5), width: 1.5)
+            : Border.all(color: Colors.transparent),
+        boxShadow: isSyncEnabled
+            ? [
+                BoxShadow(
+                  color: AppColors.zestyLime.withOpacity(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                )
+              ]
+            : [],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
 
-        // Vault Search Bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: GlassContainer(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                const Icon(Icons.search, color: AppColors.zestyLime, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _vaultSearchController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      hintText: 'Search stored recipes...',
-                      hintStyle: TextStyle(color: Colors.white38),
-                      border: InputBorder.none,
-                      isDense: true,
+          // Vault Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: GlassContainer(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.search,
+                      color: AppColors.zestyLime, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _vaultSearchController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        hintText: 'Search stored recipes...',
+                        hintStyle: TextStyle(color: Colors.white38),
+                        border: InputBorder.none,
+                        isDense: true,
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
                     ),
-                    textCapitalization: TextCapitalization.sentences,
                   ),
-                ),
-                if (_vaultSearchQuery.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      _vaultSearchController.clear();
-                      FocusScope.of(context).unfocus();
-                    },
-                    child: const Icon(Icons.close,
-                        color: Colors.white54, size: 20),
-                  ),
-              ],
+                  if (_vaultSearchQuery.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _vaultSearchController.clear();
+                        FocusScope.of(context).unfocus();
+                      },
+                      child: const Icon(Icons.close,
+                          color: Colors.white54, size: 20),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
 
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-        // Vault Filter Toggles
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: GlassContainer(
-            padding: const EdgeInsets.all(4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _showVaultLinks = false),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: !_showVaultLinks
-                            ? AppColors.zestyLime
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.menu_book,
-                              size: 18,
-                              color: !_showVaultLinks
-                                  ? AppColors.deepCharcoal
-                                  : Colors.white54),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Recipes",
-                            style: TextStyle(
-                              color: !_showVaultLinks
-                                  ? AppColors.deepCharcoal
-                                  : Colors.white54,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+          // Vault Filter Toggles
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: GlassContainer(
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _showVaultLinks = false),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: !_showVaultLinks
+                              ? AppColors.zestyLime
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.menu_book,
+                                size: 18,
+                                color: !_showVaultLinks
+                                    ? AppColors.deepCharcoal
+                                    : Colors.white54),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Recipes",
+                              style: TextStyle(
+                                color: !_showVaultLinks
+                                    ? AppColors.deepCharcoal
+                                    : Colors.white54,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _showVaultLinks = true),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _showVaultLinks
-                            ? AppColors.zestyLime
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.link,
-                              size: 18,
-                              color: _showVaultLinks
-                                  ? AppColors.deepCharcoal
-                                  : Colors.white54),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Links",
-                            style: TextStyle(
-                              color: _showVaultLinks
-                                  ? AppColors.deepCharcoal
-                                  : Colors.white54,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _showVaultLinks = true),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _showVaultLinks
+                              ? AppColors.zestyLime
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.link,
+                                size: 18,
+                                color: _showVaultLinks
+                                    ? AppColors.deepCharcoal
+                                    : Colors.white54),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Links",
+                              style: TextStyle(
+                                color: _showVaultLinks
+                                    ? AppColors.deepCharcoal
+                                    : Colors.white54,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
 
-        const SizedBox(height: 5),
+          const SizedBox(height: 5),
 
-        Expanded(
-          child: RefreshIndicator(
-            color: AppColors.zestyLime,
-            backgroundColor: AppColors.deepCharcoal,
-            onRefresh: () async {
-              ref.invalidate(vaultControllerProvider);
-              await Future.delayed(const Duration(milliseconds: 500));
-            },
-            child: vaultState.when(
-              data: (allRecipes) {
-                final recipes = allRecipes.where((r) {
-                  final json = r['recipe_json'] ?? {};
-                  final isLink = json['type'] == 'link';
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.zestyLime,
+              backgroundColor: AppColors.deepCharcoal,
+              onRefresh: () async {
+                ref.invalidate(vaultControllerProvider);
+                await Future.delayed(const Duration(milliseconds: 500));
+              },
+              child: vaultState.when(
+                data: (allRecipes) {
+                  final recipes = allRecipes.where((r) {
+                    final json = r['recipe_json'] ?? {};
+                    final isLink = json['type'] == 'link';
 
-                  // Filter by Type
-                  if (_showVaultLinks && !isLink) return false;
-                  if (!_showVaultLinks && isLink) return false;
+                    // Filter by Type
+                    if (_showVaultLinks && !isLink) return false;
+                    if (!_showVaultLinks && isLink) return false;
 
-                  // Filter by Search Query
-                  if (_vaultSearchQuery.isNotEmpty) {
-                    final title =
-                        (json['title'] ?? '').toString().toLowerCase();
-                    final platform =
-                        (json['platform'] ?? '').toString().toLowerCase();
+                    // Filter by Search Query
+                    if (_vaultSearchQuery.isNotEmpty) {
+                      final title =
+                          (json['title'] ?? '').toString().toLowerCase();
+                      final platform =
+                          (json['platform'] ?? '').toString().toLowerCase();
 
-                    if (!title.contains(_vaultSearchQuery) &&
-                        !platform.contains(_vaultSearchQuery)) {
-                      return false;
+                      if (!title.contains(_vaultSearchQuery) &&
+                          !platform.contains(_vaultSearchQuery)) {
+                        return false;
+                      }
                     }
+
+                    return true;
+                  }).toList();
+
+                  if (recipes.isEmpty) {
+                    return LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
+                          child: Center(
+                              child: Text(
+                                  _showVaultLinks
+                                      ? 'No saved links yet.'
+                                      : 'No saved recipes yet.',
+                                  style:
+                                      const TextStyle(color: Colors.white54))),
+                        ),
+                      ),
+                    );
                   }
 
-                  return true;
-                }).toList();
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: recipes.length,
+                    itemBuilder: (context, index) {
+                      final output = recipes[index];
+                      final recipe = output['recipe_json'] ?? output;
+                      final isLink = recipe['type'] == 'link';
 
-                if (recipes.isEmpty) {
-                  return LayoutBuilder(
-                    builder: (context, constraints) => SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minHeight: constraints.maxHeight),
-                        child: Center(
-                            child: Text(
-                                _showVaultLinks
-                                    ? 'No saved links yet.'
-                                    : 'No saved recipes yet.',
-                                style: const TextStyle(color: Colors.white54))),
-                      ),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: recipes.length,
-                  itemBuilder: (context, index) {
-                    final output = recipes[index];
-                    final recipe = output['recipe_json'] ?? output;
-                    final isLink = recipe['type'] == 'link';
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Slidable(
-                          key: Key(output['recipe_id']?.toString() ??
-                              UniqueKey().toString()),
-                          endActionPane: ActionPane(
-                            motion: const DrawerMotion(),
-                            extentRatio: 0.25,
-                            children: [
-                              SlidableAction(
-                                onPressed: (context) {
-                                  _confirmDelete(output['recipe_id'],
-                                      recipe['title'] ?? 'this item');
-                                },
-                                backgroundColor: AppColors.errorRed,
-                                foregroundColor: Colors.white,
-                                icon: Icons.delete_outline,
-                                label: 'Delete',
-                              ),
-                            ],
-                          ),
-                          child: GlassContainer(
-                            borderRadius: 0,
-                            child: InkWell(
-                              onTap: () {
-                                if (isLink) {
-                                  final urlText = recipe['url'];
-                                  if (urlText != null) {
-                                    final uri = Uri.parse(urlText);
-                                    launchUrl(uri,
-                                        mode: LaunchMode.externalApplication);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Slidable(
+                            key: Key(output['recipe_id']?.toString() ??
+                                UniqueKey().toString()),
+                            endActionPane: ActionPane(
+                              motion: const DrawerMotion(),
+                              extentRatio: 0.25,
+                              children: [
+                                SlidableAction(
+                                  onPressed: (context) {
+                                    _confirmDelete(output['recipe_id'],
+                                        recipe['title'] ?? 'this item');
+                                  },
+                                  backgroundColor: AppColors.errorRed,
+                                  foregroundColor: Colors.white,
+                                  icon: Icons.delete_outline,
+                                  label: 'Delete',
+                                ),
+                              ],
+                            ),
+                            child: GlassContainer(
+                              borderRadius: 0,
+                              child: InkWell(
+                                onTap: () {
+                                  if (isLink) {
+                                    final urlText = recipe['url'];
+                                    if (urlText != null) {
+                                      final uri = Uri.parse(urlText);
+                                      launchUrl(uri,
+                                          mode: LaunchMode.externalApplication);
+                                    }
+                                  } else {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) => RecipeDetailScreen(
+                                                recipe: recipe)));
                                   }
-                                } else {
-                                  Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (_) => RecipeDetailScreen(
-                                              recipe: recipe)));
-                                }
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 56,
-                                      height: 56,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.zestyLime
-                                            .withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color: AppColors.zestyLime
-                                                .withOpacity(0.3)),
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 56,
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.zestyLime
+                                              .withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: AppColors.zestyLime
+                                                  .withOpacity(0.3)),
+                                        ),
+                                        child: Icon(
+                                          isLink
+                                              ? Icons.link
+                                              : Icons.restaurant_menu_rounded,
+                                          color: AppColors.zestyLime,
+                                          size: 28,
+                                        ),
                                       ),
-                                      child: Icon(
-                                        isLink
-                                            ? Icons.link
-                                            : Icons.restaurant_menu_rounded,
-                                        color: AppColors.zestyLime,
-                                        size: 28,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            recipe['title'] ?? 'Untitled',
-                                            style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.calendar_today,
-                                                  size: 12,
-                                                  color: Colors.white38),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                output['created_at']
-                                                        ?.toString()
-                                                        .split('T')[0] ??
-                                                    'Recently',
-                                                style: const TextStyle(
-                                                    color: Colors.white54,
-                                                    fontSize: 12),
-                                              ),
-                                              if (isLink &&
-                                                  recipe['platform'] !=
-                                                      null) ...[
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                    width: 3,
-                                                    height: 3,
-                                                    decoration:
-                                                        const BoxDecoration(
-                                                            color:
-                                                                Colors.white38,
-                                                            shape: BoxShape
-                                                                .circle)),
-                                                const SizedBox(width: 8),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              recipe['title'] ?? 'Untitled',
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.calendar_today,
+                                                    size: 12,
+                                                    color: Colors.white38),
+                                                const SizedBox(width: 4),
                                                 Text(
-                                                  "via ${recipe['platform']}",
+                                                  output['created_at']
+                                                          ?.toString()
+                                                          .split('T')[0] ??
+                                                      'Recently',
                                                   style: const TextStyle(
-                                                      color:
-                                                          AppColors.zestyLime,
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.bold),
+                                                      color: Colors.white54,
+                                                      fontSize: 12),
                                                 ),
-                                              ],
-                                              if (!isLink &&
-                                                  recipe['calories'] !=
-                                                      null) ...[
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                    width: 3,
-                                                    height: 3,
-                                                    decoration:
-                                                        const BoxDecoration(
-                                                            color:
-                                                                Colors.white38,
-                                                            shape: BoxShape
-                                                                .circle)),
-                                                const SizedBox(width: 8),
-                                                Flexible(
-                                                  child: Text(
-                                                    recipe['calories'] ?? '',
+                                                if (isLink &&
+                                                    recipe['platform'] !=
+                                                        null) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                      width: 3,
+                                                      height: 3,
+                                                      decoration:
+                                                          const BoxDecoration(
+                                                              color: Colors
+                                                                  .white38,
+                                                              shape: BoxShape
+                                                                  .circle)),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    "via ${recipe['platform']}",
                                                     style: const TextStyle(
                                                         color:
                                                             AppColors.zestyLime,
                                                         fontSize: 12,
                                                         fontWeight:
                                                             FontWeight.bold),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
                                                   ),
-                                                ),
-                                              ]
-                                            ],
-                                          ),
-                                        ],
+                                                ],
+                                                if (!isLink &&
+                                                    recipe['calories'] !=
+                                                        null) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                      width: 3,
+                                                      height: 3,
+                                                      decoration:
+                                                          const BoxDecoration(
+                                                              color: Colors
+                                                                  .white38,
+                                                              shape: BoxShape
+                                                                  .circle)),
+                                                  const SizedBox(width: 8),
+                                                  Flexible(
+                                                    child: Text(
+                                                      recipe['calories'] ?? '',
+                                                      style: const TextStyle(
+                                                          color: AppColors
+                                                              .zestyLime,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ]
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Icon(Icons.play_circle_fill,
-                                        color: Colors.white24, size: 28),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      const Icon(Icons.play_circle_fill,
+                                          color: Colors.white24, size: 28),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-              error: (e, s) => LayoutBuilder(
-                builder: (context, constraints) => SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: Center(
-                        child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error_outline,
-                              color: AppColors.errorRed, size: 48),
-                          const SizedBox(height: 16),
-                          const Text("Oops! Couldn't load Vault.",
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Text(e.toString(),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 12)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () =>
-                                ref.refresh(vaultControllerProvider),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.zestyLime,
-                                foregroundColor: AppColors.deepCharcoal),
-                            child: const Text("Retry"),
-                          )
-                        ],
-                      ),
-                    )),
+                      );
+                    },
+                  );
+                },
+                error: (e, s) => LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Center(
+                          child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline,
+                                color: AppColors.errorRed, size: 48),
+                            const SizedBox(height: 16),
+                            const Text("Oops! Couldn't load Vault.",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            Text(e.toString(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 12)),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () =>
+                                  ref.refresh(vaultControllerProvider),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.zestyLime,
+                                  foregroundColor: AppColors.deepCharcoal),
+                              child: const Text("Retry"),
+                            )
+                          ],
+                        ),
+                      )),
+                    ),
                   ),
                 ),
+                loading: () => const Center(
+                    child:
+                        CircularProgressIndicator(color: AppColors.zestyLime)),
               ),
-              loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.zestyLime)),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

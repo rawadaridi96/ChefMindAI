@@ -170,250 +170,252 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
     });
 
     // Glassmorphic Sheet
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: ClipPath(
-        clipper: const _ValleyClipper(),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(
-                24, 100, 24, 40), // Increased spacing between notch and title
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A0F0A).withOpacity(0.7), // Obsidian Glass
-              border: Border(
-                  top: BorderSide(
-                      color: Colors.white.withOpacity(0.1), width: 1)),
-            ),
-            child: Form(
-              key: _formKey,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // --- Inputs ---
-                    if (!_isLogin) ...[
-                      _buildGlassTextField(
-                        controller: _nameController,
-                        label: 'Full Name',
-                        icon: Icons.person_outline,
-                        textCapitalization: TextCapitalization.words,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+    // We do NOT wrap in Align(bottomCenter) anymore because we want the sheet to stretch
+    // from the anchor point (computed in Orchestrator) down to the bottom.
+    return ClipPath(
+      clipper: const _ValleyClipper(),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          width: double.infinity, // Ensure width fill
+          // Use alignment topCenter so if sheet is tall, content stays at top
+          alignment: Alignment.topCenter,
+          padding: const EdgeInsets.fromLTRB(
+              24, 100, 24, 40), // Increased spacing between notch and title
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A0F0A).withOpacity(0.7), // Obsidian Glass
+            border: Border(
+                top:
+                    BorderSide(color: Colors.white.withOpacity(0.1), width: 1)),
+          ),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // --- Inputs ---
+                  if (!_isLogin) ...[
                     _buildGlassTextField(
-                      controller: _emailController,
-                      label: 'Email',
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      errorText: _emailError,
-                      onChanged: (_) {
-                        if (_emailError != null) {
-                          setState(() => _emailError = null);
-                        }
-                      },
+                      controller: _nameController,
+                      label: 'Full Name',
+                      icon: Icons.person_outline,
+                      textCapitalization: TextCapitalization.words,
                     ),
                     const SizedBox(height: 16),
-                    _buildGlassTextField(
-                      controller: _passwordController,
-                      label: 'Password',
-                      icon: Icons.lock_outline,
-                      isPassword: true,
-                      isPasswordVisible: _isPasswordVisible,
-                      onTogglePassword: () => setState(
-                          () => _isPasswordVisible = !_isPasswordVisible),
-                      errorText: _passwordError,
-                      onChanged: (_) {
-                        if (_passwordError != null) {
-                          setState(() => _passwordError = null);
-                        }
-                      },
-                    ),
+                  ],
+                  _buildGlassTextField(
+                    controller: _emailController,
+                    label: 'Email',
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    errorText: _emailError,
+                    onChanged: (_) {
+                      if (_emailError != null) {
+                        setState(() => _emailError = null);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGlassTextField(
+                    controller: _passwordController,
+                    label: 'Password',
+                    icon: Icons.lock_outline,
+                    isPassword: true,
+                    isPasswordVisible: _isPasswordVisible,
+                    onTogglePassword: () => setState(
+                        () => _isPasswordVisible = !_isPasswordVisible),
+                    errorText: _passwordError,
+                    onChanged: (_) {
+                      if (_passwordError != null) {
+                        setState(() => _passwordError = null);
+                      }
+                    },
+                  ),
 
-                    // --- Forgot Password (Log In only) ---
-                    if (_isLogin)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () async {
-                            final email = _emailController.text.trim();
-                            if (email.isEmpty) {
-                              NanoToast.showError(
-                                  context, 'Please enter your email address');
-                              return;
-                            }
-                            await ref
-                                .read(authControllerProvider.notifier)
-                                .resetPassword(email);
-
-                            if (mounted &&
-                                !ref.read(authControllerProvider).hasError) {
-                              NanoToast.showSuccess(context,
-                                  'Password reset link sent to $email');
-                            }
-                          },
-                          child: const Text('Forgot Password?',
-                              style: TextStyle(
-                                  color: AppColors.zestyLime,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-
-                    const SizedBox(height: 24),
-
-                    // --- Primary Action & Biometric ---
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _submit,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.zestyLime,
-                              foregroundColor: AppColors.deepCharcoal,
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              _isLogin ? 'Log In' : 'Sign Up',
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5),
-                            ),
-                          ),
-                        ),
-                        if (_isLogin) ...[
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () {
-                              // Start biometric auth
-                              // We need a userId - typically biometrics work after first login/setup
-                              // or checking if *any* biometrics are stored.
-                              // For now, we can try generic auth if stored.
-                              // Since we don't have user ID yet... we usually check local storage for 'last_user' or iterate.
-                              // This simple implementation might need to be smarter in a real app.
-                              // We'll call a method that tries to find ANY enrolled user.
-                              // But 'authenticateWithBiometrics' needs a userID.
-                              // Let's assume we find the first enrolled user for this demo if not specific.
-                              _triggerBiometric();
-                            },
-                            child: Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                    color: Colors.white.withOpacity(0.1)),
-                              ),
-                              child: const Icon(Icons.fingerprint,
-                                  color: AppColors.zestyLime, size: 28),
-                            ),
-                          ),
-                        ]
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // --- Dividers ---
-                    const Row(
-                      children: [
-                        Expanded(child: Divider(color: Colors.white12)),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          child: Text("or continue with",
-                              style: TextStyle(
-                                  color: Colors.white38, fontSize: 12)),
-                        ),
-                        Expanded(child: Divider(color: Colors.white12)),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // --- Revolut-style Social Row ---
-                    Row(
-                      children: [
-                        // Google
-                        Expanded(
-                          child: _SocialButton(
-                            icon: FontAwesomeIcons.google,
-                            label: 'Google',
-                            onTap: () async {
-                              await ref
-                                  .read(authControllerProvider.notifier)
-                                  .signInWithGoogle();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Apple
-                        Expanded(
-                          child: _SocialButton(
-                            icon: FontAwesomeIcons.apple,
-                            label: 'Apple',
-                            onTap: () async {
-                              await ref
-                                  .read(authControllerProvider.notifier)
-                                  .signInWithApple();
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // --- Toggle / Guest ---
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _isLogin = !_isLogin;
-                          _formKey.currentState?.reset();
-                          _clearErrors();
-                        });
-                      },
-                      child: RichText(
-                        text: TextSpan(
-                          text: _isLogin
-                              ? "Don't have an account? "
-                              : "Already have an account? ",
-                          style: const TextStyle(color: Colors.white54),
-                          children: [
-                            TextSpan(
-                              text: _isLogin ? 'Sign Up' : 'Log In',
-                              style: const TextStyle(
-                                  color: AppColors.zestyLime,
-                                  fontWeight: FontWeight.bold),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    TextButton(
-                      onPressed: () async {
-                        try {
+                  // --- Forgot Password (Log In only) ---
+                  if (_isLogin)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () async {
+                          final email = _emailController.text.trim();
+                          if (email.isEmpty) {
+                            NanoToast.showError(
+                                context, 'Please enter your email address');
+                            return;
+                          }
                           await ref
                               .read(authControllerProvider.notifier)
-                              .signInAnonymously();
-                        } catch (e) {
-                          if (mounted) {
-                            NanoToast.showError(context, e.toString());
+                              .resetPassword(email);
+
+                          if (mounted &&
+                              !ref.read(authControllerProvider).hasError) {
+                            NanoToast.showSuccess(
+                                context, 'Password reset link sent to $email');
                           }
-                        }
-                      },
-                      child: const Text('Continue as Guest',
-                          style: TextStyle(
-                              color: AppColors.zestyLime, fontSize: 14)),
+                        },
+                        child: const Text('Forgot Password?',
+                            style: TextStyle(
+                                color: AppColors.zestyLime,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold)),
+                      ),
                     ),
-                  ],
-                ),
+
+                  const SizedBox(height: 24),
+
+                  // --- Primary Action & Biometric ---
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.zestyLime,
+                            foregroundColor: AppColors.deepCharcoal,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            _isLogin ? 'Log In' : 'Sign Up',
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5),
+                          ),
+                        ),
+                      ),
+                      if (_isLogin) ...[
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () {
+                            // Start biometric auth
+                            // We need a userId - typically biometrics work after first login/setup
+                            // or checking if *any* biometrics are stored.
+                            // For now, we can try generic auth if stored.
+                            // Since we don't have user ID yet... we usually check local storage for 'last_user' or iterate.
+                            // This simple implementation might need to be smarter in a real app.
+                            // We'll call a method that tries to find ANY enrolled user.
+                            // But 'authenticateWithBiometrics' needs a userID.
+                            // Let's assume we find the first enrolled user for this demo if not specific.
+                            _triggerBiometric();
+                          },
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.1)),
+                            ),
+                            child: const Icon(Icons.fingerprint,
+                                color: AppColors.zestyLime, size: 28),
+                          ),
+                        ),
+                      ]
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // --- Dividers ---
+                  const Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.white12)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text("or continue with",
+                            style:
+                                TextStyle(color: Colors.white38, fontSize: 12)),
+                      ),
+                      Expanded(child: Divider(color: Colors.white12)),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // --- Revolut-style Social Row ---
+                  Row(
+                    children: [
+                      // Google
+                      Expanded(
+                        child: _SocialButton(
+                          icon: FontAwesomeIcons.google,
+                          label: 'Google',
+                          onTap: () async {
+                            await ref
+                                .read(authControllerProvider.notifier)
+                                .signInWithGoogle();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Apple
+                      Expanded(
+                        child: _SocialButton(
+                          icon: FontAwesomeIcons.apple,
+                          label: 'Apple',
+                          onTap: () async {
+                            await ref
+                                .read(authControllerProvider.notifier)
+                                .signInWithApple();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // --- Toggle / Guest ---
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isLogin = !_isLogin;
+                        _formKey.currentState?.reset();
+                        _clearErrors();
+                      });
+                    },
+                    child: RichText(
+                      text: TextSpan(
+                        text: _isLogin
+                            ? "Don't have an account? "
+                            : "Already have an account? ",
+                        style: const TextStyle(color: Colors.white54),
+                        children: [
+                          TextSpan(
+                            text: _isLogin ? 'Sign Up' : 'Log In',
+                            style: const TextStyle(
+                                color: AppColors.zestyLime,
+                                fontWeight: FontWeight.bold),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  TextButton(
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(authControllerProvider.notifier)
+                            .signInAnonymously();
+                      } catch (e) {
+                        if (mounted) {
+                          NanoToast.showError(context, e.toString());
+                        }
+                      }
+                    },
+                    child: const Text('Continue as Guest',
+                        style: TextStyle(
+                            color: AppColors.zestyLime, fontSize: 14)),
+                  ),
+                ],
               ),
             ),
           ),

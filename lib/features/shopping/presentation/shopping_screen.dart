@@ -8,6 +8,8 @@ import 'shopping_controller.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
 
+import '../../settings/presentation/household_controller.dart';
+
 class ShoppingScreen extends ConsumerStatefulWidget {
   const ShoppingScreen({super.key});
 
@@ -40,6 +42,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   @override
   Widget build(BuildContext context) {
     final listState = ref.watch(shoppingControllerProvider);
+    final isSyncEnabled = ref.watch(shoppingSyncEnabledProvider);
+    // Ensure household state is loaded/kept alive while on this screen
+    ref.watch(householdControllerProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -48,7 +53,111 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(isSyncEnabled ? Icons.diversity_3 : Icons.person,
+              color: isSyncEnabled ? AppColors.zestyLime : Colors.white54),
+          tooltip: "Family Sync", // "Toggle Family Sync" behavior
+          onPressed: () {
+            // Check if user is in a household
+            final householdState = ref.read(householdControllerProvider);
+            // householdState is AsyncValue<Map<String, dynamic>?>
+            // We can check if value is present and not null
+            final household = householdState.valueOrNull;
+
+            if (household == null) {
+              NanoToast.showInfo(
+                  context, "Join a household in Settings to sync.");
+              return;
+            }
+
+            ref.read(shoppingSyncEnabledProvider.notifier).toggle();
+            if (!isSyncEnabled) {
+              NanoToast.showInfo(context, "Family Sync Active");
+            } else {
+              NanoToast.showInfo(context, "Personal Cart Active");
+            }
+          },
+        ),
         actions: [
+          // Presence Bubbles (Visible only when Sync is ON)
+          if (isSyncEnabled)
+            Consumer(
+              builder: (context, ref, child) {
+                final membersState = ref.watch(householdMembersProvider);
+                return membersState.when(
+                  data: (members) {
+                    if (members.isEmpty) return const SizedBox.shrink();
+
+                    // Take max 3 or 4 to avoid overflow
+                    final displayMembers = members.take(4).toList();
+                    final double overlap = 12.0;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 12.0),
+                      child: SizedBox(
+                        height: 32,
+                        width: (32.0 * displayMembers.length) -
+                            (overlap * (displayMembers.length - 1)),
+                        child: Stack(
+                          children:
+                              List.generate(displayMembers.length, (index) {
+                            final member = displayMembers[index];
+                            final name = member['display_name'] ??
+                                member['email'] ??
+                                'User';
+                            final initial =
+                                name.isNotEmpty ? name[0].toUpperCase() : '?';
+                            final photoUrl = member['avatar_url'] as String?;
+
+                            return Positioned(
+                              left: index * (32.0 - overlap),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors
+                                        .deepCharcoal, // Gap color matching bg
+                                    width: 2,
+                                  ),
+                                  color: AppColors.surfaceDark,
+                                ),
+                                child: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor:
+                                      AppColors.zestyLime.withOpacity(0.2),
+                                  backgroundImage:
+                                      photoUrl != null && photoUrl.isNotEmpty
+                                          ? NetworkImage(photoUrl)
+                                          : null,
+                                  child: photoUrl == null || photoUrl.isEmpty
+                                      ? Text(initial,
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.zestyLime,
+                                              fontWeight: FontWeight.bold))
+                                      : null,
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    );
+                  },
+                  error: (_, __) => const SizedBox.shrink(),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                );
+              },
+            ),
+
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.white70),
             onPressed: () {
@@ -115,68 +224,92 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
             bottom: 100,
             child: ChefMindWatermark(),
           ),
-          Column(
-            children: [
-              // Input Bar (Nano Banana Style)
 
-              Expanded(
-                child: RefreshIndicator(
-                  color: AppColors.zestyLime,
-                  backgroundColor: AppColors.deepCharcoal,
-                  onRefresh: () async {
-                    ref.invalidate(shoppingControllerProvider);
-                    await Future.delayed(const Duration(milliseconds: 500));
-                  },
-                  child: listState.when(
-                    data: (items) {
-                      final active =
-                          items.where((i) => i['is_bought'] == false).toList();
-                      final bought =
-                          items.where((i) => i['is_bought'] == true).toList();
+          // Main Content with Glow Effect if Sync is ON
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            margin: const EdgeInsets.all(4), // Small margin for border
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: isSyncEnabled
+                  ? Border.all(
+                      color: AppColors.zestyLime.withOpacity(0.5), width: 1.5)
+                  : Border.all(color: Colors.transparent),
+              boxShadow: isSyncEnabled
+                  ? [
+                      BoxShadow(
+                        color: AppColors.zestyLime.withOpacity(0.1),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      )
+                    ]
+                  : [],
+            ),
+            child: Column(
+              children: [
+                // Input Bar (Nano Banana Style)
 
-                      if (items.isEmpty) {
-                        return const Center(
-                            child: Text("Cart is empty",
-                                style: TextStyle(color: Colors.white54)));
-                      }
-
-                      return ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        children: [
-                          if (active.isNotEmpty) ...[
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Text("To Buy",
-                                  style: TextStyle(
-                                      color: AppColors.zestyLime,
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                            ...active
-                                .map((item) => _buildCartItem(item, false)),
-                          ],
-                          if (bought.isNotEmpty) ...[
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Text("Recently Bought",
-                                  style: TextStyle(
-                                      color: Colors.white38,
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                            ...bought.map((item) => _buildCartItem(item, true)),
-                          ],
-                        ],
-                      );
+                Expanded(
+                  child: RefreshIndicator(
+                    color: AppColors.zestyLime,
+                    backgroundColor: AppColors.deepCharcoal,
+                    onRefresh: () async {
+                      ref.invalidate(shoppingControllerProvider);
+                      await Future.delayed(const Duration(milliseconds: 500));
                     },
-                    error: (err, st) => Center(
-                        child: Text('Error: $err',
-                            style: const TextStyle(color: Colors.red))),
-                    loading: () => const Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.zestyLime)),
+                    child: listState.when(
+                      data: (items) {
+                        final active = items
+                            .where((i) => i['is_bought'] == false)
+                            .toList();
+                        final bought =
+                            items.where((i) => i['is_bought'] == true).toList();
+
+                        if (items.isEmpty) {
+                          return const Center(
+                              child: Text("Cart is empty",
+                                  style: TextStyle(color: Colors.white54)));
+                        }
+
+                        return ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          children: [
+                            if (active.isNotEmpty) ...[
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: Text("To Buy",
+                                    style: TextStyle(
+                                        color: AppColors.zestyLime,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                              ...active
+                                  .map((item) => _buildCartItem(item, false)),
+                            ],
+                            if (bought.isNotEmpty) ...[
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Text("Recently Bought",
+                                    style: TextStyle(
+                                        color: Colors.white38,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                              ...bought
+                                  .map((item) => _buildCartItem(item, true)),
+                            ],
+                          ],
+                        );
+                      },
+                      error: (err, st) => Center(
+                          child: Text('Error: $err',
+                              style: const TextStyle(color: Colors.red))),
+                      loading: () => const Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.zestyLime)),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

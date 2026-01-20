@@ -15,6 +15,7 @@ import '../../subscription/presentation/subscription_controller.dart';
 import '../../onboarding/presentation/entry_orchestrator.dart';
 import '../../auth/presentation/dietary_preferences_screen.dart';
 import 'chef_labs_screen.dart';
+import 'household_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -524,6 +525,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 16),
+                        _SettingsTile(
+                          icon: Icons.people_outline,
+                          title: "Household Management",
+                          trailing: const Icon(Icons.arrow_forward_ios,
+                              color: Colors.white54, size: 16),
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const HouseholdScreen()));
+                          },
+                        ),
+                        const SizedBox(height: 8),
                         Consumer(builder: (context, ref, _) {
                           final subState =
                               ref.watch(subscriptionControllerProvider);

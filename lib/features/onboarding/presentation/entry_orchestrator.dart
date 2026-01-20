@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
@@ -56,7 +57,6 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
     });
 
     // If we are already authenticated, this Orchestrator is likely skipped by main.dart logic
-    // If we are already authenticated, this Orchestrator is likely skipped by main.dart logic
     // But checking here ensures robustness.
     // REMOVED: Checking authState here breaks "Guest -> Login" flow because Guest has a session.
     // main.dart handles the initial routing. Manual pushes should always show UI.
@@ -76,8 +76,9 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
             duration: const Duration(milliseconds: 1200),
             curve: Curves.easeOutQuart,
             top: _isAuthReady
-                ? 120
-                : screenHeight, // Starts at 120 to intersect Logo
+                ? (math.max(screenHeight * 0.12, screenHeight - 740) +
+                    70) // Anchor to logo center (LogoTop + 70)
+                : screenHeight,
             left: 0,
             right: 0,
             bottom: 0,
@@ -89,7 +90,9 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
             duration: const Duration(milliseconds: 3000),
             curve: Curves.elasticOut,
             // Centered initially (approx 45% down), then moves to top area (approx 53px down)
-            top: _isAuthReady ? 53 : screenHeight * 0.40,
+            top: _isAuthReady
+                ? math.max(screenHeight * 0.12, screenHeight - 740)
+                : screenHeight * 0.40,
             left: 0,
             right: 0,
             child: Align(
@@ -121,7 +124,7 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
                       ),
                       child: ClipOval(
                         child: Image.asset(
-                          'assets/app_icon.jpg',
+                          'assets/app_icon.png',
                           fit: BoxFit.cover,
                         ),
                       ),
