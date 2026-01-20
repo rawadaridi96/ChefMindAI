@@ -50,7 +50,9 @@ class _GlobalImportListenerState extends ConsumerState<GlobalImportListener> {
           final navContext = widget.navigatorKey.currentContext;
           if (navContext != null) {
             PremiumPaywall.show(navContext,
-                message: msg, featureName: "Link Scraper");
+                message: msg,
+                featureName: "Link Scraper",
+                ctaLabel: "Upgrade to Sous or Executive Chef");
           }
           ref.read(importUrlStateProvider.notifier).clear();
         } else if (next.startsWith("SUCCESS:")) {

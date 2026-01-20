@@ -15,7 +15,8 @@ class VaultRepository {
 
   VaultRepository(this._client);
 
-  Future<void> saveRecipe(Map<String, dynamic> recipe) async {
+  Future<void> saveRecipe(Map<String, dynamic> recipe,
+      {String? householdId}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
 
@@ -29,6 +30,7 @@ class VaultRepository {
       'recipe_id': recipeId, // Satisfy Not Null constraint
       'title': recipe['title'],
       'recipe_json': recipe,
+      'household_id': householdId,
     });
   }
 

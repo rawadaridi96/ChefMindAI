@@ -495,7 +495,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       } on PremiumLimitReachedException catch (e) {
                         if (context.mounted) {
                           PremiumPaywall.show(context,
-                              message: e.message, featureName: e.featureName);
+                              message: e.message,
+                              featureName: e.featureName,
+                              ctaLabel: "Upgrade to Sous or Executive Chef");
                         }
                       } catch (e) {
                         if (context.mounted)
@@ -536,100 +538,118 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Share Button (Only visual if saved)
-                    if (isSaved)
-                      IconButton(
-                        icon:
-                            Icon(isShared ? Icons.share : Icons.share_outlined),
-                        color: isShared ? AppColors.zestyLime : Colors.white70,
-                        tooltip: "Share Recipe",
-                        onPressed: () async {
-                          // Show Share Options Modal
-                          showModalBottomSheet(
-                            context: context,
-                            backgroundColor: AppColors.deepCharcoal,
-                            shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(20))),
-                            builder: (modalContext) => SafeArea(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ListTile(
-                                    leading: const Icon(Icons.people,
-                                        color: AppColors.zestyLime),
-                                    title: const Text("Share with Household",
-                                        style: TextStyle(color: Colors.white)),
-                                    subtitle: Text(
-                                        isShared
-                                            ? "Already shared with your household"
-                                            : "Make visible to family members",
-                                        style: const TextStyle(
-                                            color: Colors.white54)),
-                                    onTap: () async {
-                                      Navigator.pop(modalContext);
+                    // Share Button (Always visible for unlocked recipes)
+                    IconButton(
+                      icon: Icon(isShared ? Icons.share : Icons.share_outlined),
+                      color: isShared ? AppColors.zestyLime : Colors.white70,
+                      tooltip: "Share Recipe",
+                      onPressed: () async {
+                        // Show Share Options Modal
+                        showModalBottomSheet(
+                          context: context,
+                          backgroundColor: AppColors.deepCharcoal,
+                          shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(20))),
+                          builder: (modalContext) => SafeArea(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.people,
+                                      color: AppColors.zestyLime),
+                                  title: const Text("Share with Household",
+                                      style: TextStyle(color: Colors.white)),
+                                  subtitle: Text(
+                                      isShared
+                                          ? "Already shared with your household"
+                                          : "Make visible to family members",
+                                      style: const TextStyle(
+                                          color: Colors.white54)),
+                                  onTap: () async {
+                                    Navigator.pop(modalContext);
 
-                                      try {
-                                        if (mounted) {
-                                          NanoToast.showInfo(context,
-                                              "Sharing with household...");
-                                        }
+                                    try {
+                                      if (mounted) {
+                                        NanoToast.showInfo(
+                                            context,
+                                            isSaved
+                                                ? "Sharing with household..."
+                                                : "Saving to household...");
+                                      }
+
+                                      if (isSaved) {
                                         await ref
                                             .read(vaultControllerProvider
                                                 .notifier)
                                             .shareRecipe(
                                                 savedItem['recipe_id']);
-                                        // Use 'mounted' from State class, and outer 'context'
-                                        if (mounted) {
-                                          NanoToast.showSuccess(context,
-                                              "Shared with Household!");
-                                        }
-                                      } catch (e) {
-                                        if (mounted) {
-                                          final msg = e
-                                              .toString()
-                                              .replaceAll("Exception: ", "");
-                                          NanoToast.showInfo(context, msg);
-                                        }
-                                      }
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(Icons.link,
-                                        color: AppColors.electricBlue),
-                                    title: const Text("Share via Link",
-                                        style: TextStyle(color: Colors.white)),
-                                    subtitle: const Text(
-                                        "Create a public link to share with anyone",
-                                        style:
-                                            TextStyle(color: Colors.white54)),
-                                    onTap: () async {
-                                      Navigator.pop(modalContext);
-
-                                      try {
-                                        // Generate Universal Link
-                                        final link = await ref
+                                      } else {
+                                        await ref
                                             .read(vaultControllerProvider
                                                 .notifier)
-                                            .createUniversalLink(
-                                                _currentRecipe);
-
-                                        // Share using Share Plus
-                                        await Share.share(
-                                            "Check out this recipe I found on ChefMindAI: $link");
-                                      } catch (e) {
-                                        if (mounted)
-                                          NanoToast.showError(
-                                              context, "Error: $e");
+                                            .saveToHousehold(_currentRecipe);
                                       }
-                                    },
-                                  ),
-                                ],
-                              ),
+
+                                      if (mounted) {
+                                        NanoToast.showSuccess(
+                                            context,
+                                            isSaved
+                                                ? "Shared with Household!"
+                                                : "Saved to Household!");
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        final msg = e
+                                            .toString()
+                                            .replaceAll("Exception: ", "");
+                                        NanoToast.showInfo(context, msg);
+                                      }
+                                    }
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.link,
+                                      color: AppColors.electricBlue),
+                                  title: const Text("Share via Link",
+                                      style: TextStyle(color: Colors.white)),
+                                  subtitle: const Text(
+                                      "Create a public link to share with anyone",
+                                      style: TextStyle(color: Colors.white54)),
+                                  onTap: () async {
+                                    Navigator.pop(modalContext);
+
+                                    try {
+                                      // Generate Universal Link
+                                      final link = await ref
+                                          .read(
+                                              vaultControllerProvider.notifier)
+                                          .createUniversalLink(_currentRecipe);
+
+                                      // Share using Share Plus
+                                      await Share.share(
+                                          "Check out this recipe I found on ChefMindAI: $link");
+                                    } on PremiumLimitReachedException catch (e) {
+                                      if (mounted) {
+                                        PremiumPaywall.show(context,
+                                            message: e.message,
+                                            featureName: e.featureName,
+                                            ctaLabel:
+                                                "Upgrade to Sous or Executive Chef");
+                                      }
+                                    } catch (e) {
+                                      if (mounted)
+                                        NanoToast.showError(
+                                            context, "Error: $e");
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
+                    ),
 
                     // Save Button (Wrap in Stack for Confetti)
 
@@ -759,7 +779,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                 if (context.mounted) {
                                   PremiumPaywall.show(context,
                                       message: e.message,
-                                      featureName: e.featureName);
+                                      featureName: e.featureName,
+                                      ctaLabel:
+                                          "Upgrade to Sous or Executive Chef");
                                 }
                                 return; // Stop execution (confetti, success toast)
                               } catch (e) {

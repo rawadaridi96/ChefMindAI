@@ -11,6 +11,7 @@ import '../../../../core/widgets/nano_toast.dart';
 import 'package:intl/intl.dart';
 
 import 'package:chefmind_ai/features/scanner/presentation/scanner_screen.dart';
+import '../../../../core/widgets/network_error_view.dart';
 
 class PantryScreen extends ConsumerStatefulWidget {
   const PantryScreen({super.key});
@@ -109,7 +110,12 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
 
     ref.listen(pantryControllerProvider, (_, next) {
       if (next.hasError && !next.isLoading) {
-        NanoToast.showError(context, next.error.toString());
+        if (NetworkErrorView.isNetworkError(next.error!)) {
+          NanoToast.showError(
+              context, "No connection. Please check your internet.");
+        } else {
+          NanoToast.showError(context, next.error.toString());
+        }
       }
     });
 
@@ -183,10 +189,57 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
                       if (pantryState.hasValue) {
                         return _buildList(pantryState.value!);
                       }
+
+                      if (NetworkErrorView.isNetworkError(err)) {
+                        return NetworkErrorView(
+                          onRetry: () {
+                            ref.invalidate(pantryControllerProvider);
+                          },
+                        );
+                      }
+
                       return Center(
-                          child: Text('Error: $err',
-                              style:
-                                  const TextStyle(color: AppColors.errorRed)));
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline_rounded,
+                                  size: 48,
+                                  color: AppColors.errorRed.withOpacity(0.8)),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Oops! Something went wrong.',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                err.toString(),
+                                style: TextStyle(
+                                    color: Colors.white.withOpacity(0.6),
+                                    fontSize: 12),
+                                textAlign: TextAlign.center,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: () {
+                                  ref.invalidate(pantryControllerProvider);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white10,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text("Retry"),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     },
                     loading: () => pantryState.hasValue
                         ? Stack(

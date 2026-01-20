@@ -50,9 +50,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         title: 'Home Cook',
                         price: 'Free Forever',
                         features: [
-                          '5 Curated AI Recipes/day',
+                          // '5 Curated AI Recipes/day',
+                          '5 AI Recipes/day',
                           'Save 3 Favorites',
-                          'Basic Visuals'
+                          '5 Daily Link Shares'
                         ],
                         defaultButtonText: 'Downgrade',
                         isCurrent: currentTier == SubscriptionTier.homeCook,
@@ -68,9 +69,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         price: _isYearly ? '\$7.99 / mo' : '\$9.99 / mo',
                         billingNote: _isYearly ? 'Billed \$95.88 yearly' : null,
                         features: [
-                          'Unlimited Pantry AI',
+                          // 'Unlimited Pantry AI',
+                          'Unlimited AI Recipes',
                           'Full Link Scraper',
                           'Unlimited Vault Saves',
+                          'Unlimited Link Sharing',
                           'Advanced Dietary Intelligence'
                         ],
                         defaultButtonText:
@@ -97,6 +100,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                           'High-Speed AI Generation',
                           'Mood-Based Suggestions',
                           'Family Sync (Kitchen Vault)',
+                          // 'Unlimited Link Sharing',q
                           'Priority Early Access'
                         ],
                         defaultButtonText: 'Go Executive',

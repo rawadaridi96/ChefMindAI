@@ -46,6 +46,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Clear it so it doesn't show again on hot reload or re-mount
         ref.read(postLoginMessageProvider.notifier).state = null;
       }
+
+      // Default Dietary Profile for Executive Chef
+      final subState = ref.read(subscriptionControllerProvider);
+      if (subState.valueOrNull == SubscriptionTier.executiveChef) {
+        setState(() => _applyDietaryProfile = true);
+      }
     });
   }
 
@@ -298,8 +304,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           const SizedBox(height: 24),
+          // Dietary Toggle for Pantry
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _buildDietaryToggle(ref),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // New Pantry Generator Widget
           PantryGeneratorWidget(
+            applyDietaryProfile: _applyDietaryProfile,
             onGenerate: () {
               // Switch to Recipes tab after generation starts
               setState(() => _currentIndex = 2);
@@ -380,91 +399,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Dietary Toggle
-              Consumer(builder: (context, ref, _) {
-                final user = ref.watch(authRepositoryProvider).currentUser;
-                final subState = ref.watch(subscriptionControllerProvider);
-                final tier = subState.valueOrNull ?? SubscriptionTier.homeCook;
-                final isPremium = tier != SubscriptionTier.homeCook;
-
-                final prefs = user?.userMetadata?['dietary_preferences'];
-                final hasPreferences =
-                    prefs != null && prefs is List && prefs.isNotEmpty;
-
-                final isEnabled = hasPreferences && isPremium;
-
-                return Opacity(
-                  opacity: isEnabled ? 1.0 : 0.5,
-                  child: Row(
-                    children: [
-                      Transform.scale(
-                        scale: 0.8,
-                        child: Switch(
-                          value: isEnabled && _applyDietaryProfile,
-                          activeColor: AppColors.zestyLime,
-                          activeTrackColor:
-                              AppColors.zestyLime.withOpacity(0.3),
-                          inactiveThumbColor: Colors.white54,
-                          inactiveTrackColor: Colors.white10,
-                          onChanged: (val) {
-                            if (!isPremium) {
-                              PremiumPaywall.show(context,
-                                  featureName: "Advanced Dietary Intelligence",
-                                  message:
-                                      "Unlock personalized dietary AI with our Sous Chef plan.");
-                              return;
-                            }
-                            if (!hasPreferences) {
-                              NanoToast.showInfo(context,
-                                  "Set your profile in Settings first 🧑‍🍳");
-                              return;
-                            }
-                            setState(() => _applyDietaryProfile = val);
-                          },
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          if (!isPremium) {
-                            PremiumPaywall.show(context,
-                                featureName: "Advanced Dietary Intelligence",
-                                message:
-                                    "Unlock personalized dietary AI with our Sous Chef plan.");
-                            return;
-                          }
-                          if (!hasPreferences) {
-                            NanoToast.showInfo(context,
-                                "Set your profile in Settings first 🧑‍🍳");
-                            return;
-                          }
-                          setState(() =>
-                              _applyDietaryProfile = !_applyDietaryProfile);
-                        },
-                        child: Row(
-                          children: [
-                            Text(
-                              "Dietary Profile",
-                              style: TextStyle(
-                                color: (isEnabled && _applyDietaryProfile)
-                                    ? Colors.white
-                                    : Colors.white54,
-                                fontSize: 13,
-                                fontWeight: (isEnabled && _applyDietaryProfile)
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            if (!isPremium) ...[
-                              const SizedBox(width: 4),
-                              const Icon(Icons.lock_outline,
-                                  color: AppColors.zestyLime, size: 12),
-                            ]
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              _buildDietaryToggle(ref),
 
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -607,20 +542,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return;
     }
 
+    // Check Subscription for ADI
+    final subState = ref.read(subscriptionControllerProvider);
+    final isPremium = subState.valueOrNull != SubscriptionTier.homeCook;
+
     // Logic Branching
     if (_isPantryMode) {
       // Pantry Mode: Use pantry items + query context
       ref.read(recipeControllerProvider.notifier).generate(
             mode: 'pantry_chef',
             query: query,
-            includeGlobalDiet: true, // Strict enforcement
+            includeGlobalDiet: isPremium, // Only enable ADI if premium
           );
     } else {
       // Discover Mode: Pure generation
       ref.read(recipeControllerProvider.notifier).generate(
             mode: 'discover',
             query: query,
-            includeGlobalDiet: _applyDietaryProfile, // Optional
+            includeGlobalDiet:
+                _applyDietaryProfile, // Optional (UI handles lock)
             mood: _mood,
           );
     }
@@ -946,7 +886,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           PremiumPaywall.show(context,
                               featureName: "Mood-Based Suggestions",
                               message:
-                                  "Unlock precise mood-based cooking with Executive Chef.");
+                                  "Unlock precise mood-based cooking with Executive Chef.",
+                              ctaLabel: "Upgrade to Executive Chef");
                           return;
                         }
                         setState(() {
@@ -1000,5 +941,92 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildDietaryToggle(WidgetRef ref) {
+    return Consumer(builder: (context, ref, _) {
+      final user = ref.watch(authRepositoryProvider).currentUser;
+      final subState = ref.watch(subscriptionControllerProvider);
+      final tier = subState.valueOrNull ?? SubscriptionTier.homeCook;
+      final isPremium = tier != SubscriptionTier.homeCook;
+
+      final prefs = user?.userMetadata?['dietary_preferences'];
+      final hasPreferences = prefs != null && prefs is List && prefs.isNotEmpty;
+
+      final isEnabled = hasPreferences && isPremium;
+
+      return Opacity(
+        opacity: isEnabled ? 1.0 : 0.5,
+        child: Row(
+          children: [
+            Transform.scale(
+              scale: 0.8,
+              child: Switch(
+                value: isEnabled && _applyDietaryProfile,
+                activeColor: AppColors.zestyLime,
+                activeTrackColor: AppColors.zestyLime.withOpacity(0.3),
+                inactiveThumbColor: Colors.white54,
+                inactiveTrackColor: Colors.white10,
+                onChanged: (val) {
+                  if (!isPremium) {
+                    PremiumPaywall.show(context,
+                        featureName: "Advanced Dietary Intelligence",
+                        message:
+                            "Unlock personalized dietary AI with our Sous Chef plan.",
+                        ctaLabel: "Upgrade to Sous or Executive Chef");
+                    return;
+                  }
+                  if (!hasPreferences) {
+                    NanoToast.showInfo(
+                        context, "Set your profile in Settings first 🧑‍🍳");
+                    return;
+                  }
+                  setState(() => _applyDietaryProfile = val);
+                },
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                if (!isPremium) {
+                  PremiumPaywall.show(context,
+                      featureName: "Advanced Dietary Intelligence",
+                      message:
+                          "Unlock personalized dietary AI with our Sous Chef plan.",
+                      ctaLabel: "Upgrade to Sous or Executive Chef");
+                  return;
+                }
+                if (!hasPreferences) {
+                  NanoToast.showInfo(
+                      context, "Set your profile in Settings first 🧑‍🍳");
+                  return;
+                }
+                setState(() => _applyDietaryProfile = !_applyDietaryProfile);
+              },
+              child: Row(
+                children: [
+                  Text(
+                    "Dietary Profile",
+                    style: TextStyle(
+                      color: (isEnabled && _applyDietaryProfile)
+                          ? Colors.white
+                          : Colors.white54,
+                      fontSize: 13,
+                      fontWeight: (isEnabled && _applyDietaryProfile)
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  if (!isPremium) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.lock_outline,
+                        color: AppColors.zestyLime, size: 12),
+                  ]
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }

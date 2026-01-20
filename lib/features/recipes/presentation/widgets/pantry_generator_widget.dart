@@ -7,11 +7,17 @@ import 'package:chefmind_ai/features/pantry/presentation/pantry_controller.dart'
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
 import 'package:chefmind_ai/features/subscription/presentation/subscription_controller.dart';
 import 'package:toastification/toastification.dart';
+import 'package:chefmind_ai/core/widgets/network_error_view.dart';
 
 class PantryGeneratorWidget extends ConsumerStatefulWidget {
   final VoidCallback onGenerate;
+  final bool applyDietaryProfile;
 
-  const PantryGeneratorWidget({super.key, required this.onGenerate});
+  const PantryGeneratorWidget({
+    super.key,
+    required this.onGenerate,
+    required this.applyDietaryProfile,
+  });
 
   @override
   ConsumerState<PantryGeneratorWidget> createState() =>
@@ -265,8 +271,20 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
               onTap: () {
                 FocusScope.of(context).unfocus(); // Dismiss keyboard
                 // Pantry Check
-                final pantryItems =
-                    ref.read(pantryControllerProvider).valueOrNull ?? [];
+                final pantryState = ref.read(pantryControllerProvider);
+
+                if (pantryState.hasError) {
+                  if (NetworkErrorView.isNetworkError(pantryState.error!)) {
+                    NanoToast.showError(
+                        context, "No connection. Please check your internet.");
+                  } else {
+                    NanoToast.showError(
+                        context, "Could not load pantry items.");
+                  }
+                  return;
+                }
+
+                final pantryItems = pantryState.valueOrNull ?? [];
                 if (pantryItems.isEmpty) {
                   toastification.show(
                     context: context,
@@ -288,6 +306,11 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
                   return;
                 }
 
+                // Check Subscription
+                final subState = ref.read(subscriptionControllerProvider);
+                final isPremium =
+                    subState.valueOrNull != SubscriptionTier.homeCook;
+
                 // Trigger Generation
                 ref.read(recipeControllerProvider.notifier).generate(
                       mode: 'pantry_chef',
@@ -297,8 +320,9 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
                       allergies: _allergyController.text.isNotEmpty
                           ? _allergyController.text
                           : null,
-                      includeGlobalDiet:
-                          true, // Strict enforcement for Pantry Chef
+                      includeGlobalDiet: isPremium &&
+                          widget
+                              .applyDietaryProfile, // Enable if premium AND toggled
                     );
 
                 // Callback to navigate

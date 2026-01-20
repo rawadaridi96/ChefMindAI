@@ -8,6 +8,7 @@ import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
+import '../../../../core/widgets/network_error_view.dart';
 
 import 'recipe_controller.dart';
 import 'vault_controller.dart';
@@ -66,8 +67,38 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
       if (next.hasError && !next.isLoading) {
         if (next.error is PremiumLimitReachedException) {
           final e = next.error as PremiumLimitReachedException;
-          PremiumPaywall.show(context,
-              message: e.message, featureName: e.featureName);
+
+          String? ctaLabel;
+          ctaLabel = (e.featureName == 'Daily Recipe Limit' ||
+                  e.featureName == 'Advanced Intelligence')
+              ? 'Upgrade to Sous or Executive Chef'
+              : e.featureName.contains('Executive')
+                  ? 'Upgrade to Executive Chef'
+                  : 'Upgrade to Sous or Executive Chef'; // Default to versatile upgrade
+
+          PremiumPaywall.show(
+            context,
+            message: e.message,
+            featureName: e.featureName,
+            ctaLabel: ctaLabel,
+          );
+        } else {
+          if (NetworkErrorView.isNetworkError(next.error!)) {
+            NanoToast.showError(
+                context, "No connection. Please check your internet.");
+          } else {
+            NanoToast.showError(
+                context, next.error.toString().replaceAll('Exception: ', ''));
+          }
+        }
+      }
+    });
+
+    ref.listen(vaultControllerProvider, (previous, next) {
+      if (next.hasError && !next.isLoading) {
+        if (NetworkErrorView.isNetworkError(next.error!)) {
+          NanoToast.showError(
+              context, "No connection. Please check your internet.");
         } else {
           NanoToast.showError(
               context, next.error.toString().replaceAll('Exception: ', ''));
@@ -410,9 +441,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
               );
             },
             // On error, we just show the prompt again (toast handles the message)
-            error: (_, __) => const Center(
-                child: Text('Generate some magic!',
-                    style: TextStyle(color: Colors.white54))),
+            error: (e, s) {
+              if (NetworkErrorView.isNetworkError(e)) {
+                return NetworkErrorView(
+                    onRetry: () => ref.invalidate(recipeControllerProvider));
+              }
+              return const Center(
+                  child: Text('Generate some magic!',
+                      style: TextStyle(color: Colors.white54)));
+            },
             loading: () => const SizedBox(),
           ),
         ),
@@ -801,45 +838,51 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                     },
                   );
                 },
-                error: (e, s) => LayoutBuilder(
-                  builder: (context, constraints) => SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints:
-                          BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Center(
-                          child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline,
-                                color: AppColors.errorRed, size: 48),
-                            const SizedBox(height: 16),
-                            const Text("Oops! Couldn't load Vault.",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
-                            Text(e.toString(),
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    color: Colors.white54, fontSize: 12)),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () =>
-                                  ref.refresh(vaultControllerProvider),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.zestyLime,
-                                  foregroundColor: AppColors.deepCharcoal),
-                              child: const Text("Retry"),
-                            )
-                          ],
-                        ),
-                      )),
+                error: (e, s) {
+                  if (NetworkErrorView.isNetworkError(e)) {
+                    return NetworkErrorView(
+                        onRetry: () => ref.refresh(vaultControllerProvider));
+                  }
+                  return LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minHeight: constraints.maxHeight),
+                        child: Center(
+                            child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: AppColors.errorRed, size: 48),
+                              const SizedBox(height: 16),
+                              const Text("Oops! Couldn't load Vault.",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              Text(e.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 12)),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () =>
+                                    ref.refresh(vaultControllerProvider),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.zestyLime,
+                                    foregroundColor: AppColors.deepCharcoal),
+                                child: const Text("Retry"),
+                              )
+                            ],
+                          ),
+                        )),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
                 loading: () => const Center(
                     child:
                         CircularProgressIndicator(color: AppColors.zestyLime)),

@@ -7,6 +7,7 @@ import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
 import 'shopping_controller.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
+import '../../../../core/widgets/network_error_view.dart';
 
 import '../../settings/presentation/household_controller.dart';
 
@@ -45,6 +46,17 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     final isSyncEnabled = ref.watch(shoppingSyncEnabledProvider);
     // Ensure household state is loaded/kept alive while on this screen
     ref.watch(householdControllerProvider);
+
+    ref.listen(shoppingControllerProvider, (_, next) {
+      if (next.hasError && !next.isLoading) {
+        if (NetworkErrorView.isNetworkError(next.error!)) {
+          NanoToast.showError(
+              context, "No connection. Please check your internet.");
+        } else {
+          NanoToast.showError(context, next.error.toString());
+        }
+      }
+    });
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -159,38 +171,49 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
             ),
 
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.white70),
-            onPressed: () {
-              // Confirm Dialog
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: AppColors.deepCharcoal,
-                  title: const Text("Clear Shopping List?",
-                      style: TextStyle(color: Colors.white)),
-                  content: const Text(
-                      "This will remove all items from your cart. This action cannot be undone.",
-                      style: TextStyle(color: Colors.white70)),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel",
-                          style: TextStyle(color: Colors.white54)),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context); // Close dialog
-                        ref
-                            .read(shoppingControllerProvider.notifier)
-                            .clearAll();
-                      },
-                      child: const Text("Clear All",
-                          style: TextStyle(color: AppColors.errorRed)),
-                    ),
-                  ],
-                ),
-              );
-            },
+            icon: Icon(Icons.delete_outline,
+                color: (listState.hasValue &&
+                        listState.value!.isNotEmpty &&
+                        !NetworkErrorView.isNetworkError(
+                            listState.error ?? Object()))
+                    ? Colors.white70
+                    : Colors.white12),
+            onPressed: (listState.hasValue &&
+                    listState.value!.isNotEmpty &&
+                    !NetworkErrorView.isNetworkError(
+                        listState.error ?? Object()))
+                ? () {
+                    // Confirm Dialog
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: AppColors.deepCharcoal,
+                        title: const Text("Clear Shopping List?",
+                            style: TextStyle(color: Colors.white)),
+                        content: const Text(
+                            "This will remove all items from your cart. This action cannot be undone.",
+                            style: TextStyle(color: Colors.white70)),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("Cancel",
+                                style: TextStyle(color: Colors.white54)),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Close dialog
+                              ref
+                                  .read(shoppingControllerProvider.notifier)
+                                  .clearAll();
+                            },
+                            child: const Text("Clear All",
+                                style: TextStyle(color: AppColors.errorRed)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                : null,
           )
         ],
         bottom: PreferredSize(
@@ -299,9 +322,18 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                           ],
                         );
                       },
-                      error: (err, st) => Center(
-                          child: Text('Error: $err',
-                              style: const TextStyle(color: Colors.red))),
+                      error: (err, st) {
+                        if (NetworkErrorView.isNetworkError(err)) {
+                          return NetworkErrorView(
+                            onRetry: () {
+                              ref.invalidate(shoppingControllerProvider);
+                            },
+                          );
+                        }
+                        return Center(
+                            child: Text('Error: $err',
+                                style: const TextStyle(color: Colors.red)));
+                      },
                       loading: () => const Center(
                           child: CircularProgressIndicator(
                               color: AppColors.zestyLime)),

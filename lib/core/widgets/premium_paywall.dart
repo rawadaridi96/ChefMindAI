@@ -7,21 +7,26 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 class PremiumPaywall extends StatelessWidget {
   final String message;
   final String featureName;
+  final String? ctaLabel;
 
   const PremiumPaywall({
     super.key,
     required this.message,
     required this.featureName,
+    this.ctaLabel,
   });
 
   static Future<void> show(BuildContext context,
-      {required String message, required String featureName}) {
+      {required String message,
+      required String featureName,
+      String? ctaLabel}) {
     return showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.8),
       builder: (context) => PremiumPaywall(
         message: message,
         featureName: featureName,
+        ctaLabel: ctaLabel,
       ),
     );
   }
@@ -124,9 +129,9 @@ class PremiumPaywall extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16)),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Upgrade to Sous Chef',
-                        style: TextStyle(
+                      child: Text(
+                        ctaLabel ?? 'Upgrade to Sous Chef',
+                        style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5),
