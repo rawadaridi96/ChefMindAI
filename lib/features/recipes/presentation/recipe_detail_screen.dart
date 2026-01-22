@@ -19,6 +19,8 @@ import 'package:toastification/toastification.dart';
 import '../../../../core/widgets/premium_paywall.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/exceptions/premium_limit_exception.dart';
+import '../../../../core/services/offline_manager.dart';
+import '../../settings/presentation/household_controller.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> recipe;
@@ -569,6 +571,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                   onTap: () async {
                                     Navigator.pop(modalContext);
 
+                                    // 1. Check Household Presence
+                                    // (Check if user is even in a household before trying)
+                                    final householdState = await ref.read(
+                                        householdControllerProvider.future);
+                                    if (householdState == null) {
+                                      NanoToast.showInfo(context,
+                                          "Join a household in Settings to share.");
+                                      return;
+                                    }
+
                                     try {
                                       if (mounted) {
                                         NanoToast.showInfo(
@@ -638,9 +650,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                                 "Upgrade to Sous or Executive Chef");
                                       }
                                     } catch (e) {
-                                      if (mounted)
-                                        NanoToast.showError(
-                                            context, "Error: $e");
+                                      if (mounted) {
+                                        final message = e
+                                            .toString()
+                                            .replaceFirst('Exception: ', '');
+                                        NanoToast.showError(context, message);
+                                      }
                                     }
                                   },
                                 ),
@@ -829,7 +844,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       floatingActionButton: recipe['is_locked'] == true
           ? null
           : FloatingActionButton.extended(
-              onPressed: _showConsultChefDialog,
+              onPressed: () {
+                final isConnected =
+                    ref.read(offlineManagerProvider).hasConnection;
+                if (!isConnected) {
+                  NanoToast.showInfo(
+                      context, "No connection. Please check your internet.");
+                  return;
+                }
+                _showConsultChefDialog();
+              },
               backgroundColor: AppColors.zestyLime,
               icon: const Icon(Icons.chat_bubble_outline,
                   color: AppColors.deepCharcoal),

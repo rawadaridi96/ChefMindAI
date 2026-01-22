@@ -10,6 +10,7 @@ import 'package:chefmind_ai/features/home/home_screen.dart';
 import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart';
 import 'package:chefmind_ai/features/import/presentation/global_import_listener.dart';
 import 'package:chefmind_ai/core/services/deep_link_service.dart';
+import 'core/services/offline_manager.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -36,7 +37,16 @@ Future<void> main() async {
   // Initialize Deep Link Listener
   DeepLinkService().init(navigatorKey);
 
-  runApp(const ProviderScope(child: ChefMindApp()));
+  // Initialize Offline Manager (Hive + Connectivity)
+  final container = ProviderContainer();
+  await container.read(offlineManagerProvider).init();
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const ChefMindApp(),
+    ),
+  );
 }
 
 class ChefMindApp extends ConsumerWidget {

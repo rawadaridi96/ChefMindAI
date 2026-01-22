@@ -10,6 +10,7 @@ import '../../auth/data/auth_repository.dart';
 import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/widgets/nano_toast.dart';
+import '../../../../core/services/offline_manager.dart';
 import 'edit_profile_screen.dart';
 import '../../subscription/presentation/subscription_controller.dart';
 import '../../onboarding/presentation/entry_orchestrator.dart';
@@ -345,6 +346,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                           skipSplash: true,
                                         )));
                           } else {
+                            final isConnected =
+                                ref.read(offlineManagerProvider).hasConnection;
+                            if (!isConnected) {
+                              NanoToast.showInfo(context,
+                                  "No connection. Please check your internet.");
+                              return;
+                            }
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -531,6 +539,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           trailing: const Icon(Icons.arrow_forward_ios,
                               color: Colors.white54, size: 16),
                           onTap: () {
+                            final isConnected =
+                                ref.read(offlineManagerProvider).hasConnection;
+                            if (!isConnected) {
+                              NanoToast.showInfo(context,
+                                  "No connection. Please check your internet.");
+                              return;
+                            }
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(

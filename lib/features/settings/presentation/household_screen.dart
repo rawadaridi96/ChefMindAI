@@ -1,5 +1,6 @@
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
+import 'package:chefmind_ai/core/widgets/network_error_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -61,45 +62,52 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
         },
         loading: () => const Center(
             child: CircularProgressIndicator(color: AppColors.zestyLime)),
-        error: (err, st) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline,
-                    color: AppColors.errorRed, size: 48),
-                const SizedBox(height: 16),
-                const Text(
-                  "Something went wrong",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  err.toString().contains("JWT")
-                      ? "Your session has expired. Please restart the app or sign out."
-                      : "Error: $err",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white54),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    ref.refresh(householdControllerProvider);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.zestyLime,
-                    foregroundColor: AppColors.deepCharcoal,
+        error: (err, st) {
+          if (NetworkErrorView.isNetworkError(err)) {
+            return NetworkErrorView(
+              onRetry: () => ref.refresh(householdControllerProvider),
+            );
+          }
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline,
+                      color: AppColors.errorRed, size: 48),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Something went wrong",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
                   ),
-                  child: const Text("Retry"),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    err.toString().contains("JWT")
+                        ? "Your session has expired. Please restart the app or sign out."
+                        : "Error: $err",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.refresh(householdControllerProvider);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.zestyLime,
+                      foregroundColor: AppColors.deepCharcoal,
+                    ),
+                    child: const Text("Retry"),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -554,6 +562,25 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                 .getMembersStream(householdId),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
+                // If offline, just show a friendly message or empty state
+                if (snapshot.error.toString().contains('SocketException') ||
+                    snapshot.error.toString().contains('Realtime')) {
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.wifi_off, color: Colors.white54, size: 20),
+                        SizedBox(width: 12),
+                        Text("Members list unavailable while offline",
+                            style: TextStyle(color: Colors.white54)),
+                      ],
+                    ),
+                  );
+                }
                 return Text("Error: ${snapshot.error}",
                     style: const TextStyle(color: AppColors.errorRed));
               }

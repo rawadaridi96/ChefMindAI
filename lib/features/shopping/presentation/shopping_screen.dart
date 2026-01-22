@@ -70,10 +70,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
               color: isSyncEnabled ? AppColors.zestyLime : Colors.white54),
           tooltip: "Family Sync", // "Toggle Family Sync" behavior
           onPressed: () {
-            // Check if user is in a household
+            // 1. Check Household
             final householdState = ref.read(householdControllerProvider);
-            // householdState is AsyncValue<Map<String, dynamic>?>
-            // We can check if value is present and not null
             final household = householdState.valueOrNull;
 
             if (household == null) {
@@ -640,7 +638,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         ));
   }
 
-  Future<void> _updateQuantity(int id, String currentAmount, int change) async {
+  Future<void> _updateQuantity(
+      dynamic id, String currentAmount, int change) async {
     await ref
         .read(shoppingControllerProvider.notifier)
         .updateQuantity(id, currentAmount, change);

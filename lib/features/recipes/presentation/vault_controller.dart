@@ -5,7 +5,7 @@ import '../../subscription/presentation/subscription_controller.dart';
 import '../../../core/exceptions/premium_limit_exception.dart';
 import '../../settings/presentation/household_controller.dart';
 import 'package:uuid/uuid.dart';
-
+import '../../../core/services/offline_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'vault_controller.g.dart';
@@ -25,9 +25,12 @@ class VaultController extends _$VaultController {
       householdId = householdState.valueOrNull?['id'];
     }
 
+    // Trigger Sync
+    ref.read(vaultRepositoryProvider).syncSavedRecipes().ignore();
+
     return ref
         .watch(vaultRepositoryProvider)
-        .getSavedRecipesStream(householdId: householdId);
+        .watchSavedRecipes(householdId: householdId);
   }
 
   Future<String?> checkForDuplicate(String title) async {
@@ -39,7 +42,6 @@ class VaultController extends _$VaultController {
   }
 
   Future<void> saveRecipe(Map<String, dynamic> recipe) async {
-    // Ensure subscription tier is loaded
     final textTier = await ref.read(subscriptionControllerProvider.future);
 
     final limit = (textTier == SubscriptionTier.sousChef ||
@@ -55,43 +57,12 @@ class VaultController extends _$VaultController {
       );
     }
 
-    // Optimistic Update
-    final newId = recipe['id'] ?? const Uuid().v4();
-    recipe['id'] = newId; // Ensure ID is set in the payload
-
-    final optimisticItem = {
-      'recipe_id': newId,
-      'title': recipe['title'],
-      'recipe_json': recipe,
-      'created_at': DateTime.now().toIso8601String(),
-    };
-
-    final previousState = state;
-    if (previousState.value != null) {
-      final updatedList = [optimisticItem, ...previousState.value!];
-      state = AsyncValue.data(updatedList);
-    }
-
-    try {
-      await ref.read(vaultRepositoryProvider).saveRecipe(recipe);
-      // No refresh needed if success
-    } catch (e, st) {
-      print("Vault Save Error: $e");
-      print(st);
-      // Rollback
-      state = previousState;
-      // Re-throw or show error state?
-      // If we re-throw, UI shows error toast.
-      // But we must revert local state.
-      // state = AsyncValue.error(e, st); // This might replace the whole list with error?
-      // Better to revert list and show toast.
-      state = previousState; // Revert list
-      throw e; // Let UI handle toast
-    }
+    // Repository now handles Optimistic UI via Hive -> Stream
+    await _performOfflineSafe(
+        () => ref.read(vaultRepositoryProvider).saveRecipe(recipe));
   }
 
   Future<void> saveLink(String url, {String? title}) async {
-    // Ensure subscription tier is loaded
     final textTier = await ref.read(subscriptionControllerProvider.future);
 
     final limit = (textTier == SubscriptionTier.sousChef ||
@@ -107,69 +78,25 @@ class VaultController extends _$VaultController {
       );
     }
 
-    // Optimistic Update
-    final repo = ref.read(vaultRepositoryProvider);
-    final linkMetadata = repo.generateLinkMetadata(url, title: title);
-
-    // Create a "Row-like" structure matching DB response
-    final optimisticItem = {
-      'recipe_id': linkMetadata['id'],
-      'title': linkMetadata['title'],
-      'recipe_json': linkMetadata,
-      'created_at': DateTime.now().toIso8601String(),
-      // 'household_id' is assumed null unless we strictly filter?
-      // But if we are in Personal view (default for saveLink), satisfied.
-    };
-
-    final previousState = state;
-    if (previousState.value != null) {
-      // Prepend to list
-      final updatedList = [optimisticItem, ...previousState.value!];
-      state = AsyncValue.data(updatedList);
-    }
-
-    try {
-      await repo.saveRecipe(linkMetadata);
-    } catch (e) {
-      // Rollback
-      state = previousState;
-      throw e;
-    }
+    await _performOfflineSafe(
+        () => ref.read(vaultRepositoryProvider).saveLink(url, title: title));
   }
 
   Future<void> deleteRecipe(String recipeId) async {
-    print("DEBUG: deleteRecipe called for $recipeId");
-    // 1. Optimistic Update: Remove immediately from UI
-    final previousState = state;
-    if (previousState.value != null) {
-      print("DEBUG: Current list size: ${previousState.value!.length}");
-      final updatedList = previousState.value!
-          .where((r) => r['recipe_id'] != recipeId)
-          .toList();
-      print("DEBUG: New list size: ${updatedList.length}");
+    await _performOfflineSafe(
+        () => ref.read(vaultRepositoryProvider).deleteRecipe(recipeId));
+  }
 
-      if (previousState.value!.length == updatedList.length) {
-        print("DEBUG: No item found with ID $recipeId");
-        // Verify IDs in list
-        for (var r in previousState.value!) {
-          print(
-              "DEBUG: Available ID: ${r['recipe_id']} (Type: ${r['recipe_id'].runtimeType})");
-        }
-      }
-
-      state = AsyncValue.data(updatedList);
-    } else {
-      print("DEBUG: State value is null");
-    }
-
+  Future<void> _performOfflineSafe(Future<void> Function() action) async {
     try {
-      // 2. Perform DB Operation
-      await ref.read(vaultRepositoryProvider).deleteRecipe(recipeId);
+      await action();
     } catch (e) {
-      // 3. Rollback on failure
-      print("DEBUG: Delete failed, rolling back. Error: $e");
-      state = previousState;
-      throw e;
+      final isConnected = ref.read(offlineManagerProvider).hasConnection;
+      if (!isConnected) {
+        // Swallow error - Optimistic Update already happened in Repo
+        return;
+      }
+      rethrow;
     }
   }
 

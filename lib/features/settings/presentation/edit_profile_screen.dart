@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/nano_toast.dart';
+import '../../../../core/services/offline_manager.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../auth/presentation/auth_state_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -52,6 +53,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final newName = _nameController.text.trim();
     final newPassword = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
+
+    final isConnected = ref.read(offlineManagerProvider).hasConnection;
+    if (!isConnected) {
+      NanoToast.showInfo(context, "No connection. Please check your internet.");
+      return;
+    }
 
     if (newName.isEmpty) {
       NanoToast.showError(context, "Name cannot be empty");

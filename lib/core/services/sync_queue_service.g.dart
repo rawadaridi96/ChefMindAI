@@ -1,27 +1,25 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'pantry_controller.dart';
+part of 'sync_queue_service.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pantryControllerHash() => r'82516fa99c8d961e5723907a1b689031d996b4c5';
+String _$syncQueueServiceHash() => r'c4b088235a5ead7edbe09ae8a1d7f9cb4fca8765';
 
-/// See also [PantryController].
-@ProviderFor(PantryController)
-final pantryControllerProvider = AutoDisposeStreamNotifierProvider<
-    PantryController, List<Map<String, dynamic>>>.internal(
-  PantryController.new,
-  name: r'pantryControllerProvider',
+/// See also [syncQueueService].
+@ProviderFor(syncQueueService)
+final syncQueueServiceProvider = Provider<SyncQueueService>.internal(
+  syncQueueService,
+  name: r'syncQueueServiceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$pantryControllerHash,
+      : _$syncQueueServiceHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$PantryController
-    = AutoDisposeStreamNotifier<List<Map<String, dynamic>>>;
+typedef SyncQueueServiceRef = ProviderRef<SyncQueueService>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

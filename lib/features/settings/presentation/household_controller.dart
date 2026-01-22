@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import '../../auth/presentation/auth_state_provider.dart';
 import '../data/household_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 part 'household_controller.g.dart';
 
@@ -54,31 +55,72 @@ class HouseholdController extends _$HouseholdController {
     // BUT we will also periodically check or setup a separate listener if possible.
     // simpler approach: The repository method 'getHousehold' checks existence.
 
-    await for (final profile in profileStream) {
-      print("DEBUG: Profile Update: $profile");
-      if (profile == null) {
-        yield null;
-        continue;
+    // Cached Data Fallback (Offline First)
+    final box = Hive.box('app_prefs');
+    final cachedData = box.get('household_data');
+    if (cachedData != null) {
+      try {
+        final Map<String, dynamic> data =
+            Map<String, dynamic>.from(cachedData as Map);
+        yield data;
+      } catch (e) {
+        print("Error reading cached household data: $e");
       }
+    }
 
-      final householdId = profile['household_id'] as String?;
+    try {
+      await for (final profile in profileStream) {
+        print("DEBUG: Profile Update: $profile");
+        if (profile == null) {
+          // If profile is null (logged out?), clear cache
+          if (cachedData != null) {
+            await box.delete('household_data');
+          }
+          yield null;
+          continue;
+        }
 
-      if (householdId == null) {
-        yield null;
-      } else {
-        // Check if household actually exists (Fail-safe for "Zombie" state)
-        final household = await ref
-            .read(householdRepositoryProvider)
-            .getHousehold(householdId);
+        final householdId = profile['household_id'] as String?;
 
-        if (household == null) {
-          // Profile says we are in X, but X does not exist.
-          // This self-heals the client state.
+        if (householdId == null) {
+          if (cachedData != null) {
+            await box.delete('household_data');
+          }
           yield null;
         } else {
-          yield household;
+          try {
+            final household = await ref
+                .read(householdRepositoryProvider)
+                .getHousehold(householdId);
+
+            if (household == null) {
+              // Zombie state
+              await box.delete('household_data');
+              yield null;
+            } else {
+              // Update Cache
+              await box.put('household_data', household);
+              yield household;
+            }
+          } catch (e) {
+            // Network error likely.
+            print("Error fetching household details (likely offline): $e");
+          }
         }
       }
+    } catch (e) {
+      // Catch RealtimeSubscribeException or others when offline
+      print("Stream Error (likely offline): $e");
+      // If we are offline and stream fails, we effectively just stop listening.
+      // The cached value (yielded above) remains the state.
+      // We could set up a periodic retry or listen to connectivity,
+      // but usually the build() method rebuilds on provider invalidation if managed externally,
+      // OR we just rely on the fact that when online, the controller might need refreshing.
+      // ACTUALLY: The OfflineManager listens to connectivity.
+      // But this controller is a Stream.
+      // If we exit the stream loop, the stream closes.
+      // We should probably just hang/await indefinitely if we have cache,
+      // or return. Ensuring we don't throw is key.
     }
   }
 

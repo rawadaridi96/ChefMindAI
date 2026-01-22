@@ -60,7 +60,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   Widget build(BuildContext context) {
     // Watch state here to use isLoading in AppBar
     final state = ref.watch(recipeControllerProvider);
-    final householdState = ref.watch(householdControllerProvider);
+
     final isSyncEnabled = ref.watch(vaultSyncEnabledProvider);
 
     ref.listen(recipeControllerProvider, (previous, next) {
@@ -116,22 +116,29 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: (householdState.valueOrNull != null &&
-                _tabController.index == 1)
-            ? IconButton(
+        leading: _tabController.index == 0
+            ? null
+            : IconButton(
                 icon: Icon(
                   isSyncEnabled ? Icons.diversity_3 : Icons.person,
                   color: isSyncEnabled ? AppColors.zestyLime : Colors.white70,
                 ),
                 onPressed: () {
+                  // 1. Check Household
+                  final householdState = ref.read(householdControllerProvider);
+                  if (householdState.valueOrNull == null) {
+                    NanoToast.showInfo(
+                        context, "Join a household in Settings to sync.");
+                    return;
+                  }
+
                   ref.read(vaultSyncEnabledProvider.notifier).state =
                       !isSyncEnabled;
                 },
                 tooltip: isSyncEnabled
                     ? "Viewing Household Vault"
                     : "Viewing Personal Vault",
-              )
-            : null,
+              ),
         actions: [
           if (isSyncEnabled && _tabController.index == 1)
             Consumer(

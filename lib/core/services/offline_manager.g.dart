@@ -1,27 +1,25 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'pantry_controller.dart';
+part of 'offline_manager.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pantryControllerHash() => r'82516fa99c8d961e5723907a1b689031d996b4c5';
+String _$offlineManagerHash() => r'bfcd9b3b76eb396cb3b12990d85a3010537329a1';
 
-/// See also [PantryController].
-@ProviderFor(PantryController)
-final pantryControllerProvider = AutoDisposeStreamNotifierProvider<
-    PantryController, List<Map<String, dynamic>>>.internal(
-  PantryController.new,
-  name: r'pantryControllerProvider',
+/// See also [offlineManager].
+@ProviderFor(offlineManager)
+final offlineManagerProvider = Provider<OfflineManager>.internal(
+  offlineManager,
+  name: r'offlineManagerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$pantryControllerHash,
+      : _$offlineManagerHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$PantryController
-    = AutoDisposeStreamNotifier<List<Map<String, dynamic>>>;
+typedef OfflineManagerRef = ProviderRef<OfflineManager>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

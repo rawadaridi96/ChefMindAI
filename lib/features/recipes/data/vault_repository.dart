@@ -1,19 +1,148 @@
+import 'dart:async';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'package:uuid/uuid.dart';
+import '../../../../core/services/offline_manager.dart';
+import '../../../../core/services/sync_queue_service.dart';
+
+import 'models/saved_recipe_model.dart';
 
 part 'vault_repository.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 VaultRepository vaultRepository(VaultRepositoryRef ref) {
-  return VaultRepository(Supabase.instance.client);
+  final repo = VaultRepository(
+    Supabase.instance.client,
+    ref.read(syncQueueServiceProvider),
+    ref.read(offlineManagerProvider),
+  );
+  // Subscribe to realtime once when repository is created
+  repo.subscribeToRealtime();
+  return repo;
 }
 
 class VaultRepository {
   final SupabaseClient _client;
+  final SyncQueueService _syncQueueService;
+  final OfflineManager _offlineManager;
 
-  VaultRepository(this._client);
+  VaultRepository(this._client, this._syncQueueService, this._offlineManager);
+
+  // Offline-First: Stream from Local DB
+  Stream<List<Map<String, dynamic>>> watchSavedRecipes(
+      {String? householdId}) async* {
+    final box = Hive.box<SavedRecipeModel>('saved_recipes');
+    yield _filterBox(box, householdId);
+    yield* box.watch().map((_) => _filterBox(box, householdId));
+  }
+
+  List<Map<String, dynamic>> _filterBox(
+      Box<SavedRecipeModel> box, String? householdId) {
+    final items = box.values.toList();
+    items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    return items
+        .where((r) => householdId != null
+            ? r.householdId == householdId
+            : r.householdId == null)
+        .map((e) {
+      // Reconstruct the 'row' expected by UI
+      // UI expects { 'id':..., 'recipe_id':..., 'title':..., 'recipe_json':... }
+      return {
+        'id': e.id,
+        'user_id': e.userId,
+        'recipe_id': e.recipeId,
+        'household_id': e.householdId,
+        'title': e.title,
+        'recipe_json': e.recipeJson,
+        'created_at': e.createdAt.toIso8601String(),
+        'is_shared': e.isShared,
+      };
+    }).toList();
+  }
+
+  StreamSubscription? _realtimeSubscription;
+
+  void subscribeToRealtime() {
+    if (_realtimeSubscription != null) return;
+
+    print("DEBUG Vault Realtime: Subscribing to saved_recipes stream...");
+    _realtimeSubscription = _client
+        .from('saved_recipes')
+        .stream(primaryKey: ['recipe_id']).listen((remoteItems) {
+      print(
+          "DEBUG Vault Realtime: Received ${remoteItems.length} items from stream");
+      _updateLocalBoxFromRemote(remoteItems);
+    }, onError: (e) {
+      print("Vault Realtime Error: $e");
+    });
+  }
+
+  void unsubscribeRealtime() {
+    _realtimeSubscription?.cancel();
+    _realtimeSubscription = null;
+  }
+
+  // Sync
+  Future<void> syncSavedRecipes() async {
+    try {
+      final response = await _client.from('saved_recipes').select();
+      final remoteItems = List<Map<String, dynamic>>.from(response);
+      await _updateLocalBoxFromRemote(remoteItems);
+
+      // Fallback: If sync succeeded, we're definitely online.
+      // Process any queued operations
+      print(
+          "DEBUG syncSavedRecipes: Sync succeeded, processing any pending queue...");
+      await _syncQueueService.processQueue();
+    } catch (e) {
+      print("DEBUG syncSavedRecipes: Sync failed (likely offline): $e");
+    }
+  }
+
+  Future<void> _updateLocalBoxFromRemote(
+      List<Map<String, dynamic>> remoteItems) async {
+    final box = Hive.box<SavedRecipeModel>('saved_recipes');
+
+    // Preserve local-only items (temp IDs) that haven't synced yet
+    final tempItems =
+        box.values.where((i) => i.id.startsWith('temp_')).toList();
+
+    await box.clear();
+    final models =
+        remoteItems.map((json) => SavedRecipeModel.fromJson(json)).toList();
+    await box.addAll(models);
+
+    // Deduplicate: Remove temp items that match incoming remote items (by title + household)
+    final uniqueTempItems = tempItems.where((temp) {
+      final isDuplicate = remoteItems.any((remote) {
+        final remoteTitle = (remote['title'] ?? '').toString().toLowerCase();
+        final tempTitle = temp.title.toLowerCase();
+        final remoteHousehold = remote['household_id'];
+        final tempHousehold = temp.householdId;
+
+        return remoteTitle == tempTitle && remoteHousehold == tempHousehold;
+      });
+      return !isDuplicate;
+    }).toList();
+
+    // Create NEW instances to avoid HiveObject key conflicts
+    final freshTempItems = uniqueTempItems
+        .map((old) => SavedRecipeModel(
+              id: old.id,
+              userId: old.userId,
+              recipeId: old.recipeId,
+              title: old.title,
+              recipeJson: old.recipeJson,
+              householdId: old.householdId,
+              createdAt: old.createdAt,
+              isShared: old.isShared,
+            ))
+        .toList();
+
+    await box.addAll(freshTempItems);
+  }
 
   Future<void> saveRecipe(Map<String, dynamic> recipe,
       {String? householdId}) async {
@@ -22,16 +151,50 @@ class VaultRepository {
 
     // Ensure we have a recipe_id
     final recipeId = recipe['id'] ?? const Uuid().v4();
-    // Update the recipe map just in case we need it later
     recipe['id'] = recipeId;
 
-    await _client.from('saved_recipes').upsert({
+    // Optimistic Hive
+    final box = Hive.box<SavedRecipeModel>('saved_recipes');
+    // We need a unique ID for Hive. New items don't have row ID 'id' yet.
+    // Use recipeId as temp ID? Or generate one.
+    // SavedRecipeModel.id is "String id" (Row ID).
+    final tempRowId = "temp_${const Uuid().v4()}";
+
+    final model = SavedRecipeModel(
+      id: tempRowId,
+      userId: userId,
+      recipeId: recipeId,
+      title: recipe['title'],
+      recipeJson: recipe,
+      householdId: householdId,
+      createdAt: DateTime.now(),
+      isShared: householdId != null, // simplified
+    );
+    box.add(model);
+
+    box.add(model);
+
+    final payload = {
       'user_id': userId,
-      'recipe_id': recipeId, // Satisfy Not Null constraint
+      'recipe_id': recipeId,
       'title': recipe['title'],
       'recipe_json': recipe,
       'household_id': householdId,
-    });
+    };
+
+    if (!_offlineManager.hasConnection) {
+      await _syncQueueService.queueOperation(
+          'saved_recipes', 'upsert', payload);
+      return;
+    }
+
+    try {
+      await _client.from('saved_recipes').upsert(payload);
+      await syncSavedRecipes();
+    } catch (_) {
+      await _syncQueueService.queueOperation(
+          'saved_recipes', 'upsert', payload);
+    }
   }
 
   Map<String, dynamic> generateLinkMetadata(String url, {String? title}) {
@@ -70,145 +233,188 @@ class VaultRepository {
   }
 
   Future<void> saveLink(String url, {String? title}) async {
-    // Legacy support or direct use
     final linkData = generateLinkMetadata(url, title: title);
     await saveRecipe(linkData);
   }
 
+  // Legacy fetch
   Future<List<Map<String, dynamic>>> getSavedRecipes(
       {String? householdId}) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return [];
-
-    var query = _client.from('saved_recipes').select();
-
-    if (householdId != null) {
-      // Household View: Show items belonging to this household
-      query = query.eq('household_id', householdId);
-    } else {
-      // Personal View: Show items belonging to user (and NOT household-exclusive if that's a thing,
-      // but usually personal means created by me or explicitly mine).
-      // Given previous Shopping Cart logic, we want explicit isolation.
-      // So fetch where user_id = me AND household_id IS NULL?
-      // OR fetch where user_id = me (regardless of sharing).
-      // "Shared with Household" usually means "I own it, but they can see it".
-      // If I "Share" it, does it move to the household list?
-      // In Shopping Cart, we had strict separation: Household List vs Personal List.
-      // If I share a recipe, `shareRecipe` sets `household_id`.
-      // If I view "Personal", should I see it?
-      // If I adhere to strict isolation: NO. It moved to Household.
-      // If I want "My Recipes" (all mine) + "Household" (everyone's).
-      // User asked for "Shared Cart" which was strict.
-      // Let's assume strict isolation for consistency first: Personal = household_id is NULL.
-      query = query.eq('user_id', userId).filter('household_id', 'is', 'null');
-    }
-
-    final response = await query.order('created_at', ascending: false);
-    return List<Map<String, dynamic>>.from(response);
+    await syncSavedRecipes();
+    final box = Hive.box<SavedRecipeModel>('saved_recipes');
+    return _filterBox(box, householdId);
   }
 
   Stream<List<Map<String, dynamic>>> getSavedRecipesStream(
       {String? householdId}) {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return Stream.value([]);
-
-    // Stream definition
-    // Note: 'order' might not be supported in stream builder directly in all SDK versions,
-    // but we can sort in Dart.
-    Stream<List<Map<String, dynamic>>> stream;
-
-    if (householdId != null) {
-      // Stream Household Items
-      stream = _client
-          .from('saved_recipes')
-          .stream(primaryKey: ['id']).eq('household_id', householdId);
-    } else {
-      // Stream Personal Items (user_id = me)
-      // Filter 'household_id' == null locally
-      stream = _client
-          .from('saved_recipes')
-          .stream(primaryKey: ['id'])
-          .eq('user_id', userId)
-          .map((data) =>
-              data.where((item) => item['household_id'] == null).toList());
-    }
-
-    // Apply sorting locally to ensure consistency
-    return stream.map((data) {
-      final sorted = List<Map<String, dynamic>>.from(data);
-      sorted.sort((a, b) {
-        final aTime = a['created_at'] as String? ?? '';
-        final bTime = b['created_at'] as String? ?? '';
-        return bTime.compareTo(aTime); // Descending
-      });
-      return sorted;
-    });
+    return watchSavedRecipes(householdId: householdId);
   }
 
   Future<void> deleteRecipe(String recipeId) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
 
-    await _client
-        .from('saved_recipes')
-        .delete()
-        .eq('user_id', userId)
-        .eq('recipe_id', recipeId);
+    print("DEBUG deleteRecipe: Attempting to delete recipe_id=$recipeId");
+
+    // Optimistic Delete
+    final box = Hive.box<SavedRecipeModel>('saved_recipes');
+
+    // Find by recipe_id
+    final matching = box.values.where((e) => e.recipeId == recipeId).toList();
+    print(
+        "DEBUG deleteRecipe: Found ${matching.length} matching items in Hive");
+    for (var m in matching) {
+      print(
+          "DEBUG deleteRecipe: Match - id=${m.id}, title=${m.title}, householdId=${m.householdId}");
+    }
+
+    final itemToDelete = matching.isNotEmpty
+        ? matching.first
+        : SavedRecipeModel(
+            id: '',
+            userId: '',
+            recipeId: '',
+            title: '',
+            recipeJson: {},
+            createdAt: DateTime.now());
+
+    if (itemToDelete.id.isNotEmpty && itemToDelete.isInBox) {
+      print("DEBUG deleteRecipe: Deleting from Hive - id=${itemToDelete.id}");
+      await itemToDelete.delete();
+    } else {
+      print("DEBUG deleteRecipe: Item not found in Hive or already deleted");
+    }
+
+    if (!_offlineManager.hasConnection) {
+      // Queue delete by recipe_id (id column doesn't exist in DB)
+      await _syncQueueService.queueOperation(
+          'saved_recipes', 'delete_by_recipe_id', {'recipe_id': recipeId});
+      return;
+    }
+
+    try {
+      // Delete by recipe_id - this is the functional identifier
+      // The DB table doesn't have an 'id' column, so we use recipe_id
+      print("DEBUG deleteRecipe: Attempting delete with recipe_id=$recipeId");
+      await _client.from('saved_recipes').delete().eq('recipe_id', recipeId);
+      print("DEBUG deleteRecipe: Server delete successful");
+    } catch (e) {
+      print("DEBUG deleteRecipe: Delete failed, queuing: $e");
+      // Queue for retry when online
+      await _syncQueueService.queueOperation(
+          'saved_recipes', 'delete_by_recipe_id', {'recipe_id': recipeId});
+    }
   }
 
-  Future<void> shareRecipe(String recipeId) async {
+  Future<void> shareRecipe(String recipeId, {String? householdId}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
 
-    // Get currentUser's profile to find household_id
-    final profile = await _client
-        .from('profiles')
-        .select('household_id')
-        .eq('id', userId)
-        .single();
+    String? targetHouseholdId = householdId;
 
-    final householdId = profile['household_id'];
+    if (targetHouseholdId == null) {
+      // Try to fetch household ID from cache first (offline-safe)
+      try {
+        final box = Hive.box('app_prefs');
+        final cached = box.get('household_data');
+        if (cached != null) {
+          targetHouseholdId = cached['id'];
+        }
+      } catch (_) {}
 
-    if (householdId == null) {
+      // If still null and online, try fetching from server
+      if (targetHouseholdId == null && _offlineManager.hasConnection) {
+        try {
+          final profile = await _client
+              .from('profiles')
+              .select('household_id')
+              .eq('id', userId)
+              .single();
+          targetHouseholdId = profile['household_id'];
+        } catch (_) {}
+      }
+    }
+
+    if (targetHouseholdId == null) {
       throw Exception("You are not part of a household.");
     }
 
-    // 1. Fetch Source Recipe
-    final source = await _client
-        .from('saved_recipes')
-        .select()
-        .eq('recipe_id', recipeId)
-        .single();
+    // 1. Fetch Source Recipe (Local or Remote)
+    Map<String, dynamic>? sourceData;
+    final box = Hive.box<SavedRecipeModel>('saved_recipes');
 
-    // 2. Check for Duplicate in Household
-    // We check if a recipe with the same title already exists in the household
-    final existing = await _client
-        .from('saved_recipes')
-        .select('recipe_id') // Changed from 'id' to 'recipe_id'
-        .eq('household_id', householdId)
-        .eq('title', source['title'])
-        .maybeSingle();
+    try {
+      // Try local first
+      final localSource = box.values.firstWhere((e) => e.recipeId == recipeId);
+      sourceData = {
+        'title': localSource.title,
+        'recipe_json': localSource.recipeJson
+      };
+    } catch (_) {}
 
-    if (existing != null) {
-      // It implies it's already shared/exists
+    if (sourceData == null && _offlineManager.hasConnection) {
+      final source = await _client
+          .from('saved_recipes')
+          .select()
+          .eq('recipe_id', recipeId)
+          .single();
+      sourceData = source;
+    }
+
+    if (sourceData == null) {
+      throw Exception("Recipe not found.");
+    }
+
+    // 2. Check for Duplicate (Local check is best effort offline)
+    // Offline: Check if we have a recipe in the box with householdId == targetHouseholdId AND title == sourceData['title']
+    final duplicate = box.values.any((e) =>
+        e.householdId == targetHouseholdId && e.title == sourceData!['title']);
+
+    if (duplicate) {
       throw Exception("Recipe already exists in the household.");
     }
+    // Note: Online check would be more robust against other users' adds, but this is okay.
 
     // 3. Create Copy
     final newRecipeId = const Uuid().v4();
-    final newJson = Map<String, dynamic>.from(source['recipe_json']);
-    newJson['id'] = newRecipeId; // Ensure internal ID matches
-    // Also ensure title duplication check doesn't fail on " V2" logic if we want specific logic?
-    // No, we just copy exact title.
+    final newJson = Map<String, dynamic>.from(sourceData['recipe_json']);
+    newJson['id'] = newRecipeId;
 
-    await _client.from('saved_recipes').insert({
+    final payload = {
       'user_id': userId,
       'recipe_id': newRecipeId,
-      'title': source['title'],
+      'title': sourceData['title'],
       'recipe_json': newJson,
-      'household_id': householdId,
+      'household_id': targetHouseholdId,
       'is_shared': true,
-    });
+    };
+
+    // Optimistic Add to Hive
+    final tempRowId = "temp_${const Uuid().v4()}";
+    final model = SavedRecipeModel(
+      id: tempRowId,
+      userId: userId, // Current user is owner of the shared copy? Yes.
+      recipeId: newRecipeId,
+      title: sourceData['title'],
+      recipeJson: newJson,
+      householdId: targetHouseholdId,
+      createdAt: DateTime.now(),
+      isShared: true,
+    );
+    box.add(model);
+
+    if (!_offlineManager.hasConnection) {
+      await _syncQueueService.queueOperation(
+          'saved_recipes', 'insert', payload);
+      return;
+    }
+
+    try {
+      await _client.from('saved_recipes').insert(payload);
+    } catch (_) {
+      await _syncQueueService.queueOperation(
+          'saved_recipes', 'insert', payload);
+    }
   }
 
   Future<String?> findRecipeIdByTitle(String title) async {
@@ -248,19 +454,29 @@ class VaultRepository {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
 
-    // Insert into recipe_shares
-    // 'token' is generated by default, so we select it back
-    final response = await _client
-        .from('recipe_shares')
-        .insert({
-          'created_by': userId,
-          'snapshot': snapshot,
-          'original_recipe_id': snapshot['id'], // Optional tracking
-        })
-        .select('token')
-        .single();
+    // Link sharing requires server to generate a token, cannot work offline
+    if (!_offlineManager.hasConnection) {
+      throw Exception('No connection. Please check your internet');
+    }
 
-    return response['token'] as String;
+    try {
+      // Insert into recipe_shares
+      // 'token' is generated by default, so we select it back
+      final response = await _client
+          .from('recipe_shares')
+          .insert({
+            'created_by': userId,
+            'snapshot': snapshot,
+            'original_recipe_id': snapshot['id'], // Optional tracking
+          })
+          .select('token')
+          .single();
+
+      return response['token'] as String;
+    } catch (e) {
+      throw Exception(
+          'Failed to create share link. Please check your connection.');
+    }
   }
 
   // Fetch shared recipe by token (Public/RPC)

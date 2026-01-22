@@ -24,11 +24,11 @@ final shoppingSyncEnabledProvider =
 
 typedef _$ShoppingSyncEnabled = AutoDisposeNotifier<bool>;
 String _$shoppingControllerHash() =>
-    r'c59555a96d39ca400e4a087d3846179b04573936';
+    r'b7684d23018fb997b44218ae5c0e3e2ecf7f164d';
 
 /// See also [ShoppingController].
 @ProviderFor(ShoppingController)
-final shoppingControllerProvider = AutoDisposeAsyncNotifierProvider<
+final shoppingControllerProvider = AutoDisposeStreamNotifierProvider<
     ShoppingController, List<Map<String, dynamic>>>.internal(
   ShoppingController.new,
   name: r'shoppingControllerProvider',
@@ -40,6 +40,6 @@ final shoppingControllerProvider = AutoDisposeAsyncNotifierProvider<
 );
 
 typedef _$ShoppingController
-    = AutoDisposeAsyncNotifier<List<Map<String, dynamic>>>;
+    = AutoDisposeStreamNotifier<List<Map<String, dynamic>>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

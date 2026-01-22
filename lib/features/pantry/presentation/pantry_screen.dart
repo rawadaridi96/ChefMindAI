@@ -180,8 +180,8 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
                   color: AppColors.zestyLime,
                   backgroundColor: AppColors.deepCharcoal,
                   onRefresh: () async {
-                    ref.invalidate(pantryControllerProvider);
-                    await Future.delayed(const Duration(milliseconds: 500));
+                    // Trigger manual sync
+                    await ref.read(pantryControllerProvider.notifier).refresh();
                   },
                   child: pantryState.when(
                     data: (items) => _buildList(items),

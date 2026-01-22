@@ -7,12 +7,11 @@ part of 'shopping_repository.dart';
 // **************************************************************************
 
 String _$shoppingRepositoryHash() =>
-    r'01d6c165e138a90f7e5b9d17eb9f810b8b4fbd5a';
+    r'5ae05cd06ff8124a7850df5c708253d71cb3e136';
 
 /// See also [shoppingRepository].
 @ProviderFor(shoppingRepository)
-final shoppingRepositoryProvider =
-    AutoDisposeProvider<ShoppingRepository>.internal(
+final shoppingRepositoryProvider = Provider<ShoppingRepository>.internal(
   shoppingRepository,
   name: r'shoppingRepositoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -22,6 +21,6 @@ final shoppingRepositoryProvider =
   allTransitiveDependencies: null,
 );
 
-typedef ShoppingRepositoryRef = AutoDisposeProviderRef<ShoppingRepository>;
+typedef ShoppingRepositoryRef = ProviderRef<ShoppingRepository>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
