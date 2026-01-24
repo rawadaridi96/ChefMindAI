@@ -48,8 +48,8 @@ class _EntryOrchestratorState extends ConsumerState<EntryOrchestrator> {
     // Listen for global success message (e.g. "Welcome back!")
     // If it arrives, it means we successfully logged in/signed up.
     // If we were pushed (Navigator.canPop), we should close this screen to reveal the previous one (which will also show the toast).
-    ref.listen<String?>(postLoginMessageProvider, (previous, next) {
-      if (next != null && next.isNotEmpty) {
+    ref.listen<AuthMessage?>(postLoginMessageProvider, (previous, next) {
+      if (next != null) {
         if (Navigator.canPop(context)) {
           Navigator.pop(context);
         }

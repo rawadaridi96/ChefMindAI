@@ -9,6 +9,7 @@ import '../../auth/presentation/auth_state_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -61,7 +62,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
 
     if (newName.isEmpty) {
-      NanoToast.showError(context, "Name cannot be empty");
+      NanoToast.showError(
+          context, AppLocalizations.of(context)!.settingsNameEmpty);
       return;
     }
 
@@ -86,18 +88,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           password: newPassword.isNotEmpty ? newPassword : null);
 
       if (mounted) {
-        NanoToast.showSuccess(context, "Profile updated successfully");
+        NanoToast.showSuccess(
+            context, AppLocalizations.of(context)!.settingsProfileUpdated);
         Navigator.pop(context);
       }
     } on AuthException catch (e) {
       if (mounted) {
-        NanoToast.showError(context, e.message);
+        String msg = e.message;
+        if (msg.contains("Session from session_id claim")) {
+          msg = AppLocalizations.of(context)!.errorSessionExpired;
+        } else if (msg.contains("session is invalid")) {
+          msg = AppLocalizations.of(context)!.errorSessionInvalid;
+        }
+        NanoToast.showError(context, msg);
       }
     } catch (e) {
       // Catch unexpected errors
       if (mounted) {
         final error = e.toString().replaceAll('Exception:', '').trim();
-        NanoToast.showError(context, "Update failed: $error");
+        NanoToast.showError(context,
+            "${AppLocalizations.of(context)!.subscriptionPlanUpdateFailed}: $error");
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -128,8 +138,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ListTile(
               leading:
                   const Icon(Icons.photo_library, color: AppColors.zestyLime),
-              title: const Text("Choose from Library",
-                  style: TextStyle(color: Colors.white)),
+              title: Text(
+                  AppLocalizations.of(context)!.settingsChooseFromLibrary,
+                  style: const TextStyle(color: Colors.white)),
               onTap: () async {
                 Navigator.pop(sheetContext); // Pop the sheet
                 final picker = ImagePicker();
@@ -145,12 +156,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           .uploadProfilePicture(File(pickedFile.path));
 
                       if (mounted)
-                        NanoToast.showSuccess(context,
-                            "Profile picture updated"); // Use widget context
+                        NanoToast.showSuccess(
+                            context,
+                            AppLocalizations.of(context)!
+                                .settingsProfilePicUpdated); // Use widget context
                     } catch (e) {
                       if (mounted)
                         NanoToast.showError(context,
-                            "Upload failed: ${e.toString().replaceAll('StorageException:', '').trim()}"); // Use widget context
+                            "${AppLocalizations.of(context)!.settingsUploadFailed}: ${e.toString().replaceAll('StorageException:', '').trim()}"); // Use widget context
                     } finally {
                       if (mounted) setState(() => _isLoading = false);
                     }
@@ -164,8 +177,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ListTile(
               leading:
                   const Icon(Icons.delete_outline, color: AppColors.errorRed),
-              title: const Text("Remove Photo",
-                  style: TextStyle(color: AppColors.errorRed)),
+              title: Text(AppLocalizations.of(context)!.settingsRemovePhoto,
+                  style: const TextStyle(color: AppColors.errorRed)),
               onTap: () async {
                 Navigator.pop(context);
                 setState(() => _isLoading = true);
@@ -174,10 +187,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       .read(authControllerProvider.notifier)
                       .removeProfilePicture();
                   if (mounted)
-                    NanoToast.showSuccess(context, "Profile picture removed");
+                    NanoToast.showSuccess(
+                        context,
+                        AppLocalizations.of(context)!
+                            .settingsProfilePicRemoved);
                 } catch (e) {
                   if (mounted)
-                    NanoToast.showError(context, "Failed to remove image");
+                    NanoToast.showError(context,
+                        AppLocalizations.of(context)!.settingsRemoveFailed);
                 } finally {
                   if (mounted) setState(() => _isLoading = false);
                 }
@@ -199,8 +216,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.deepCharcoal,
       appBar: AppBar(
-        title: const Text("Edit Profile",
-            style: TextStyle(
+        title: Text(AppLocalizations.of(context)!.settingsEditProfile,
+            style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600)),
@@ -219,8 +236,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     height: 16,
                     child: CircularProgressIndicator(
                         color: AppColors.zestyLime, strokeWidth: 2))
-                : const Text("Save",
-                    style: TextStyle(
+                : Text(AppLocalizations.of(context)!.settingsSave,
+                    style: const TextStyle(
                         color: AppColors.zestyLime,
                         fontSize: 16,
                         fontWeight: FontWeight.bold)),
@@ -272,28 +289,37 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            _buildTextField("Full Name", _nameController,
+            _buildTextField(
+                AppLocalizations.of(context)!.authFullName, _nameController,
                 textCapitalization: TextCapitalization.words),
             const SizedBox(height: 16),
-            _buildTextField("Email", _emailController,
-                readOnly: true, icon: Icons.lock_outline),
+            _buildTextField(
+                AppLocalizations.of(context)!.settingsUserDetailsEmail,
+                _emailController,
+                readOnly: true,
+                icon: Icons.lock_outline),
             const SizedBox(height: 16),
             const Divider(color: Colors.white10, height: 32),
             const SizedBox(height: 8),
-            const Text("Security",
-                style: TextStyle(
+            Text(AppLocalizations.of(context)!.settingsSecurity,
+                style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 14,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _buildTextField("New Password", _passwordController,
-                isPassword: true, hint: "Leave blank to keep current"),
+            _buildTextField(AppLocalizations.of(context)!.settingsNewPassword,
+                _passwordController,
+                isPassword: true,
+                hint: AppLocalizations.of(context)!.settingsLeaveBlank),
             const SizedBox(height: 16), // Spacing
-            _buildTextField("Confirm Password", _confirmPasswordController,
-                isPassword: true, hint: "Re-enter new password"),
+            _buildTextField(
+                AppLocalizations.of(context)!.settingsConfirmPassword,
+                _confirmPasswordController,
+                isPassword: true,
+                hint: AppLocalizations.of(context)!.settingsReEnterPassword),
             const SizedBox(height: 8),
-            const Text("Enter a new password only if you want to change it.",
-                style: TextStyle(color: Colors.white38, fontSize: 12)),
+            Text(AppLocalizations.of(context)!.settingsEnterNewPassword,
+                style: const TextStyle(color: Colors.white38, fontSize: 12)),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/widgets/nano_toast.dart';
@@ -19,7 +20,6 @@ import '../../core/widgets/glass_container.dart';
 
 import 'widgets/pulse_microphone_button.dart';
 
-import '../import/presentation/import_controller.dart';
 import '../recipes/presentation/widgets/pantry_generator_widget.dart';
 import 'presentation/history_controller.dart';
 import 'dart:ui'; // For ImageFilter
@@ -42,7 +42,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final msg = ref.read(postLoginMessageProvider);
       if (msg != null && mounted) {
-        NanoToast.showSuccess(context, msg);
+        String message = '';
+        final l10n = AppLocalizations.of(context)!;
+        switch (msg.key) {
+          case 'authWelcomeBack':
+            message = l10n.authWelcomeBack(msg.args.first);
+            break;
+          case 'authAccountCreated':
+            message = l10n.authAccountCreated;
+            break;
+          case 'authWelcomeGuest':
+            message = l10n.authWelcomeGuest;
+            break;
+          case 'authSignedInGoogle':
+            message = l10n.authSignedInGoogle;
+            break;
+          case 'authSignedInApple':
+            message = l10n.authSignedInApple;
+            break;
+          default:
+            message = msg.key;
+        }
+        NanoToast.showSuccess(context, message);
         // Clear it so it doesn't show again on hot reload or re-mount
         ref.read(postLoginMessageProvider.notifier).state = null;
       }
@@ -63,9 +84,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<String?>(postLoginMessageProvider, (previous, next) {
+    ref.listen<AuthMessage?>(postLoginMessageProvider, (previous, next) {
       if (next != null) {
-        NanoToast.showSuccess(context, next);
+        String message = '';
+        final l10n = AppLocalizations.of(context)!;
+        switch (next.key) {
+          case 'authWelcomeBack':
+            message = l10n.authWelcomeBack(next.args.first);
+            break;
+          case 'authAccountCreated':
+            message = l10n.authAccountCreated;
+            break;
+          case 'authWelcomeGuest':
+            message = l10n.authWelcomeGuest;
+            break;
+          case 'authSignedInGoogle':
+            message = l10n.authSignedInGoogle;
+            break;
+          case 'authSignedInApple':
+            message = l10n.authSignedInApple;
+            break;
+          default:
+            message = next.key;
+        }
+        NanoToast.showSuccess(context, message);
         ref.read(postLoginMessageProvider.notifier).state = null;
       }
     });
@@ -107,13 +149,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           currentIndex: _currentIndex,
           type: BottomNavigationBarType.fixed, // Needed for 4 items
           onTap: (index) => setState(() => _currentIndex = index),
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.kitchen), label: 'Pantry'),
+          items: [
             BottomNavigationBarItem(
-                icon: Icon(Icons.menu_book), label: 'Recipes'),
+                icon: const Icon(Icons.home),
+                label: AppLocalizations.of(context)!.navHome),
             BottomNavigationBarItem(
-                icon: Icon(Icons.shopping_cart), label: 'Cart'),
+                icon: const Icon(Icons.kitchen),
+                label: AppLocalizations.of(context)!.navPantry),
+            BottomNavigationBarItem(
+                icon: const Icon(Icons.menu_book),
+                label: AppLocalizations.of(context)!.navRecipes),
+            BottomNavigationBarItem(
+                icon: const Icon(Icons.shopping_cart),
+                label: AppLocalizations.of(context)!.navCart),
           ],
         ),
       ),
@@ -165,10 +213,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             */
-            IconButton(
-              icon: const Icon(Icons.link, color: AppColors.zestyLime),
-              onPressed: _showUrlInputDialog,
-            ),
+
             IconButton(
               icon: const Icon(Icons.diamond_outlined,
                   color: AppColors.zestyLime),
@@ -209,9 +254,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'What are we cooking?',
-                  style: TextStyle(
+                Text(
+                  AppLocalizations.of(context)!.homePrompt,
+                  style: const TextStyle(
                     color: AppColors.electricWhite,
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -266,7 +311,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        "Discover 🌍",
+                        AppLocalizations.of(context)!.homeDiscoverMode,
                         style: TextStyle(
                             color: !_isPantryMode
                                 ? AppColors.deepCharcoal
@@ -289,7 +334,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        "My Pantry 🥬",
+                        AppLocalizations.of(context)!.homePantryMode,
                         style: TextStyle(
                             color: _isPantryMode
                                 ? AppColors.deepCharcoal
@@ -352,7 +397,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      "Discover 🌍",
+                      AppLocalizations.of(context)!.homeDiscoverMode,
                       style: TextStyle(
                           color: !_isPantryMode
                               ? AppColors.deepCharcoal
@@ -375,7 +420,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      "My Pantry 🥬",
+                      AppLocalizations.of(context)!.homePantryMode,
                       style: TextStyle(
                           color: _isPantryMode
                               ? AppColors.deepCharcoal
@@ -480,9 +525,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: TextField(
                   controller: _searchController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. Healthy protein snack...',
-                    hintStyle: TextStyle(color: Colors.white38),
+                  decoration: InputDecoration(
+                    hintText: AppLocalizations.of(context)!.homeSearchHint,
+                    hintStyle: const TextStyle(color: Colors.white38),
                     border: InputBorder.none,
                   ),
                   textCapitalization: TextCapitalization.sentences,
@@ -526,8 +571,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              child: const Text('Generate with AI',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Text(AppLocalizations.of(context)!.homeGenerateButton,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
         ),
@@ -538,7 +584,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _performSearch(WidgetRef ref, String query) {
     if (query.trim().isEmpty) {
-      NanoToast.showInfo(context, "Tell me what to cook first! 🍳");
+      NanoToast.showInfo(
+          context, AppLocalizations.of(context)!.homeEmptyPrompt);
       return;
     }
 
@@ -570,57 +617,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Switch to Recipes tab
     setState(() => _currentIndex = 2);
-  }
-
-  void _showUrlInputDialog() {
-    final TextEditingController urlController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.deepCharcoal,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Import from Link",
-            style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: urlController,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: "Paste recipe URL here...",
-            hintStyle: const TextStyle(color: Colors.white38),
-            enabledBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.white24),
-                borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: AppColors.zestyLime),
-                borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                const Text("Cancel", style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final url = urlController.text.trim();
-              if (url.isNotEmpty) {
-                Navigator.pop(context); // Close dialog
-                // Trigger Import
-                ref.read(importControllerProvider.notifier).analyzeLink(url);
-                // Optional: Navigate to recipes tab or show loading?
-                // The import controller usually handles navigation or toast.
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.zestyLime,
-              foregroundColor: AppColors.deepCharcoal,
-            ),
-            child: const Text("Import"),
-          )
-        ],
-      ),
-    );
   }
 
   Widget _buildSkillBadges() {
@@ -711,7 +707,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 loading: () => const Center(
                     child: CircularProgressIndicator(color: Colors.white24)),
                 error: (err, stack) => Center(
-                    child: Text("Error: $err",
+                    child: Text(
+                        AppLocalizations.of(context)!.homeError(err.toString()),
                         style: const TextStyle(color: Colors.red))),
                 data: (history) {
                   return Column(
@@ -734,9 +731,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            "Recent Ideas",
-                            style: TextStyle(
+                          Text(
+                            AppLocalizations.of(context)!.homeRecentIdeas,
+                            style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold),
@@ -754,10 +751,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     backgroundColor: const Color(0xFF202020),
-                                    content: const Text("History cleared",
-                                        style: TextStyle(color: Colors.white)),
+                                    content: Text(
+                                        AppLocalizations.of(context)!
+                                            .homeHistoryCleared,
+                                        style: const TextStyle(
+                                            color: Colors.white)),
                                     action: SnackBarAction(
-                                      label: "UNDO",
+                                      label: AppLocalizations.of(context)!
+                                          .homeUndo,
                                       textColor: const Color(
                                           0xFFD1FF26), // AppColors.zestyLime
                                       onPressed: () {
@@ -775,7 +776,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 foregroundColor:
                                     Colors.redAccent.withOpacity(0.8),
                               ),
-                              child: const Text("Clear All"),
+                              child: Text(
+                                  AppLocalizations.of(context)!.homeClearAll),
                             ),
                         ],
                       ),
@@ -834,6 +836,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     'Fancy'
   ];
 
+  String _getLocalizedMood(BuildContext context, String mood) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (mood) {
+      case 'Comfort':
+        return l10n.homeMoodComfort;
+      case 'Date Night':
+        return l10n.homeMoodDateNight;
+      case 'Quick & Easy':
+        return l10n.homeMoodQuickEasy;
+      case 'Energetic':
+        return l10n.homeMoodEnergetic;
+      case 'Adventurous':
+        return l10n.homeMoodAdventurous;
+      case 'Fancy':
+        return l10n.homeMoodFancy;
+      default:
+        return mood;
+    }
+  }
+
   void _showMoodSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -857,8 +879,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Set the Mood",
-                        style: TextStyle(
+                    Text(AppLocalizations.of(context)!.homeSetMood,
+                        style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.bold)),
@@ -868,8 +890,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           setState(() => _mood = null);
                           Navigator.pop(context);
                         },
-                        child: const Text("Clear",
-                            style: TextStyle(color: Colors.white54)),
+                        child: Text(AppLocalizations.of(context)!.homeClear,
+                            style: const TextStyle(color: Colors.white54)),
                       )
                   ],
                 ),
@@ -914,7 +936,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(mood,
+                            Text(_getLocalizedMood(context, mood),
                                 style: TextStyle(
                                     color: isSelected
                                         ? AppColors.deepCharcoal
@@ -970,10 +992,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 onChanged: (val) {
                   if (!isPremium) {
                     PremiumPaywall.show(context,
-                        featureName: "Advanced Dietary Intelligence",
-                        message:
-                            "Unlock personalized dietary AI with our Sous Chef plan.",
-                        ctaLabel: "Upgrade to Sous or Executive Chef");
+                        featureName:
+                            AppLocalizations.of(context)!.premiumFeatureADI,
+                        message: AppLocalizations.of(context)!.premiumADISous,
+                        ctaLabel:
+                            AppLocalizations.of(context)!.premiumUpgradeToSous);
                     return;
                   }
                   if (!hasPreferences) {
@@ -989,10 +1012,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               onTap: () {
                 if (!isPremium) {
                   PremiumPaywall.show(context,
-                      featureName: "Advanced Dietary Intelligence",
-                      message:
-                          "Unlock personalized dietary AI with our Sous Chef plan.",
-                      ctaLabel: "Upgrade to Sous or Executive Chef");
+                      featureName:
+                          AppLocalizations.of(context)!.premiumFeatureADI,
+                      message: AppLocalizations.of(context)!.premiumADISous,
+                      ctaLabel:
+                          AppLocalizations.of(context)!.premiumUpgradeToSous);
                   return;
                 }
                 if (!hasPreferences) {
@@ -1005,7 +1029,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Row(
                 children: [
                   Text(
-                    "Dietary Profile",
+                    AppLocalizations.of(context)!.homeDietaryProfile,
                     style: TextStyle(
                       color: (isEnabled && _applyDietaryProfile)
                           ? Colors.white

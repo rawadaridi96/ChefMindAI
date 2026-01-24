@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/fun_loading_tips.dart';
@@ -9,6 +12,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
 import '../../../../core/widgets/network_error_view.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'import_recipe_dialog.dart';
 
 import 'recipe_controller.dart';
 import 'vault_controller.dart';
@@ -27,6 +32,7 @@ class RecipesScreen extends ConsumerStatefulWidget {
 class _RecipesScreenState extends ConsumerState<RecipesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late StreamSubscription _intentDataStreamSubscription;
 
   bool _showVaultLinks = false;
 
@@ -47,10 +53,111 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
         _vaultSearchQuery = _vaultSearchController.text.toLowerCase().trim();
       });
     });
+
+    // Share Intent Listener (Running App)
+    _intentDataStreamSubscription = ReceiveSharingIntent.instance
+        .getMediaStream()
+        .listen((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        // Typically URLs come as text/plain. Wait, 'getMediaStream' vs 'getMediaStream'?
+        // The plugin changed in 1.8.x. Let's check docs logic.
+        // Usually text shares come via text stream, but URL might be treated as text.
+        // Let's print to debug.
+      }
+    }, onError: (err) {
+      debugPrint("getMediaStream error: $err");
+    });
+
+    // For text/url shares (most common for social links)
+    // Note: older versions used getTextStream, newer unifies or separates?
+    // Let's assume standard separation for safety.
+    // Actually, receive_sharing_intent ^1.8.1 uses `getMediaStream` for everything in newer generic types?
+    // Wait, let's verify standard usage for URL. URLs usually come as Text.
+    // I will try to listen to both or just text if available.
+    // Checking pub.dev patterns... 1.8.1 has `getMediaStream` returning `SharedMediaFile` which contains path/type.
+    // Usually URLs come as text/plain.
+
+    // STARTUP Intent (Cold Start)
+    ReceiveSharingIntent.instance
+        .getInitialMedia()
+        .then((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        _handleSharedFiles(value);
+      }
+    });
+
+    // Stream (Background/Resume)
+    _intentDataStreamSubscription = ReceiveSharingIntent.instance
+        .getMediaStream()
+        .listen((List<SharedMediaFile> value) {
+      _handleSharedFiles(value);
+    }, onError: (err) {
+      debugPrint("getIntentDataStream error: $err");
+    });
+  }
+
+  // Deduplication state for share intents
+  String? _lastSharedPath;
+  DateTime? _lastSharedTime;
+
+  void _handleSharedFiles(List<SharedMediaFile> files) {
+    debugPrint("Trace: _handleSharedFiles called with ${files.length} files");
+    // 1. Find text/url content
+    final textFile = files.firstWhere(
+        (f) => f.type == SharedMediaType.text || f.type == SharedMediaType.url,
+        orElse: () => SharedMediaFile(path: '', type: SharedMediaType.text));
+
+    if (textFile.path.isNotEmpty) {
+      debugPrint("Trace: Processing share path: ${textFile.path}");
+      // 2. Deduplication Check
+      if (_lastSharedPath == textFile.path &&
+          _lastSharedTime != null &&
+          DateTime.now().difference(_lastSharedTime!) <
+              const Duration(seconds: 3)) {
+        debugPrint("Ignore: Duplicate share intent filtered: ${textFile.path}");
+        return;
+      }
+
+      // 3. Update Tracker
+      _lastSharedPath = textFile.path;
+      _lastSharedTime = DateTime.now();
+
+      // 4. Show Dialog
+      _showImportDialog(textFile.path);
+    } else {
+      debugPrint("Trace: No text/url content found in share intent");
+    }
+  }
+
+  void _showImportDialog([String? url]) async {
+    debugPrint("Trace: _showImportDialog called. URL present: ${url != null}");
+    final result = await showDialog(
+      context: context,
+      builder: (context) => ImportRecipeDialog(initialUrl: url),
+    );
+
+    debugPrint(
+        "Trace: Import Dialog returned result type: ${result?.runtimeType}");
+
+    if (result != null && result is Map<String, dynamic>) {
+      // Navigate to details screen with the parsed recipe (unsaved)
+      if (!mounted) return;
+      debugPrint("Trace: Pushing RecipeDetailScreen from RecipesScreen");
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => RecipeDetailScreen(
+                  recipe: result,
+                  isSharedPreview:
+                      true, // We might need this flag to show 'Save' button instead of 'Edit'
+                )),
+      );
+    }
   }
 
   @override
   void dispose() {
+    _intentDataStreamSubscription.cancel();
     _tabController.dispose();
     _vaultSearchController.dispose();
     super.dispose();
@@ -68,17 +175,49 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
         if (next.error is PremiumLimitReachedException) {
           final e = next.error as PremiumLimitReachedException;
 
-          String? ctaLabel;
-          ctaLabel = (e.featureName == 'Daily Recipe Limit' ||
-                  e.featureName == 'Advanced Intelligence')
-              ? 'Upgrade to Sous or Executive Chef'
-              : e.featureName.contains('Executive')
-                  ? 'Upgrade to Executive Chef'
-                  : 'Upgrade to Sous or Executive Chef'; // Default to versatile upgrade
+          String message = e.message;
+          String ctaLabel =
+              AppLocalizations.of(context)!.premiumUpgradeToSousOrExecutive;
+
+          switch (e.type) {
+            case PremiumLimitType.vaultFull:
+              message = AppLocalizations.of(context)!.premiumVaultFull;
+              break;
+            case PremiumLimitType.dailyShareLimit:
+              message = AppLocalizations.of(context)!.premiumDailyShareLimit;
+              break;
+            case PremiumLimitType.executiveFeatureMood:
+              message = AppLocalizations.of(context)!.premiumMoodExecutive;
+              ctaLabel =
+                  AppLocalizations.of(context)!.premiumUpgradeToExecutive;
+              break;
+            case PremiumLimitType.sousFeatureADI:
+              message = AppLocalizations.of(context)!.premiumADISous;
+              ctaLabel = AppLocalizations.of(context)!.premiumUpgradeToSous;
+              break;
+            case PremiumLimitType.dailyRecipeLimit:
+              // Extract limit from original message if needed, or pass it via exception?
+              // The exception message was constructed with $limit.
+              // Ideally we pass limit in exception payload. For now, let's parse or use a generic one?
+              // Or better, let's regex the number?
+              // "You've reached your daily limit of 5 recipes."
+              final limitMatch = RegExp(r'(\d+)').firstMatch(e.message);
+              final limit = limitMatch?.group(1) ?? '5';
+              message =
+                  AppLocalizations.of(context)!.premiumDailyRecipeLimit(limit);
+              break;
+            default:
+              // Fallback to existing logic if any
+              if (e.featureName.contains('Executive')) {
+                ctaLabel =
+                    AppLocalizations.of(context)!.premiumUpgradeToExecutive;
+              }
+              break;
+          }
 
           PremiumPaywall.show(
             context,
-            message: e.message,
+            message: message,
             featureName: e.featureName,
             ctaLabel: ctaLabel,
           );
@@ -108,6 +247,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton(
+        heroTag: "import_fab_unique",
+        // NEW: Import Button
+        onPressed: () => _showImportDialog(),
+        backgroundColor: AppColors.zestyLime,
+        child: const Icon(Icons.add_link, color: AppColors.deepCharcoal),
+      ),
       appBar: AppBar(
         title: BrandLogo(
           fontSize: 24,
@@ -127,8 +273,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                   // 1. Check Household
                   final householdState = ref.read(householdControllerProvider);
                   if (householdState.valueOrNull == null) {
-                    NanoToast.showInfo(
-                        context, "Join a household in Settings to sync.");
+                    NanoToast.showInfo(context,
+                        AppLocalizations.of(context)!.vaultJoinHousehold);
                     return;
                   }
 
@@ -136,8 +282,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                       !isSyncEnabled;
                 },
                 tooltip: isSyncEnabled
-                    ? "Viewing Household Vault"
-                    : "Viewing Personal Vault",
+                    ? AppLocalizations.of(context)!.vaultViewingHousehold
+                    : AppLocalizations.of(context)!.vaultViewingPersonal,
               ),
         actions: [
           if (isSyncEnabled && _tabController.index == 1)
@@ -241,9 +387,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                 indicatorColor: AppColors.zestyLime,
                 labelColor: AppColors.zestyLime,
                 unselectedLabelColor: Colors.white54,
-                tabs: const [
-                  Tab(text: 'Current Results'),
-                  Tab(text: 'The Vault'),
+                tabs: [
+                  Tab(
+                      text:
+                          AppLocalizations.of(context)!.recipesCurrentResults),
+                  Tab(text: AppLocalizations.of(context)!.recipesVault),
                 ],
               ),
             ],
@@ -289,9 +437,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
           child: state.when(
             data: (recipes) {
               if (recipes.isEmpty) {
-                return const Center(
-                    child: Text('Generate some magic from Home!',
-                        style: TextStyle(color: Colors.white54)));
+                return Center(
+                    child: Text(
+                        AppLocalizations.of(context)!.recipesGenerateSomeMagic,
+                        style: const TextStyle(color: Colors.white54)));
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
@@ -393,8 +542,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                                               : Colors.white24)),
                                   child: Text(
                                     missingCount == 0
-                                        ? 'Available!'
-                                        : '$haveCount/$totalIngredients Have',
+                                        ? AppLocalizations.of(context)!
+                                            .recipesAvailable
+                                        : AppLocalizations.of(context)!
+                                            .recipesHaveCount(
+                                                haveCount, totalIngredients),
                                     style: TextStyle(
                                         color: missingCount == 0
                                             ? AppColors.zestyLime
@@ -430,11 +582,12 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                               ),
 
                             const SizedBox(height: 12),
-                            const Align(
+                            Align(
                                 alignment: Alignment.centerRight,
                                 child: Text(
-                                  "Tap for details & instructions >",
-                                  style: TextStyle(
+                                  AppLocalizations.of(context)!
+                                      .recipesTapForDetails,
+                                  style: const TextStyle(
                                       color: Colors.white30,
                                       fontSize: 12,
                                       fontStyle: FontStyle.italic),
@@ -453,9 +606,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                 return NetworkErrorView(
                     onRetry: () => ref.invalidate(recipeControllerProvider));
               }
-              return const Center(
-                  child: Text('Generate some magic!',
-                      style: TextStyle(color: Colors.white54)));
+              return Center(
+                  child: Text(
+                      AppLocalizations.of(context)!.recipesGenerateSomeMagic,
+                      style: const TextStyle(color: Colors.white54)));
             },
             loading: () => const SizedBox(),
           ),
@@ -505,9 +659,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                     child: TextField(
                       controller: _vaultSearchController,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        hintText: 'Search stored recipes...',
-                        hintStyle: TextStyle(color: Colors.white38),
+                      decoration: InputDecoration(
+                        hintText: AppLocalizations.of(context)!.generalSearch,
+                        hintStyle: const TextStyle(color: Colors.white38),
                         border: InputBorder.none,
                         isDense: true,
                       ),
@@ -559,7 +713,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                                     : Colors.white54),
                             const SizedBox(width: 8),
                             Text(
-                              "Recipes",
+                              AppLocalizations.of(context)!.navRecipes,
                               style: TextStyle(
                                 color: !_showVaultLinks
                                     ? AppColors.deepCharcoal
@@ -595,7 +749,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                                     : Colors.white54),
                             const SizedBox(width: 8),
                             Text(
-                              "Links",
+                              AppLocalizations.of(context)!.recipesLinks,
                               style: TextStyle(
                                 color: _showVaultLinks
                                     ? AppColors.deepCharcoal
@@ -660,8 +814,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                           child: Center(
                               child: Text(
                                   _showVaultLinks
-                                      ? 'No saved links yet.'
-                                      : 'No saved recipes yet.',
+                                      ? AppLocalizations.of(context)!
+                                          .vaultNoLinks
+                                      : AppLocalizations.of(context)!
+                                          .vaultNoRecipes,
                                   style:
                                       const TextStyle(color: Colors.white54))),
                         ),
@@ -696,7 +852,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                                   backgroundColor: AppColors.errorRed,
                                   foregroundColor: Colors.white,
                                   icon: Icons.delete_outline,
-                                  label: 'Delete',
+                                  label: AppLocalizations.of(context)!
+                                      .actionDelete,
                                 ),
                               ],
                             ),
@@ -705,11 +862,25 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                               child: InkWell(
                                 onTap: () {
                                   if (isLink) {
-                                    final urlText = recipe['url'];
-                                    if (urlText != null) {
-                                      final uri = Uri.parse(urlText);
-                                      launchUrl(uri,
-                                          mode: LaunchMode.externalApplication);
+                                    // Smart Link Check: If we have ingredients, open Detail View
+                                    if (recipe['ingredients'] != null &&
+                                        (recipe['ingredients'] as List)
+                                            .isNotEmpty) {
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                                  RecipeDetailScreen(
+                                                      recipe: recipe)));
+                                    } else {
+                                      // Standard Link: Launch URL
+                                      final urlText = recipe['url'];
+                                      if (urlText != null) {
+                                        final uri = Uri.parse(urlText);
+                                        launchUrl(uri,
+                                            mode:
+                                                LaunchMode.externalApplication);
+                                      }
                                     }
                                   } else {
                                     Navigator.push(
@@ -723,26 +894,60 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                                   padding: const EdgeInsets.all(12),
                                   child: Row(
                                     children: [
-                                      Container(
-                                        width: 56,
-                                        height: 56,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.zestyLime
-                                              .withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: AppColors.zestyLime
-                                                  .withOpacity(0.3)),
-                                        ),
-                                        child: Icon(
-                                          isLink
-                                              ? Icons.link
-                                              : Icons.restaurant_menu_rounded,
-                                          color: AppColors.zestyLime,
-                                          size: 28,
-                                        ),
-                                      ),
+                                      Builder(builder: (context) {
+                                        final thumbUrl = recipe['thumbnail'] ??
+                                            recipe['image'] as String?;
+                                        final hasThumb = thumbUrl != null &&
+                                            thumbUrl.isNotEmpty;
+
+                                        ImageProvider? imageProvider;
+                                        if (hasThumb) {
+                                          if (thumbUrl!.startsWith('data:')) {
+                                            try {
+                                              final base64String =
+                                                  thumbUrl.split(',').last;
+                                              imageProvider = MemoryImage(
+                                                  base64Decode(base64String));
+                                            } catch (e) {
+                                              debugPrint("Base64 Error: $e");
+                                            }
+                                          } else if (thumbUrl
+                                              .startsWith('http')) {
+                                            imageProvider =
+                                                NetworkImage(thumbUrl);
+                                          }
+                                        }
+
+                                        return Container(
+                                          width: 56,
+                                          height: 56,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.zestyLime
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                                color: AppColors.zestyLime
+                                                    .withOpacity(0.3)),
+                                            image: imageProvider != null
+                                                ? DecorationImage(
+                                                    image: imageProvider,
+                                                    fit: BoxFit.cover,
+                                                    onError: (e, s) {})
+                                                : null,
+                                          ),
+                                          child: imageProvider != null
+                                              ? null
+                                              : Icon(
+                                                  isLink
+                                                      ? Icons.link
+                                                      : Icons
+                                                          .restaurant_menu_rounded,
+                                                  color: AppColors.zestyLime,
+                                                  size: 28,
+                                                ),
+                                        );
+                                      }),
                                       const SizedBox(width: 16),
                                       Expanded(
                                         child: Column(
@@ -788,14 +993,18 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                                                               shape: BoxShape
                                                                   .circle)),
                                                   const SizedBox(width: 8),
-                                                  Text(
-                                                    "via ${recipe['platform']}",
-                                                    style: const TextStyle(
-                                                        color:
-                                                            AppColors.zestyLime,
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.bold),
+                                                  Flexible(
+                                                    child: Text(
+                                                      "via ${recipe['platform']}",
+                                                      style: const TextStyle(
+                                                          color: AppColors
+                                                              .zestyLime,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
                                                   ),
                                                 ],
                                                 if (!isLink &&
@@ -931,32 +1140,46 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.deepCharcoal,
-        title:
-            Text("Delete $title?", style: const TextStyle(color: Colors.white)),
-        content: Text("Are you sure you want to remove $title from your Vault?",
-            style: const TextStyle(color: Colors.white70)),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child:
-                const Text("Cancel", style: TextStyle(color: Colors.white54)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text("Delete",
-                style: TextStyle(
-                    color: AppColors.errorRed, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        String cleanTitle = title
+            .replaceAll('&quot;', '"')
+            .replaceAll('&amp;', '&')
+            .replaceAll('&#x2019;', "'")
+            .replaceAll('&apos;', "'");
+        final displayTitle = cleanTitle.length > 50
+            ? '${cleanTitle.substring(0, 50)}...'
+            : cleanTitle;
+        return AlertDialog(
+          backgroundColor: AppColors.deepCharcoal,
+          title: Text(
+              AppLocalizations.of(context)!
+                  .vaultDeleteConfirmTitle(displayTitle),
+              style: const TextStyle(color: Colors.white)),
+          content: Text(AppLocalizations.of(context)!.vaultDeleteConfirmMessage,
+              style: const TextStyle(color: Colors.white70)),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(
+                  AppLocalizations.of(context)!.shoppingClearDialogCancel,
+                  style: const TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(AppLocalizations.of(context)!.actionDelete,
+                  style: const TextStyle(
+                      color: AppColors.errorRed, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirm == true) {
       await ref.read(vaultControllerProvider.notifier).deleteRecipe(id);
       if (mounted) {
-        NanoToast.showInfo(context, "Item removed from Vault");
+        NanoToast.showInfo(
+            context, AppLocalizations.of(context)!.vaultRemovedToast);
       }
     }
   }

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'core/constants/supabase_constants.dart';
 import 'core/theme/app_theme.dart';
+import 'core/services/locale_provider.dart';
 import 'package:chefmind_ai/features/onboarding/presentation/entry_orchestrator.dart';
 
 import 'package:chefmind_ai/features/home/home_screen.dart';
@@ -54,10 +57,35 @@ class ChefMindApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+
     return MaterialApp(
       title: 'ChefMindAI',
       navigatorKey: navigatorKey,
       theme: AppTheme.darkTheme,
+
+      // Localization Configuration
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: LocaleNotifier.supportedLocales,
+      locale: locale, // User-selected locale (null = system default)
+      localeResolutionCallback: (deviceLocale, supportedLocales) {
+        // If user has set a locale, use it
+        if (locale != null) return locale;
+        // Otherwise, try to match device locale
+        for (final supportedLocale in supportedLocales) {
+          if (deviceLocale?.languageCode == supportedLocale.languageCode) {
+            return supportedLocale;
+          }
+        }
+        // Default to English
+        return const Locale('en');
+      },
+
       builder: (context, child) {
         // Wrap the entire app with the listener, passing the navigator key
         return GlobalImportListener(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/brand_logo.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'pantry_controller.dart';
 import '../../../../core/widgets/nano_toast.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui' as ui;
 
 import 'package:chefmind_ai/features/scanner/presentation/scanner_screen.dart';
 import '../../../../core/widgets/network_error_view.dart';
@@ -128,9 +130,9 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
                 autofocus: true,
                 textCapitalization: TextCapitalization.sentences,
                 style: const TextStyle(color: Colors.white, fontSize: 18),
-                decoration: const InputDecoration(
-                  hintText: 'Search pantry...',
-                  hintStyle: TextStyle(color: Colors.white54),
+                decoration: InputDecoration(
+                  hintText: AppLocalizations.of(context)!.pantrySearchHint,
+                  hintStyle: const TextStyle(color: Colors.white54),
                   border: InputBorder.none,
                 ),
               )
@@ -163,6 +165,8 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
         ),
       ),
       floatingActionButton: _buildCircularFab(),
+      // floatingActionButtonLocation: FloatingActionButtonLocation.startFloat, // Removed to allow default 'endFloat' which adapts to RTL
+
       body: Stack(
         children: [
           // Watermark
@@ -292,10 +296,10 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
           physics: const AlwaysScrollableScrollPhysics(),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: const Center(
+            child: Center(
               child: Text(
-                'Your pantry is empty. Tap + to add ingredients!',
-                style: TextStyle(color: Colors.white70),
+                AppLocalizations.of(context)!.pantryEmpty,
+                style: const TextStyle(color: Colors.white70),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -361,7 +365,7 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
                     backgroundColor: AppColors.errorRed,
                     foregroundColor: Colors.white,
                     icon: Icons.delete_outline,
-                    label: 'Delete',
+                    label: AppLocalizations.of(context)!.actionDelete,
                   ),
                 ],
               ),
@@ -406,7 +410,9 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
                   ),
                   subtitle: Padding(
                     padding: const EdgeInsets.only(top: 2.0),
-                    child: Text("Added: $createdString",
+                    child: Text(
+                        AppLocalizations.of(context)!
+                            .pantryAddedDate(createdString),
                         style: const TextStyle(
                             color: Colors.white38, fontSize: 10)),
                   ),
@@ -432,19 +438,19 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.deepCharcoal,
-        title:
-            Text("Delete $name?", style: const TextStyle(color: Colors.white)),
-        content: Text("Are you sure you want to remove $name from your pantry?",
+        title: Text(AppLocalizations.of(context)!.pantryDeleteConfirm(name),
+            style: const TextStyle(color: Colors.white)),
+        content: Text(AppLocalizations.of(context)!.pantryDeleteMessage,
             style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text("Cancel",
-                  style: TextStyle(color: Colors.white54))),
+              child: Text(AppLocalizations.of(context)!.generalCancel,
+                  style: const TextStyle(color: Colors.white54))),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text("Delete",
-                  style: TextStyle(color: AppColors.errorRed))),
+              child: Text(AppLocalizations.of(context)!.generalDelete,
+                  style: const TextStyle(color: AppColors.errorRed))),
         ],
       ),
     );
@@ -452,13 +458,17 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
     if (confirm == true) {
       await ref.read(pantryControllerProvider.notifier).deleteIngredient(id);
       if (mounted)
-        NanoToast.showInfo(context, "Ingredient removed from pantry");
+        NanoToast.showInfo(
+            context, AppLocalizations.of(context)!.pantryIngredientRemoved);
     }
   }
 
   Widget _buildCircularFab() {
     return Flow(
-      delegate: _FlowMenuDelegate(controller: _fabController),
+      delegate: _FlowMenuDelegate(
+        controller: _fabController,
+        textDirection: Directionality.of(context),
+      ),
       children: [
         FloatingActionButton(
           heroTag: "fab_main",
@@ -491,28 +501,57 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
 
 class _FlowMenuDelegate extends FlowDelegate {
   final Animation<double> controller;
+  final ui.TextDirection textDirection;
 
-  _FlowMenuDelegate({required this.controller}) : super(repaint: controller);
+  _FlowMenuDelegate({required this.controller, required this.textDirection})
+      : super(repaint: controller);
 
   @override
   void paintChildren(FlowPaintingContext context) {
     final n = context.childCount;
+    // Determine the anchor X based on direction
+    final isRtl = textDirection == ui.TextDirection.rtl;
+
     for (int i = 0; i < n; i++) {
       final isMain = i == 0;
       final childSize = context.getChildSize(i)!.width;
 
       if (isMain) {
-        context.paintChild(i,
-            transform: Matrix4.identity()
-              ..translate(context.size.width - childSize,
-                  context.size.height - childSize));
+        // Main button position specific to LTR/RTL
+        // The standard LTR logical position for a FAB is Bottom-Right.
+        // In screen coordinates, Right is `width - childSize`.
+        // The standar RTL logical position for a FAB is Bottom-Left.
+        // In screen coordinates, Left is `0`.
+        // However, Flow paints in (0,0) based relative coordinates if it's full screen.
+        // IF Flow fills the screen (likely in a Scaffold body Stack), then:
+
+        double x;
+        double y = context.size.height - childSize;
+
+        if (isRtl) {
+          x = 0; // Align to Left
+        } else {
+          x = context.size.width - childSize; // Align to Right
+        }
+
+        context.paintChild(i, transform: Matrix4.identity()..translate(x, y));
       } else {
         final double rad = 80 * controller.value;
-        final double dx =
-            (context.size.width - childSize) + (i == 1 ? 0 : -rad * 0.8);
-        final double dy =
-            (context.size.height - childSize) + (i == 1 ? -rad : -rad * 0.5);
         final scale = controller.value;
+
+        // Fan out logic
+        double xBase;
+        if (isRtl) {
+          xBase = 0;
+        } else {
+          xBase = context.size.width - childSize;
+        }
+
+        final double dxOffset = (i == 1 ? 0 : (isRtl ? rad * 0.8 : -rad * 0.8));
+        final double dyOffset = (i == 1 ? -rad : -rad * 0.5);
+
+        final double dx = xBase + dxOffset;
+        final double dy = (context.size.height - childSize) + dyOffset;
 
         context.paintChild(i,
             transform: Matrix4.identity()
@@ -524,7 +563,8 @@ class _FlowMenuDelegate extends FlowDelegate {
 
   @override
   bool shouldRepaint(_FlowMenuDelegate oldDelegate) =>
-      controller != oldDelegate.controller;
+      controller != oldDelegate.controller ||
+      textDirection != oldDelegate.textDirection;
 }
 
 class _ManualEntryModal extends StatefulWidget {
@@ -602,8 +642,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text("Add Ingredient",
-                  style: TextStyle(
+              Text(AppLocalizations.of(context)!.pantryAddIngredient,
+                  style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold)),
@@ -613,7 +653,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                 textCapitalization: TextCapitalization.sentences,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: "Ingredient Name",
+                  labelText:
+                      AppLocalizations.of(context)!.pantryIngredientNameLabel,
                   labelStyle: const TextStyle(color: Colors.white54),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.08),
@@ -635,7 +676,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: "Quantity (Opt.)",
+                          labelText:
+                              AppLocalizations.of(context)!.pantryQuantityOpt,
                           labelStyle: const TextStyle(color: Colors.white54),
                           filled: true,
                           fillColor: Colors.white.withOpacity(0.08),
@@ -694,7 +736,7 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Add to Pantry",
+                  child: Text(AppLocalizations.of(context)!.pantryAddToPantry,
                       style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),

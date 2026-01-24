@@ -3,6 +3,7 @@ import '../data/shopping_repository.dart';
 import '../data/retail_unit_helper.dart';
 import '../../../../core/services/offline_manager.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../settings/presentation/household_controller.dart';
 
@@ -46,15 +47,22 @@ class ShoppingController extends _$ShoppingController {
   Future<void> addItem(String name,
       {String amount = '1',
       String category = 'General',
-      String? recipeSource}) async {
+      String? recipeSource,
+      String? householdIdOverride,
+      bool forcePrivate = false}) async {
     final repo = ref.read(shoppingRepositoryProvider);
     final isSyncEnabled = ref.read(shoppingSyncEnabledProvider);
 
     String? householdId;
-    if (isSyncEnabled) {
+
+    if (forcePrivate) {
+      householdId = null;
+    } else if (householdIdOverride != null) {
+      householdId = householdIdOverride;
+    } else if (isSyncEnabled) {
       final household = ref.read(householdControllerProvider).valueOrNull;
       householdId = household?['id'] as String?;
-      print("DEBUG addItem: Provider householdId = $householdId");
+      debugPrint("DEBUG addItem: Provider householdId = $householdId");
 
       // Fallback: If provider is not ready (e.g. offline init), check cache directly
       if (householdId == null) {
@@ -63,15 +71,16 @@ class ShoppingController extends _$ShoppingController {
           final cached = box.get('household_data');
           if (cached != null) {
             householdId = cached['id'];
-            print("DEBUG addItem: Cache fallback householdId = $householdId");
+            debugPrint(
+                "DEBUG addItem: Cache fallback householdId = $householdId");
           }
         } catch (e) {
-          print("DEBUG addItem: Cache fallback error = $e");
+          debugPrint("DEBUG addItem: Cache fallback error = $e");
         }
       }
     }
-    print(
-        "DEBUG addItem: Final householdId = $householdId, isSyncEnabled = $isSyncEnabled");
+    debugPrint(
+        "DEBUG addItem: Final householdId = $householdId, isSyncEnabled = $isSyncEnabled, forcePrivate=$forcePrivate, override=$householdIdOverride");
 
     // We can't easily check for duplicates synchronously against "state" if state is Stream
     // But we can check state.value if available
@@ -83,7 +92,8 @@ class ShoppingController extends _$ShoppingController {
       (item) =>
           (item['item_name'] as String).toLowerCase().trim() ==
               normalizedName &&
-          (item['is_bought'] == false),
+          (item['is_bought'] == false) &&
+          item['household_id'] == householdId,
       orElse: () => {},
     );
 

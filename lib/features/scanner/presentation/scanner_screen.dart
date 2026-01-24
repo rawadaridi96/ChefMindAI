@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'scanner_controller.dart';
 import '../../pantry/presentation/pantry_controller.dart';
 import '../../../../core/widgets/nano_toast.dart';
@@ -170,17 +171,17 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'AI Found These Items 🥦',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)!.scannerAIFoundItems,
+                    style: const TextStyle(
                         color: AppColors.zestyLime,
                         fontSize: 22,
                         fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Uncheck any mistakes before adding.',
-                    style: TextStyle(color: Colors.white70),
+                  Text(
+                    AppLocalizations.of(context)!.scannerUncheckMistakes,
+                    style: const TextStyle(color: Colors.white70),
                   ),
                   const SizedBox(height: 24),
 
@@ -221,9 +222,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                             ),
                           ),
                           subtitle: isDuplicate
-                              ? const Text(
-                                  "Item already in the pantry",
-                                  style: TextStyle(
+                              ? Text(
+                                  AppLocalizations.of(context)!
+                                      .scannerItemAlreadyInPantry,
+                                  style: const TextStyle(
                                       color: Colors.white54,
                                       fontStyle: FontStyle.italic,
                                       fontSize: 12),
@@ -261,8 +263,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                               Navigator.pop(context); // Close sheet
                               Navigator.pop(context); // Close scanner
 
-                              NanoToast.showSuccess(context,
-                                  'Added $addedCount items to Pantry!');
+                              NanoToast.showSuccess(
+                                  context,
+                                  AppLocalizations.of(context)!
+                                      .scannerAddedToPantry(addedCount));
 
                               // Reset scanner
                               ref
@@ -271,7 +275,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                               setState(
                                   () => _capturedImage = null); // Unfreeze UI
                             },
-                      child: Text('Add ${selectedItems.length} Items to Pantry',
+                      child: Text(
+                          AppLocalizations.of(context)!
+                              .scannerAddItemsToPantry(selectedItems.length),
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
@@ -305,15 +311,16 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   const Icon(Icons.no_photography_outlined,
                       size: 64, color: Colors.white24),
                   const SizedBox(height: 16),
-                  const Text(
-                    "Camera Unavailable",
-                    style: TextStyle(color: Colors.white54, fontSize: 16),
+                  Text(
+                    AppLocalizations.of(context)!.scannerCameraUnavailable,
+                    style: const TextStyle(color: Colors.white54, fontSize: 16),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: _pickFromGallery,
                     icon: const Icon(Icons.photo_library),
-                    label: const Text("Pick from Gallery"),
+                    label:
+                        Text(AppLocalizations.of(context)!.scannerFromGallery),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.zestyLime,
                       foregroundColor: AppColors.deepCharcoal,
@@ -375,13 +382,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                         icon: const Icon(Icons.close, color: Colors.white),
                         onPressed: () => Navigator.pop(context),
                       ),
-                      const GlassContainer(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      GlassContainer(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         borderRadius: 20,
                         child: Text(
-                          'Vision Scanner',
-                          style: TextStyle(
+                          AppLocalizations.of(context)!.scannerVisionScanner,
+                          style: const TextStyle(
                               color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -447,14 +454,15 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Widget _buildLoadingState() {
-    return const GlassContainer(
-      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+    return GlassContainer(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(color: AppColors.zestyLime),
-          SizedBox(height: 16),
-          Text("AI is analyzing...", style: TextStyle(color: Colors.white)),
+          const CircularProgressIndicator(color: AppColors.zestyLime),
+          const SizedBox(height: 16),
+          Text(AppLocalizations.of(context)!.scannerAnalyzing,
+              style: const TextStyle(color: Colors.white)),
         ],
       ),
     );

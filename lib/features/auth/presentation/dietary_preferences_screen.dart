@@ -6,6 +6,7 @@ import 'package:chefmind_ai/core/widgets/haptic_button.dart';
 import 'package:chefmind_ai/features/auth/data/auth_repository.dart';
 import 'package:chefmind_ai/features/auth/presentation/auth_controller.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class DietaryPreferencesScreen extends ConsumerStatefulWidget {
   const DietaryPreferencesScreen({super.key});
@@ -23,55 +24,110 @@ class _DietaryPreferencesScreenState
   // State for all 4 categories
   final Set<String> _selectedPreferences = {};
 
-  final List<Map<String, dynamic>> _steps = [
-    {
-      'title': 'Food Allergies',
-      'subtitle': 'Select any immune-system exclusions (The "Big 9").',
-      'items': [
-        {'name': 'Peanuts', 'icon': Icons.grass},
-        {'name': 'Tree Nuts', 'icon': Icons.nature},
-        {'name': 'Eggs', 'icon': Icons.egg},
-        {'name': 'Fish', 'icon': Icons.phishing},
-        {'name': 'Shellfish', 'icon': Icons.set_meal},
-        {'name': 'Milk', 'icon': Icons.local_drink}, // Dairy allergy
-        {'name': 'Soy', 'icon': Icons.eco},
-        {'name': 'Wheat', 'icon': Icons.bakery_dining},
-        {'name': 'Sesame', 'icon': Icons.grain},
-      ]
-    },
-    {
-      'title': 'Intolerances',
-      'subtitle': 'Digestive sensitivities to avoid.',
-      'items': [
-        {'name': 'Lactose Intolerant', 'icon': Icons.no_drinks},
-        {'name': 'Gluten Intolerant', 'icon': Icons.do_not_touch},
-        {'name': 'Fructose', 'icon': Icons.emoji_food_beverage},
-        {'name': 'Histamine', 'icon': Icons.warning_amber},
-      ]
-    },
-    {
-      'title': 'Lifestyle & Beliefs',
-      'subtitle': 'Choices based on ethics, religion, or preference.',
-      'items': [
-        {'name': 'Vegetarian', 'icon': Icons.cruelty_free},
-        {'name': 'Vegan', 'icon': Icons.spa},
-        {'name': 'Pescatarian', 'icon': Icons.water},
-        {'name': 'Halal', 'icon': Icons.mosque},
-        {'name': 'Kosher', 'icon': Icons.star},
-      ]
-    },
-    {
-      'title': 'Health Goals',
-      'subtitle': 'Nutritional focuses for your meals.',
-      'items': [
-        {'name': 'Keto', 'icon': Icons.monitor_weight},
-        {'name': 'Paleo', 'icon': Icons.terrain},
-        {'name': 'Low-Carb', 'icon': Icons.fitness_center},
-        {'name': 'Low-Sodium', 'icon': Icons.favorite},
-        {'name': 'Diabetic-Friendly', 'icon': Icons.bloodtype},
-      ]
-    },
-  ];
+  List<Map<String, dynamic>> get _steps {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      {
+        'title': l10n.dietaryFoodAllergiesTitle,
+        'subtitle': l10n.dietaryFoodAllergiesSubtitle,
+        'items': [
+          {'id': 'Peanuts', 'name': l10n.allergenPeanuts, 'icon': Icons.grass},
+          {
+            'id': 'Tree Nuts',
+            'name': l10n.allergenTreeNuts,
+            'icon': Icons.nature
+          },
+          {'id': 'Eggs', 'name': l10n.allergenEggs, 'icon': Icons.egg},
+          {'id': 'Fish', 'name': l10n.allergenFish, 'icon': Icons.phishing},
+          {
+            'id': 'Shellfish',
+            'name': l10n.allergenShellfish,
+            'icon': Icons.set_meal
+          },
+          {'id': 'Milk', 'name': l10n.allergenMilk, 'icon': Icons.local_drink},
+          {'id': 'Soy', 'name': l10n.allergenSoy, 'icon': Icons.eco},
+          {
+            'id': 'Wheat',
+            'name': l10n.allergenWheat,
+            'icon': Icons.bakery_dining
+          },
+          {'id': 'Sesame', 'name': l10n.allergenSesame, 'icon': Icons.grain},
+        ]
+      },
+      {
+        'title': l10n.dietaryIntolerancesTitle,
+        'subtitle': l10n.dietaryIntolerancesSubtitle,
+        'items': [
+          {
+            'id': 'Lactose Intolerant',
+            'name': l10n.dietaryLactose,
+            'icon': Icons.no_drinks
+          },
+          {
+            'id': 'Gluten Intolerant',
+            'name': l10n.dietaryGluten,
+            'icon': Icons.do_not_touch
+          },
+          {
+            'id': 'Fructose',
+            'name': l10n.dietaryFructose,
+            'icon': Icons.emoji_food_beverage
+          },
+          {
+            'id': 'Histamine',
+            'name': l10n.dietaryHistamine,
+            'icon': Icons.warning_amber
+          },
+        ]
+      },
+      {
+        'title': l10n.dietaryLifestyleTitle,
+        'subtitle': l10n.dietaryLifestyleSubtitle,
+        'items': [
+          {
+            'id': 'Vegetarian',
+            'name': l10n.dietaryVegetarian,
+            'icon': Icons.cruelty_free
+          },
+          {'id': 'Vegan', 'name': l10n.dietaryVegan, 'icon': Icons.spa},
+          {
+            'id': 'Pescatarian',
+            'name': l10n.dietaryPescatarian,
+            'icon': Icons.water
+          },
+          {'id': 'Halal', 'name': l10n.dietaryHalal, 'icon': Icons.mosque},
+          {'id': 'Kosher', 'name': l10n.dietaryKosher, 'icon': Icons.star},
+        ]
+      },
+      {
+        'title': l10n.dietaryHealthGoalsTitle,
+        'subtitle': l10n.dietaryHealthGoalsSubtitle,
+        'items': [
+          {
+            'id': 'Keto',
+            'name': l10n.dietaryKeto,
+            'icon': Icons.monitor_weight
+          },
+          {'id': 'Paleo', 'name': l10n.dietaryPaleo, 'icon': Icons.terrain},
+          {
+            'id': 'Low-Carb',
+            'name': l10n.dietaryLowCarb,
+            'icon': Icons.fitness_center
+          },
+          {
+            'id': 'Low-Sodium',
+            'name': l10n.dietaryLowSodium,
+            'icon': Icons.favorite
+          },
+          {
+            'id': 'Diabetic-Friendly',
+            'name': l10n.dietaryDiabetic,
+            'icon': Icons.bloodtype
+          },
+        ]
+      },
+    ];
+  }
 
   @override
   void initState() {
@@ -206,8 +262,8 @@ class _DietaryPreferencesScreenState
                       ),
                       TextButton(
                         onPressed: _clearAll,
-                        child: const Text("Clear All",
-                            style: TextStyle(
+                        child: Text(AppLocalizations.of(context)!.homeClearAll,
+                            style: const TextStyle(
                                 color: AppColors.errorRed, fontSize: 12)),
                       ),
                     ],
@@ -260,9 +316,9 @@ class _DietaryPreferencesScreenState
                               itemBuilder: (context, i) {
                                 final item = items[i];
                                 final isSelected =
-                                    _selectedPreferences.contains(item['name']);
+                                    _selectedPreferences.contains(item['id']);
                                 return GestureDetector(
-                                  onTap: () => _togglePreference(item['name']),
+                                  onTap: () => _togglePreference(item['id']),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 200),
                                     decoration: BoxDecoration(
@@ -325,8 +381,8 @@ class _DietaryPreferencesScreenState
                     width: double.infinity,
                     child: HapticButton(
                       label: _currentStep == _steps.length - 1
-                          ? 'Finish & Save'
-                          : 'Next',
+                          ? AppLocalizations.of(context)!.dietaryFinish
+                          : AppLocalizations.of(context)!.dietaryNext,
                       onTap: _nextPage,
                     ),
                   ),

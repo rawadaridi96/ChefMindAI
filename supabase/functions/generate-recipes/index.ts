@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,27 +24,40 @@ serve(async (req) => {
     if (!authHeader) throw new Error('Missing Authorization header')
 
     // Determine Model based on Tier
-    // Executive Chefs get the cutting-edge 2.5 Flash
-    // Others get the previous high-speed version (2.0 Flash)
     const modelVersion = is_executive ? 'gemini-2.5-flash' : 'gemini-2.0-flash-exp';
     
     // --- MODE 3: CONSULT CHEF (Substitution Assistant) ---
     if (mode === 'consult_chef') {
        if (!user_question) throw new Error('Question required')
        
+       // Construct Context String
+       let contextStr = "General Cooking";
+       if (recipe_context) {
+           if (typeof recipe_context === 'string') {
+               contextStr = recipe_context;
+           } else if (typeof recipe_context === 'object') {
+               contextStr = `Title: ${recipe_context.title || 'Untitled'}\n`;
+               if (recipe_context.ingredients) contextStr += `Ingredients: ${JSON.stringify(recipe_context.ingredients)}\n`;
+               if (recipe_context.instructions) contextStr += `Instructions: ${JSON.stringify(recipe_context.instructions)}\n`;
+           }
+       }
+
        const promptText = `You are a helpful culinary assistant.
-       Context Recipe: ${recipe_context || "General Cooking"}
+       Context Recipe: ${contextStr}
        
        User Question: "${user_question}"
        
        OUTPUT FORMAT:
        Return a strictly valid JSON object with the following structure:
        {
-         "answer": "Your concise, helpful answer (max 2-3 sentences). Focus on substitutions, techniques, or equipment. CRITICAL: If a substitution requires adjusting other ingredients (e.g. 'add more liquid' when using coconut flour), YOU MUST MENTION THIS HERE.",
+         "answer": "Your concise, helpful answer (max 2-3 sentences). Focus on substitutions, techniques, or equipment. CRITICAL: If a substitution requires adjusting other ingredients (e.g. 'add more liquid' when using coconut flour), explain why in this answer.",
          "modification": {
-            "type": "replace", // or "remove", optional
-            "target_ingredient": "exact name of ingredient",
-            "replacement_ingredient": "new ingredient name (only if replace, MUST BE Title Case, e.g. 'Oat Flour')"
+            "type": "replace", // or "remove"
+            "target_ingredient": "exact name of ingredient to change",
+            "replacement_ingredient": {
+                "name": "new ingredient name (Title Case)",
+                "amount": "adjusted amount (e.g. '3/4 cup')"
+            } 
          }
        }
        
@@ -51,7 +65,6 @@ serve(async (req) => {
        - If no modification, set "modification" to null.
        
        Do not include markdown code blocks. Just the raw JSON.`
-
 
        // Use Gemini to answer
        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=${apiKey}`

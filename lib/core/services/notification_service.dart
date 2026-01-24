@@ -8,26 +8,26 @@ class NotificationService {
   static Timer? _timer;
 
   static void showSuccess(BuildContext context, String message,
-      {VoidCallback? onAction, String? actionLabel}) {
+      {VoidCallback? onAction, String? actionLabel, OverlayState? overlay}) {
     _show(context, message, Icons.check_circle, AppColors.zestyLime,
-        onAction: onAction, actionLabel: actionLabel);
+        onAction: onAction, actionLabel: actionLabel, overlay: overlay);
   }
 
   static void showError(BuildContext context, String message,
-      {VoidCallback? onAction, String? actionLabel}) {
+      {VoidCallback? onAction, String? actionLabel, OverlayState? overlay}) {
     _show(context, message, Icons.error_outline, AppColors.errorRed,
-        onAction: onAction, actionLabel: actionLabel);
+        onAction: onAction, actionLabel: actionLabel, overlay: overlay);
   }
 
   static void showInfo(BuildContext context, String message,
-      {VoidCallback? onAction, String? actionLabel}) {
+      {VoidCallback? onAction, String? actionLabel, OverlayState? overlay}) {
     _show(context, message, Icons.info_outline, Colors.white,
-        onAction: onAction, actionLabel: actionLabel);
+        onAction: onAction, actionLabel: actionLabel, overlay: overlay);
   }
 
   static void _show(
       BuildContext context, String message, IconData icon, Color accentColor,
-      {VoidCallback? onAction, String? actionLabel}) {
+      {VoidCallback? onAction, String? actionLabel, OverlayState? overlay}) {
     // Dismiss existing toast if any
     if (_currentEntry != null) {
       _currentEntry!.remove();
@@ -35,7 +35,13 @@ class NotificationService {
       _timer?.cancel();
     }
 
-    final overlayState = Overlay.of(context);
+    final overlayState = overlay ?? Overlay.of(context);
+
+    // Safety check if overlay is still null
+    if (overlayState == null) {
+      debugPrint("NotificationService Error: Could not find OverlayState.");
+      return;
+    }
 
     _currentEntry = OverlayEntry(
       builder: (context) => _ToastAnimator(

@@ -42,7 +42,7 @@ class AuthController extends _$AuthController {
       final user = repo.currentUser;
       final name = user?.userMetadata?['full_name'] ?? 'Chef';
       ref.read(postLoginMessageProvider.notifier).state =
-          "Welcome back, $name!";
+          AuthMessage('authWelcomeBack', [name]);
     });
   }
 
@@ -73,7 +73,7 @@ class AuthController extends _$AuthController {
       }
 
       ref.read(postLoginMessageProvider.notifier).state =
-          "Account created! Welcome to ChefMindAI.";
+          const AuthMessage('authAccountCreated');
     });
   }
 
@@ -86,7 +86,7 @@ class AuthController extends _$AuthController {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remember_me', true);
       ref.read(postLoginMessageProvider.notifier).state =
-          "Welcome, Guest Chef!";
+          const AuthMessage('authWelcomeGuest');
     });
   }
 
@@ -228,7 +228,7 @@ class AuthController extends _$AuthController {
             user?.userMetadata?['full_name'] ??
             'Chef';
         ref.read(postLoginMessageProvider.notifier).state =
-            "Welcome back, $name!";
+            AuthMessage('authWelcomeBack', [name]);
         state = const AsyncData(null);
       } else {
         // User cancelled or silent failure.
@@ -354,7 +354,7 @@ class AuthController extends _$AuthController {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('remember_me', true);
         ref.read(postLoginMessageProvider.notifier).state =
-            "Signed in with Google!";
+            const AuthMessage('authSignedInGoogle');
       } catch (e) {
         // Propagate error but maybe map specific codes if needed
         if (e.toString().contains('10')) {
@@ -372,7 +372,7 @@ class AuthController extends _$AuthController {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remember_me', true);
       ref.read(postLoginMessageProvider.notifier).state =
-          "Signed in with Apple!";
+          const AuthMessage('authSignedInApple');
     });
   }
 
@@ -383,5 +383,12 @@ class AuthController extends _$AuthController {
   }
 }
 
+// Simple class to pass success messages with localization keys
+class AuthMessage {
+  final String key;
+  final List<String> args;
+  const AuthMessage(this.key, [this.args = const []]);
+}
+
 // Simple provider to pass success messages from AuthSheet (which unmounts) to HomeScreen
-final postLoginMessageProvider = StateProvider<String?>((ref) => null);
+final postLoginMessageProvider = StateProvider<AuthMessage?>((ref) => null);

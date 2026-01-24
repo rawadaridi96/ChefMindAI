@@ -11,6 +11,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HouseholdScreen extends ConsumerStatefulWidget {
   const HouseholdScreen({super.key});
@@ -48,8 +49,8 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     return Scaffold(
       backgroundColor: AppColors.deepCharcoal,
       appBar: AppBar(
-        title: const Text("Household Management",
-            style: TextStyle(color: Colors.white)),
+        title: Text(AppLocalizations.of(context)!.householdTitle,
+            style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         iconTheme: const IconThemeData(color: AppColors.zestyLime),
       ),
@@ -65,7 +66,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
         error: (err, st) {
           if (NetworkErrorView.isNetworkError(err)) {
             return NetworkErrorView(
-              onRetry: () => ref.refresh(householdControllerProvider),
+              onRetry: () => ref.invalidate(householdControllerProvider),
             );
           }
           return Center(
@@ -95,7 +96,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
-                      ref.refresh(householdControllerProvider);
+                      ref.invalidate(householdControllerProvider);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.zestyLime,
@@ -118,17 +119,17 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Sync your kitchen 🤝",
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context)!.householdSyncKitchen,
+            style: const TextStyle(
                 color: AppColors.zestyLime,
                 fontSize: 24,
                 fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            "Create a household to share your Shopping Cart and Vault with family members.",
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+          Text(
+            AppLocalizations.of(context)!.householdSyncDescription,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 32),
 
@@ -143,8 +144,8 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Create New Household",
-                    style: TextStyle(
+                Text(AppLocalizations.of(context)!.householdCreateNew,
+                    style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
@@ -153,7 +154,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                   controller: _createNameController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: "Household Name (e.g. Smith Family)",
+                    hintText: AppLocalizations.of(context)!.householdNameHint,
                     hintStyle: const TextStyle(color: Colors.white30),
                     filled: true,
                     fillColor: Colors.black26,
@@ -186,7 +187,9 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                               // Action for Executive Chef
                               if (_createNameController.text.trim().isEmpty) {
                                 NanoToast.showError(
-                                    context, "Please enter a name");
+                                    context,
+                                    AppLocalizations.of(context)!
+                                        .householdEnterName);
                                 return;
                               }
                               await ref
@@ -195,8 +198,10 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                             }
                           : () {
                               // Action for non-Executive (Show Toast/Upgrade)
-                              NanoToast.showInfo(context,
-                                  "Executive Chef required to create a household.");
+                              NanoToast.showInfo(
+                                  context,
+                                  AppLocalizations.of(context)!
+                                      .householdExecutiveRequired);
                             },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -206,7 +211,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                                 size: 16, color: Colors.white38),
                             const SizedBox(width: 8),
                           ],
-                          const Text("Create Household"),
+                          Text(AppLocalizations.of(context)!.householdCreate),
                         ],
                       ),
                     );
@@ -217,12 +222,13 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
           ),
 
           const SizedBox(height: 24),
-          const Row(children: [
-            Expanded(child: Divider(color: Colors.white24)),
+          Row(children: [
+            const Expanded(child: Divider(color: Colors.white24)),
             Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text("OR", style: TextStyle(color: Colors.white54))),
-            Expanded(child: Divider(color: Colors.white24))
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(AppLocalizations.of(context)!.householdOr,
+                    style: const TextStyle(color: Colors.white54))),
+            const Expanded(child: Divider(color: Colors.white24))
           ]),
           const SizedBox(height: 24),
 
@@ -237,8 +243,8 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Join Existing Household",
-                    style: TextStyle(
+                Text(AppLocalizations.of(context)!.householdJoinExisting,
+                    style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
@@ -247,7 +253,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                   controller: _joinCodeController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: "Enter Household Code",
+                    hintText: AppLocalizations.of(context)!.householdEnterCode,
                     hintStyle: const TextStyle(color: Colors.white30),
                     filled: true,
                     fillColor: Colors.black26,
@@ -257,7 +263,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.qr_code_scanner,
                           color: AppColors.zestyLime),
-                      tooltip: "Scan QR Code",
+                      tooltip: AppLocalizations.of(context)!.householdScanQR,
                       onPressed: () async {
                         final code = await Navigator.push<String>(
                           context,
@@ -389,6 +395,8 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                           ),
                         );
 
+                        if (!context.mounted) return;
+
                         if (code != null) {
                           _joinCodeController.text = code;
                           NanoToast.showSuccess(context, "Scanning Code...");
@@ -418,7 +426,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                           .read(householdControllerProvider.notifier)
                           .joinHousehold(_joinCodeController.text.trim());
                     },
-                    child: const Text("Join Household"),
+                    child: Text(AppLocalizations.of(context)!.householdJoin),
                   ),
                 ),
               ],
@@ -548,8 +556,9 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text("Share this code or QR with your partner.",
-                    style: TextStyle(color: Colors.white54, fontSize: 12)),
+                Text(AppLocalizations.of(context)!.householdShareCode,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
               ],
             ),
           ),
@@ -746,18 +755,24 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                         context: context,
                         builder: (ctx) => AlertDialog(
                               backgroundColor: AppColors.deepCharcoal,
-                              title: const Text("Leave Household?",
-                                  style: TextStyle(color: Colors.white)),
-                              content: const Text(
-                                  "You will lose access to the shared cart and vault.",
-                                  style: TextStyle(color: Colors.white70)),
+                              title: Text(
+                                  AppLocalizations.of(context)!
+                                      .householdLeaveConfirm,
+                                  style: const TextStyle(color: Colors.white)),
+                              content: Text(
+                                  AppLocalizations.of(context)!
+                                      .householdLeaveMessage,
+                                  style:
+                                      const TextStyle(color: Colors.white70)),
                               actions: [
                                 TextButton(
                                     onPressed: () => Navigator.pop(ctx, false),
                                     child: const Text("Cancel")),
                                 TextButton(
                                     onPressed: () => Navigator.pop(ctx, true),
-                                    child: const Text("Leave",
+                                    child: Text(
+                                        AppLocalizations.of(context)!
+                                            .householdLeaveButton,
                                         style: TextStyle(
                                             color: AppColors.errorRed))),
                               ],
@@ -770,8 +785,8 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                   },
                   icon:
                       const Icon(Icons.exit_to_app, color: AppColors.errorRed),
-                  label: const Text("Leave Household",
-                      style: TextStyle(color: AppColors.errorRed)),
+                  label: Text(AppLocalizations.of(context)!.householdLeave,
+                      style: const TextStyle(color: AppColors.errorRed)),
                 );
               }
             }),

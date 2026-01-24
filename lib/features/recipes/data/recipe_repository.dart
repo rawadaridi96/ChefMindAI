@@ -50,14 +50,14 @@ class RecipeRepository {
 
   Future<Map<String, dynamic>> consultChef({
     required String question,
-    String? contextRecipe,
+    required Map<String, dynamic> recipeContext,
   }) async {
     final response = await _client.functions.invoke(
       'generate-recipes',
       body: {
         'mode': 'consult_chef',
         'user_question': question,
-        if (contextRecipe != null) 'recipe_context': contextRecipe,
+        'recipe_context': recipeContext,
       },
     );
 
@@ -74,5 +74,27 @@ class RecipeRepository {
 
   Future<void> updateRecipe(int id, Map<String, dynamic> updates) async {
     await _client.from('recipes').update(updates).eq('id', id);
+  }
+
+  Future<Map<String, dynamic>> importRecipe(String url) async {
+    final response = await _client.functions.invoke(
+      'import-recipe',
+      body: {'url': url},
+    );
+
+    if (response.status != 200) {
+      // Try to parse error message from body
+      String errorMsg = 'Failed to import recipe';
+      if (response.data is Map && response.data['error'] != null) {
+        errorMsg = response.data['error'];
+      }
+      throw Exception(errorMsg);
+    }
+
+    final data = response.data;
+    if (data is Map && data.containsKey('recipe')) {
+      return Map<String, dynamic>.from(data['recipe']);
+    }
+    throw Exception('Invalid response format');
   }
 }

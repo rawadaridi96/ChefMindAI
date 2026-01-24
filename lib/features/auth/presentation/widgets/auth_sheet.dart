@@ -7,6 +7,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
 import 'package:chefmind_ai/features/auth/data/auth_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class AuthSheet extends ConsumerStatefulWidget {
   final bool isLogin;
@@ -56,15 +57,18 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty) {
-      setState(() => _emailError = 'Email is required');
+      setState(
+          () => _emailError = AppLocalizations.of(context)!.authEmailRequired);
       isValid = false;
     } else if (!email.contains('@')) {
-      setState(() => _emailError = 'Invalid email address');
+      setState(
+          () => _emailError = AppLocalizations.of(context)!.authInvalidEmail);
       isValid = false;
     }
 
     if (password.isEmpty) {
-      setState(() => _passwordError = 'Password is required');
+      setState(() =>
+          _passwordError = AppLocalizations.of(context)!.authPasswordRequired);
       isValid = false;
     }
 
@@ -111,7 +115,10 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
         // Success handling moved to AuthController
         if (!mounted) return;
       } else {
-        NanoToast.showError(context, 'No biometric credentials found');
+        if (mounted) {
+          NanoToast.showError(
+              context, AppLocalizations.of(context)!.authNoBiometricFound);
+        }
       }
     } catch (e) {
       // Logic Fix: If we are actually authenticated (success), ignore the error.
@@ -127,7 +134,8 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
       }
 
       if (mounted) {
-        NanoToast.showError(context, 'Biometric Auth Failed: $e');
+        NanoToast.showError(context,
+            AppLocalizations.of(context)!.authBiometricFailed(e.toString()));
       }
     }
   }
@@ -154,12 +162,19 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
         final lowerMsg = errorMsg.toLowerCase();
 
         if (lowerMsg.contains('invalid login credentials')) {
-          setState(() => _passwordError = 'Incorrect email or password');
+          setState(() => _passwordError =
+              AppLocalizations.of(context)!.authInvalidCredentials);
         } else if (lowerMsg.contains('password')) {
-          setState(() => _passwordError = 'Incorrect password');
+          setState(() => _passwordError =
+              AppLocalizations.of(context)!.authInvalidCredentials);
+          // reusing invalid credentials for generic password error to avoid exposing specific partial failure if suitable,
+          // or use specific if we had one. English had "Incorrect password".
+          // Let's stick to authInvalidCredentials as it's safer/generic or I can add authIncorrectPassword.
+          // app_en.arb has authInvalidCredentials: "Invalid email or password", which matches 'Incorrect email or password'.
         } else if (lowerMsg.contains('user not found') ||
             lowerMsg.contains('email not found')) {
-          setState(() => _emailError = 'No account found with this email');
+          setState(() => _emailError = AppLocalizations.of(context)!
+              .authInvalidCredentials); // Generic error for consistency
         } else if (lowerMsg.contains('email')) {
           setState(() => _emailError = errorMsg);
         } else {
@@ -199,7 +214,7 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                   if (!_isLogin) ...[
                     _buildGlassTextField(
                       controller: _nameController,
-                      label: 'Full Name',
+                      label: AppLocalizations.of(context)!.authFullName,
                       icon: Icons.person_outline,
                       textCapitalization: TextCapitalization.words,
                     ),
@@ -207,7 +222,7 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                   ],
                   _buildGlassTextField(
                     controller: _emailController,
-                    label: 'Email',
+                    label: AppLocalizations.of(context)!.authEmail,
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
                     errorText: _emailError,
@@ -220,7 +235,7 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                   const SizedBox(height: 16),
                   _buildGlassTextField(
                     controller: _passwordController,
-                    label: 'Password',
+                    label: AppLocalizations.of(context)!.authPassword,
                     icon: Icons.lock_outline,
                     isPassword: true,
                     isPasswordVisible: _isPasswordVisible,
@@ -243,7 +258,9 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                           final email = _emailController.text.trim();
                           if (email.isEmpty) {
                             NanoToast.showError(
-                                context, 'Please enter your email address');
+                                context,
+                                AppLocalizations.of(context)!
+                                    .authEmailRequired);
                             return;
                           }
                           await ref
@@ -252,12 +269,13 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
 
                           if (mounted &&
                               !ref.read(authControllerProvider).hasError) {
-                            NanoToast.showSuccess(
-                                context, 'Password reset link sent to $email');
+                            NanoToast.showSuccess(context,
+                                '${AppLocalizations.of(context)!.authPasswordResetSent} $email');
                           }
                         },
-                        child: const Text('Forgot Password?',
-                            style: TextStyle(
+                        child: Text(
+                            AppLocalizations.of(context)!.authForgotPassword,
+                            style: const TextStyle(
                                 color: AppColors.zestyLime,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold)),
@@ -281,7 +299,9 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                             elevation: 0,
                           ),
                           child: Text(
-                            _isLogin ? 'Log In' : 'Sign Up',
+                            _isLogin
+                                ? AppLocalizations.of(context)!.authLogin
+                                : AppLocalizations.of(context)!.authSignup,
                             style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -324,16 +344,17 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                   const SizedBox(height: 24),
 
                   // --- Dividers ---
-                  const Row(
+                  Row(
                     children: [
-                      Expanded(child: Divider(color: Colors.white12)),
+                      const Expanded(child: Divider(color: Colors.white12)),
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Text("or continue with",
-                            style:
-                                TextStyle(color: Colors.white38, fontSize: 12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                            AppLocalizations.of(context)!.authOrContinueWith,
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 12)),
                       ),
-                      Expanded(child: Divider(color: Colors.white12)),
+                      const Expanded(child: Divider(color: Colors.white12)),
                     ],
                   ),
 
@@ -384,12 +405,16 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                     child: RichText(
                       text: TextSpan(
                         text: _isLogin
-                            ? "Don't have an account? "
-                            : "Already have an account? ",
+                            ? AppLocalizations.of(context)!.authDontHaveAccount
+                            : AppLocalizations.of(context)!
+                                .authAlreadyHaveAccount,
                         style: const TextStyle(color: Colors.white54),
                         children: [
+                          const TextSpan(text: ' '),
                           TextSpan(
-                            text: _isLogin ? 'Sign Up' : 'Log In',
+                            text: _isLogin
+                                ? AppLocalizations.of(context)!.authSignup
+                                : AppLocalizations.of(context)!.authLogin,
                             style: const TextStyle(
                                 color: AppColors.zestyLime,
                                 fontWeight: FontWeight.bold),
@@ -411,8 +436,9 @@ class _AuthSheetState extends ConsumerState<AuthSheet> {
                         }
                       }
                     },
-                    child: const Text('Continue as Guest',
-                        style: TextStyle(
+                    child: Text(
+                        AppLocalizations.of(context)!.authContinueAsGuest,
+                        style: const TextStyle(
                             color: AppColors.zestyLime, fontSize: 14)),
                   ),
                 ],

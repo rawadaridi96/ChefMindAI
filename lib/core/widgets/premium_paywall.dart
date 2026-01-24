@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/features/subscription/presentation/subscription_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class PremiumPaywall extends StatelessWidget {
   final String message;
@@ -84,7 +85,7 @@ class PremiumPaywall extends StatelessWidget {
 
                   // Title
                   Text(
-                    'Limit Reached',
+                    AppLocalizations.of(context)!.premiumLimitReached,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -130,7 +131,8 @@ class PremiumPaywall extends StatelessWidget {
                         elevation: 0,
                       ),
                       child: Text(
-                        ctaLabel ?? 'Upgrade to Sous Chef',
+                        ctaLabel ??
+                            AppLocalizations.of(context)!.premiumUpgradeToSous,
                         style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -143,8 +145,8 @@ class PremiumPaywall extends StatelessWidget {
                   // Close Button
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Not now',
-                        style: TextStyle(
+                    child: Text(AppLocalizations.of(context)!.premiumNotNow,
+                        style: const TextStyle(
                             color: Colors.white54,
                             fontSize: 14,
                             fontWeight: FontWeight.w600)),

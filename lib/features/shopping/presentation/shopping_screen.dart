@@ -8,6 +8,7 @@ import 'shopping_controller.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
 import '../../../../core/widgets/network_error_view.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../../settings/presentation/household_controller.dart';
 
@@ -186,16 +187,21 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                       context: context,
                       builder: (context) => AlertDialog(
                         backgroundColor: AppColors.deepCharcoal,
-                        title: const Text("Clear Shopping List?",
-                            style: TextStyle(color: Colors.white)),
-                        content: const Text(
-                            "This will remove all items from your cart. This action cannot be undone.",
-                            style: TextStyle(color: Colors.white70)),
+                        title: Text(
+                            AppLocalizations.of(context)!
+                                .shoppingClearDialogTitle,
+                            style: const TextStyle(color: Colors.white)),
+                        content: Text(
+                            AppLocalizations.of(context)!
+                                .shoppingClearDialogContent,
+                            style: const TextStyle(color: Colors.white70)),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text("Cancel",
-                                style: TextStyle(color: Colors.white54)),
+                            child: Text(
+                                AppLocalizations.of(context)!
+                                    .shoppingClearDialogCancel,
+                                style: const TextStyle(color: Colors.white54)),
                           ),
                           TextButton(
                             onPressed: () {
@@ -204,8 +210,11 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                                   .read(shoppingControllerProvider.notifier)
                                   .clearAll();
                             },
-                            child: const Text("Clear All",
-                                style: TextStyle(color: AppColors.errorRed)),
+                            child: Text(
+                                AppLocalizations.of(context)!
+                                    .shoppingClearDialogConfirm,
+                                style:
+                                    const TextStyle(color: AppColors.errorRed)),
                           ),
                         ],
                       ),
@@ -296,10 +305,12 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           children: [
                             if (active.isNotEmpty) ...[
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 8),
-                                child: Text("To Buy",
-                                    style: TextStyle(
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: Text(
+                                    AppLocalizations.of(context)!.shoppingToBuy,
+                                    style: const TextStyle(
                                         color: AppColors.zestyLime,
                                         fontWeight: FontWeight.bold)),
                               ),
@@ -661,26 +672,28 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.deepCharcoal,
-        title:
-            Text("Remove $name?", style: const TextStyle(color: Colors.white)),
-        content: Text("Are you sure you want to remove $name from your cart?",
+        title: Text(AppLocalizations.of(context)!.shoppingRemoveConfirm(name),
+            style: const TextStyle(color: Colors.white)),
+        content: Text(AppLocalizations.of(context)!.shoppingRemoveMessage(name),
             style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text("Cancel",
-                  style: TextStyle(color: Colors.white54))),
+              child: Text(AppLocalizations.of(context)!.generalCancel,
+                  style: const TextStyle(color: Colors.white54))),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text("Remove",
-                  style: TextStyle(color: AppColors.errorRed))),
+              child: Text(AppLocalizations.of(context)!.generalRemove,
+                  style: const TextStyle(color: AppColors.errorRed))),
         ],
       ),
     );
 
     if (confirm == true) {
       await ref.read(shoppingControllerProvider.notifier).deleteItem(id);
-      if (mounted) NanoToast.showInfo(context, "Item removed from cart");
+      if (mounted)
+        NanoToast.showInfo(
+            context, AppLocalizations.of(context)!.shoppingItemRemoved);
     }
   }
 }
@@ -767,8 +780,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text("Add to Cart",
-                  style: TextStyle(
+              Text(AppLocalizations.of(context)!.shoppingAddToCart,
+                  style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold)),
@@ -778,7 +791,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                 textCapitalization: TextCapitalization.sentences,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: "Item Name",
+                  labelText:
+                      AppLocalizations.of(context)!.shoppingItemNameLabel,
                   labelStyle: const TextStyle(color: Colors.white54),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.08),
@@ -800,7 +814,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: "Quantity (Opt.)",
+                          labelText:
+                              AppLocalizations.of(context)!.shoppingQuantityOpt,
                           labelStyle: const TextStyle(color: Colors.white54),
                           filled: true,
                           fillColor: Colors.white.withOpacity(0.08),
@@ -859,8 +874,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Add to Cart",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(AppLocalizations.of(context)!.shoppingAddToCart,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 16),

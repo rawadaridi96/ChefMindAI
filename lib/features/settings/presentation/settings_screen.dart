@@ -11,12 +11,15 @@ import 'package:chefmind_ai/features/auth/presentation/auth_state_provider.dart'
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/widgets/nano_toast.dart';
 import '../../../../core/services/offline_manager.dart';
+import 'package:chefmind_ai/core/services/locale_provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'edit_profile_screen.dart';
 import '../../subscription/presentation/subscription_controller.dart';
 import '../../onboarding/presentation/entry_orchestrator.dart';
 import '../../auth/presentation/dietary_preferences_screen.dart';
 import 'chef_labs_screen.dart';
 import 'household_screen.dart';
+import '../../guide/presentation/master_guide_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -154,8 +157,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     );
 
                 setState(() => _biometricEnabled = true);
-                if (mounted)
+                if (mounted) {
                   NanoToast.showSuccess(context, "Biometric Login Enabled");
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -215,9 +219,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 24),
-            _buildDetailRow("Username", username),
+            _buildDetailRow(
+                AppLocalizations.of(context)!.settingsUserDetailsUsername,
+                username),
             const Divider(color: Colors.white10),
-            _buildDetailRow("Email", email),
+            _buildDetailRow(
+                AppLocalizations.of(context)!.settingsUserDetailsEmail, email),
             const Divider(color: Colors.white10),
             Consumer(builder: (context, ref, _) {
               final tierAsync = ref.watch(subscriptionControllerProvider);
@@ -225,21 +232,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 data: (tier) {
                   switch (tier) {
                     case SubscriptionTier.sousChef:
-                      return 'Sous Chef';
+                      return AppLocalizations.of(context)!.tierSousChef;
                     case SubscriptionTier.executiveChef:
-                      return 'Executive Chef';
+                      return AppLocalizations.of(context)!.tierExecutiveChef;
                     case SubscriptionTier.homeCook:
                     default:
-                      return 'Home Cook';
+                      return AppLocalizations.of(context)!.tierHomeCook;
                   }
                 },
-                loading: () => 'Loading...',
-                error: (_, __) => 'Free Tier',
+                loading: () => AppLocalizations.of(context)!.generalLoading,
+                error: (_, __) => AppLocalizations.of(context)!.tierFree,
               );
-              return _buildDetailRow("Plan", planName);
+              return _buildDetailRow(
+                  AppLocalizations.of(context)!.settingsUserDetailsPlan,
+                  planName);
             }),
             const Divider(color: Colors.white10),
-            _buildDetailRow("Member ID", memberId),
+            _buildDetailRow(
+                AppLocalizations.of(context)!.settingsUserDetailsMemberId,
+                memberId),
             const SizedBox(height: 32),
           ],
         ),
@@ -326,8 +337,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 color: Colors.white),
                             onPressed: () => Navigator.pop(context),
                           ),
-                          const Text("Profile",
-                              style: TextStyle(
+                          Text(AppLocalizations.of(context)!.settingsProfile,
+                              style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600)),
@@ -424,8 +435,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             : _showUserDetails(user),
                         child: Text(
                           isGuest
-                              ? "Sign up to save your settings"
-                              : "Show details",
+                              ? AppLocalizations.of(context)!
+                                  .settingsSignupToSave
+                              : AppLocalizations.of(context)!
+                                  .settingsShowDetails,
                           style: const TextStyle(
                               color: AppColors.zestyLime,
                               fontSize: 14,
@@ -451,9 +464,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 10),
-                      const Text(
-                        "Privacy and Security",
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.settingsSecurity,
+                        style: const TextStyle(
                             color: Colors.white54,
                             fontSize: 14,
                             fontWeight: FontWeight.bold),
@@ -463,7 +476,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       // Notifications (Simulated "Change PIN" style)
                       _SettingsTile(
                         icon: Icons.notifications_outlined,
-                        title: "Push Notifications",
+                        title: AppLocalizations.of(context)!
+                                .settingsTitle
+                                .contains('إ')
+                            ? 'الإشعارات'
+                            : "Push Notifications",
                         trailing: Switch(
                           value: _notificationsEnabled,
                           activeColor: AppColors.zestyLime,
@@ -488,7 +505,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       if (!isGuest)
                         _SettingsTile(
                           icon: Icons.fingerprint,
-                          title: "Biometric Login",
+                          title:
+                              AppLocalizations.of(context)!.settingsBiometrics,
                           trailing: Switch(
                             value: _biometricEnabled,
                             activeColor: AppColors.zestyLime,
@@ -501,9 +519,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
 
                       const SizedBox(height: 24),
-                      const Text(
-                        "Subscription",
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.settingsSubscription,
+                        style: const TextStyle(
                             color: Colors.white54,
                             fontSize: 14,
                             fontWeight: FontWeight.bold),
@@ -513,7 +531,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       // Subscription & Billing
                       _SettingsTile(
                         icon: Icons.credit_card,
-                        title: "Subscription & Billing",
+                        title: AppLocalizations.of(context)!
+                            .settingsSubscriptionBilling,
                         trailing: const Icon(Icons.arrow_forward_ios,
                             color: Colors.white54, size: 16),
                         onTap: () async {
@@ -525,9 +544,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                       const SizedBox(height: 24),
                       if (!isGuest) ...[
-                        const Text(
-                          "Account",
-                          style: TextStyle(
+                        Text(
+                          AppLocalizations.of(context)!.settingsAccount,
+                          style: const TextStyle(
                               color: Colors.white54,
                               fontSize: 14,
                               fontWeight: FontWeight.bold),
@@ -535,7 +554,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         const SizedBox(height: 16),
                         _SettingsTile(
                           icon: Icons.people_outline,
-                          title: "Household Management",
+                          title:
+                              AppLocalizations.of(context)!.settingsHousehold,
                           trailing: const Icon(Icons.arrow_forward_ios,
                               color: Colors.white54, size: 16),
                           onTap: () {
@@ -562,7 +582,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                           return _SettingsTile(
                             icon: Icons.auto_awesome,
-                            title: "Personalize AI Chef",
+                            title: AppLocalizations.of(context)!
+                                .settingsPersonalizeAI,
                             subtitle: _buildDietarySummary(user, isPremium),
                             trailing: const Icon(Icons.arrow_forward_ios,
                                 color: Colors.white54, size: 16),
@@ -593,10 +614,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               children: [
                                 _SettingsTile(
                                   icon: Icons.science,
-                                  title: "ChefLabs",
-                                  subtitle: const Text(
-                                    "Experimental Features",
-                                    style: TextStyle(
+                                  title: AppLocalizations.of(context)!
+                                      .settingsChefLabs,
+                                  subtitle: Text(
+                                    AppLocalizations.of(context)!
+                                        .settingsExperimentalFeatures,
+                                    style: const TextStyle(
                                         color: AppColors.zestyLime,
                                         fontSize: 12,
                                         fontStyle: FontStyle.italic),
@@ -622,10 +645,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         const SizedBox(height: 15),
                       ],
 
+                      // Help & Support
+                      Text(
+                        AppLocalizations.of(context)!.settingsHelpSupport,
+                        style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Language Selector
+                      Consumer(builder: (context, ref, _) {
+                        final currentLocale = ref.watch(localeProvider);
+                        final displayLang = currentLocale != null
+                            ? '${LocaleNotifier.getFlag(currentLocale.languageCode)} ${LocaleNotifier.getDisplayName(currentLocale.languageCode)}'
+                            : '🌐 System Default';
+
+                        return _SettingsTile(
+                          icon: Icons.language,
+                          title: AppLocalizations.of(context)!.settingsLanguage,
+                          subtitle: Text(
+                            displayLang,
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 12),
+                          ),
+                          trailing: const Icon(Icons.arrow_forward_ios,
+                              color: Colors.white54, size: 16),
+                          onTap: () => _showLanguagePicker(context, ref),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                      _SettingsTile(
+                        icon: Icons.menu_book_rounded,
+                        title:
+                            AppLocalizations.of(context)!.settingsMasterGuide,
+                        trailing: const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white54, size: 16),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MasterGuideScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
                       // Sign Out / Log In
                       _SettingsTile(
                         icon: isGuest ? Icons.login : Icons.logout,
-                        title: isGuest ? "Log In / Sign Up" : "Sign Out",
+                        title: isGuest
+                            ? AppLocalizations.of(context)!.authLogin
+                            : AppLocalizations.of(context)!.settingsLogout,
                         iconColor:
                             isGuest ? AppColors.zestyLime : AppColors.errorRed,
                         textColor: isGuest ? Colors.white : AppColors.errorRed,
@@ -672,9 +745,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: AppColors.zestyLime.withOpacity(0.5)),
       ),
-      child: const Text(
-        "Sous Chef+",
-        style: TextStyle(
+      child: Text(
+        AppLocalizations.of(context)!.settingsSousChefPlus,
+        style: const TextStyle(
             color: AppColors.zestyLime,
             fontSize: 10,
             fontWeight: FontWeight.bold),
@@ -720,6 +793,82 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           premiumBadge,
         ]
       ],
+    );
+  }
+
+  void _showLanguagePicker(BuildContext context, WidgetRef ref) {
+    final currentLocale = ref.read(localeProvider);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              AppLocalizations.of(context)!.languageSelectTitle,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: LocaleNotifier.supportedLocales.map((locale) {
+                    final isSelected =
+                        currentLocale?.languageCode == locale.languageCode;
+                    return ListTile(
+                      leading: Text(
+                        LocaleNotifier.getFlag(locale.languageCode),
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                      title: Text(
+                        LocaleNotifier.getDisplayName(locale.languageCode),
+                        style: TextStyle(
+                          color:
+                              isSelected ? AppColors.zestyLime : Colors.white,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle,
+                              color: AppColors.zestyLime)
+                          : null,
+                      onTap: () {
+                        ref.read(localeProvider.notifier).setLocale(locale);
+                        Navigator.pop(context);
+                        NanoToast.showSuccess(
+                          this.context,
+                          "Language changed to ${LocaleNotifier.getDisplayName(locale.languageCode)}",
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          ],
+        ),
+      ),
     );
   }
 }

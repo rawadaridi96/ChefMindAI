@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 // import '../../auth/presentation/auth_state_provider.dart';
 import '../data/household_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -41,7 +42,7 @@ class HouseholdController extends _$HouseholdController {
         .stream(primaryKey: ['id'])
         .eq('id', user.id)
         .map((event) {
-          print("DEBUG: Profile Stream Event: $event");
+          debugPrint("DEBUG: Profile Stream Event: $event");
           return event.firstOrNull;
         });
 
@@ -64,13 +65,13 @@ class HouseholdController extends _$HouseholdController {
             Map<String, dynamic>.from(cachedData as Map);
         yield data;
       } catch (e) {
-        print("Error reading cached household data: $e");
+        debugPrint("Error reading cached household data: $e");
       }
     }
 
     try {
       await for (final profile in profileStream) {
-        print("DEBUG: Profile Update: $profile");
+        debugPrint("DEBUG: Profile Update: $profile");
         if (profile == null) {
           // If profile is null (logged out?), clear cache
           if (cachedData != null) {
@@ -104,13 +105,13 @@ class HouseholdController extends _$HouseholdController {
             }
           } catch (e) {
             // Network error likely.
-            print("Error fetching household details (likely offline): $e");
+            debugPrint("Error fetching household details (likely offline): $e");
           }
         }
       }
     } catch (e) {
       // Catch RealtimeSubscribeException or others when offline
-      print("Stream Error (likely offline): $e");
+      debugPrint("Stream Error (likely offline): $e");
       // If we are offline and stream fails, we effectively just stop listening.
       // The cached value (yielded above) remains the state.
       // We could set up a periodic retry or listen to connectivity,

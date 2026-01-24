@@ -1,14 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+// import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/liquid_mesh_background.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'subscription_controller.dart';
-import 'currency_controller.dart';
+// import 'currency_controller.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -42,20 +43,28 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 10),
                     children: [
-                      _buildBillingToggle(),
+                      _buildBillingToggle(context),
                       const SizedBox(height: 32),
                       // Plan 1: Home Cook
                       _buildPlanCard(
+                        context: context,
                         tier: SubscriptionTier.homeCook,
-                        title: 'Home Cook',
-                        price: 'Free Forever',
+                        title:
+                            AppLocalizations.of(context)!.subscriptionHomeCook,
+                        price: AppLocalizations.of(context)!
+                            .subscriptionFreeForever,
                         features: [
-                          // '5 Curated AI Recipes/day',
-                          '5 AI Recipes/day',
-                          'Save 3 Favorites',
-                          '5 Daily Link Shares'
+                          AppLocalizations.of(context)!
+                              .subscriptionAIRecipesDay,
+                          AppLocalizations.of(context)!
+                              .subscriptionSave3Favorites,
+                          AppLocalizations.of(context)!
+                              .subscriptionLinkBookmarking,
+                          AppLocalizations.of(context)!
+                              .subscriptionDailyLinkShares,
                         ],
-                        defaultButtonText: 'Downgrade',
+                        defaultButtonText:
+                            AppLocalizations.of(context)!.subscriptionDowngrade,
                         isCurrent: currentTier == SubscriptionTier.homeCook,
                         checkColor: Colors.grey,
                         buttonColor: Colors.white12,
@@ -64,22 +73,36 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
                       // Plan 2: Sous Chef (Hero)
                       _buildPlanCard(
+                        context: context,
                         tier: SubscriptionTier.sousChef,
-                        title: 'Sous Chef',
+                        title:
+                            AppLocalizations.of(context)!.subscriptionSousChef,
                         price: _isYearly ? '\$7.99 / mo' : '\$9.99 / mo',
-                        billingNote: _isYearly ? 'Billed \$95.88 yearly' : null,
+                        billingNote: _isYearly
+                            ? AppLocalizations.of(context)!
+                                .subscriptionBilledYearly('\$95.88')
+                            : null,
                         features: [
-                          // 'Unlimited Pantry AI',
-                          'Unlimited AI Recipes',
-                          'Full Link Scraper',
-                          'Unlimited Vault Saves',
-                          'Unlimited Link Sharing',
-                          'Advanced Dietary Intelligence'
+                          AppLocalizations.of(context)!.subscriptionUnlimitedAI,
+                          AppLocalizations.of(context)!
+                              .subscriptionFullLinkScraper,
+                          AppLocalizations.of(context)!
+                              .subscriptionUnlimitedVault,
+                          AppLocalizations.of(context)!
+                              .subscriptionUnlimitedSharing,
+                          AppLocalizations.of(context)!
+                              .subscriptionAdvancedDietary,
                         ],
-                        defaultButtonText:
-                            currentTier == SubscriptionTier.executiveChef
-                                ? 'Downgrade to Sous Chef'
-                                : 'Upgrade to Sous Chef',
+                        defaultButtonText: currentTier ==
+                                SubscriptionTier.executiveChef
+                            ? AppLocalizations.of(context)!
+                                .subscriptionDowngradeTo(
+                                    AppLocalizations.of(context)!
+                                        .subscriptionSousChef)
+                            : AppLocalizations.of(context)!
+                                .subscriptionUpgradeTo(
+                                    AppLocalizations.of(context)!
+                                        .subscriptionSousChef),
                         isPopular: true,
                         isCurrent: currentTier == SubscriptionTier.sousChef,
                         checkColor: AppColors.zestyLime,
@@ -91,19 +114,25 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
                       // Plan 3: Executive Chef
                       _buildPlanCard(
+                        context: context,
                         tier: SubscriptionTier.executiveChef,
-                        title: 'Executive Chef',
+                        title: AppLocalizations.of(context)!
+                            .subscriptionExecutiveChef,
                         price: _isYearly ? '\$15.99 / mo' : '\$19.99 / mo',
-                        billingNote:
-                            _isYearly ? 'Billed \$191.88 yearly' : null,
+                        billingNote: _isYearly
+                            ? AppLocalizations.of(context)!
+                                .subscriptionBilledYearly('\$191.88')
+                            : null,
                         features: [
-                          'High-Speed AI Generation',
-                          'Mood-Based Suggestions',
-                          'Family Sync (Kitchen Vault)',
-                          // 'Unlimited Link Sharing',q
-                          'Priority Early Access'
+                          AppLocalizations.of(context)!.subscriptionHighSpeedAI,
+                          AppLocalizations.of(context)!
+                              .subscriptionMoodSuggestions,
+                          AppLocalizations.of(context)!.subscriptionFamilySync,
+                          AppLocalizations.of(context)!
+                              .subscriptionPriorityAccess,
                         ],
-                        defaultButtonText: 'Go Executive',
+                        defaultButtonText: AppLocalizations.of(context)!
+                            .subscriptionGoExecutive,
                         isCurrent:
                             currentTier == SubscriptionTier.executiveChef,
                         checkColor: AppColors.zestyLime,
@@ -132,9 +161,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             icon: const Icon(Icons.close, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
-          const Text(
-            'Unlock the Kitchen',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context)!.subscriptionTitle,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -146,7 +175,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
-  Widget _buildBillingToggle() {
+  Widget _buildBillingToggle(BuildContext context) {
     return Center(
       child: Container(
         decoration: BoxDecoration(
@@ -158,21 +187,25 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildToggleOption('Monthly', !_isYearly),
-            _buildToggleOption('Yearly (Save 20%)', _isYearly),
+            _buildToggleOption(
+              AppLocalizations.of(context)!.subscriptionMonthly,
+              !_isYearly,
+              () => setState(() => _isYearly = false),
+            ),
+            _buildToggleOption(
+              AppLocalizations.of(context)!.subscriptionYearlySave,
+              _isYearly,
+              () => setState(() => _isYearly = true),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildToggleOption(String text, bool isSelected) {
+  Widget _buildToggleOption(String text, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isYearly = text.contains('Yearly');
-        });
-      },
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -193,6 +226,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Widget _buildPlanCard({
+    required BuildContext context,
     required SubscriptionTier tier,
     required String title,
     required String price,
@@ -210,7 +244,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     bool forceGhost = false,
   }) {
     // Determine Button State
-    final String buttonText = isCurrent ? 'Current Plan' : defaultButtonText;
+    final String buttonText = isCurrent
+        ? AppLocalizations.of(context)!.subscriptionCurrentPlan
+        : defaultButtonText;
     final bool isGhost =
         isCurrent || forceGhost; // Current plan always shows as Ghost button
 
@@ -443,11 +479,13 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       // Directly upgrade usage for now (as per user request to restore functionality)
       await ref.read(subscriptionControllerProvider.notifier).upgrade(tier);
       if (context.mounted) {
-        NanoToast.showSuccess(context, 'Plan updated successfully!');
+        NanoToast.showSuccess(
+            context, AppLocalizations.of(context)!.subscriptionPlanUpdated);
       }
     } catch (e) {
       if (context.mounted) {
-        NanoToast.showError(context, 'Failed to update plan: $e');
+        NanoToast.showError(context,
+            AppLocalizations.of(context)!.subscriptionPlanUpdateFailed);
       }
     }
   }

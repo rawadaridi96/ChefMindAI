@@ -5,11 +5,11 @@ import 'package:chefmind_ai/features/recipes/presentation/recipe_detail_screen.d
 import 'package:chefmind_ai/core/theme/app_theme.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/features/recipes/presentation/vault_controller.dart';
-import 'dart:ui'; // For default blur
 import '../../../../core/widgets/nano_toast.dart';
 import '../../../../core/widgets/premium_paywall.dart';
 import '../../../../core/exceptions/premium_limit_exception.dart';
 import '../../recipes/data/vault_repository.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class GlobalImportListener extends ConsumerStatefulWidget {
   final Widget child;
@@ -45,14 +45,20 @@ class _GlobalImportListenerState extends ConsumerState<GlobalImportListener> {
           _showSnackBar(errorMsg, Colors.red);
           ref.read(importUrlStateProvider.notifier).clear();
         } else if (next.startsWith("PREMIUM_LIMIT:")) {
-          final msg = next.substring(14);
+          final code = next.substring(14);
+          String message = code; // Fallback
+          if (code == 'LINK_SCRAPER') {
+            message = AppLocalizations.of(context)!.premiumLinkScraper;
+          }
+
           // Show paywall
           final navContext = widget.navigatorKey.currentContext;
           if (navContext != null) {
             PremiumPaywall.show(navContext,
-                message: msg,
+                message: message,
                 featureName: "Link Scraper",
-                ctaLabel: "Upgrade to Sous or Executive Chef");
+                ctaLabel: AppLocalizations.of(context)!
+                    .premiumUpgradeToSousOrExecutive);
           }
           ref.read(importUrlStateProvider.notifier).clear();
         } else if (next.startsWith("SUCCESS:")) {
@@ -63,13 +69,55 @@ class _GlobalImportListenerState extends ConsumerState<GlobalImportListener> {
           _showSnackBar("Saving to Vault...", Colors.white54);
           // Do not clear, let the process finish
         } else if (next.startsWith("CONFIRM_LINK:")) {
-          final url = next.substring(13);
-          _showSaveLinkDialog(url);
+          final raw = next.substring(13);
+          String url = raw;
+          String? thumbnail;
+          String? title;
+
+          if (raw.contains('|')) {
+            final parts = raw.split('|');
+            if (parts.isNotEmpty) url = parts[0];
+            if (parts.length > 1 && parts[1].isNotEmpty) thumbnail = parts[1];
+            if (parts.length > 2 && parts[2].isNotEmpty) title = parts[2];
+          }
+
+          _showSaveLinkDialog(url, thumbnail: thumbnail, title: title);
           ref.read(importUrlStateProvider.notifier).clear();
         } else if (next.startsWith("SHARED_PREVIEW:")) {
           final token = next.substring(15);
           _showSharedPreviewDialog(token);
           ref.read(importUrlStateProvider.notifier).clear();
+        } else if (next.startsWith("IMPORT_STARTED")) {
+          // Show toast that it started in background
+          _showSnackBar("ChefMind is analyzing the recipe in the background!",
+              AppColors.zestyLime);
+          // We DO NOT clear here, as we wait for complete or error.
+          // Actually, we should probably clear to avoid re-trigger if rebuilt,
+          // but we rely on next event. Safe to clear?
+          // If we clear, we won't see "IMPORT_COMPLETE" if it happens too fast?
+          // No, these are stream events or notifier state changes.
+          // If state is unique string, it works.
+          // Let's clear to be safe, assuming controller sets a new state for complete.
+          ref.read(importUrlStateProvider.notifier).clear();
+        } else if (next == "IMPORT_COMPLETE") {
+          // Add a small delay to allow the loading dialog to pop cleanly first
+          // This prevents potential collisions where the context is unstable during the pop transition
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              ref.read(importUrlStateProvider.notifier).clear();
+              // Get the result
+              final recipe = ref.read(importedRecipeResultProvider);
+              if (recipe != null) {
+                _showRecipeReadyDialog(recipe);
+              } else {
+                debugPrint(
+                    "ERROR: Recipe result is null in GlobalImportListener");
+                _showSnackBar("Error: Result lost.", Colors.red);
+              }
+            }
+          });
+        } else if (next == "IMPORT_COMPLETE_FG") {
+          // Foreground import handled by ImportRecipeDialog. Do nothing.
         } else {
           _showImportDialog(next);
         }
@@ -80,56 +128,102 @@ class _GlobalImportListenerState extends ConsumerState<GlobalImportListener> {
   }
 
   void _showSnackBar(String message, Color color) {
-    final navContext = widget.navigatorKey.currentContext;
+    final navContext = widget.navigatorKey
+        .currentContext; // Still needed for Loc, but might work for localizations if above invalid
+    // If navContext is the Navigator, AppLocalizations should be found (inherited from MaterialApp).
+
+    // Explicitly derive OverlayState
+    final overlay = widget.navigatorKey.currentState?.overlay;
+
     if (navContext != null) {
       if (color == Colors.red) {
-        NanoToast.showError(navContext, message);
+        NanoToast.showError(
+            navContext, AppLocalizations.of(navContext)!.importError(message),
+            overlay: overlay);
       } else if (color == AppColors.zestyLime) {
-        NanoToast.showSuccess(navContext, message);
+        NanoToast.showSuccess(navContext, message, overlay: overlay);
       } else {
-        NanoToast.showInfo(navContext, message);
+        NanoToast.showInfo(navContext, message, overlay: overlay);
       }
     }
   }
 
   void _showImportDialog(String url) {
-    // Reset state so it doesn't re-trigger immediately if rebuilt
-    // But be careful not to clear it too early or loop.
-    // Ideally we clear it AFTER we are done or when dialog closes.
-    // Let's clear it immediately to "consume" the event.
     ref.read(importUrlStateProvider.notifier).clear();
 
-    final navContext = widget.navigatorKey.currentContext;
-    if (navContext == null) return;
-
-    showDialog(
-      context: navContext,
-      barrierDismissible: false,
-      builder: (context) => _ImportDialog(url: url),
+    // Use push directly to avoid Navigator.of(context) lookup failure
+    widget.navigatorKey.currentState?.push(
+      DialogRoute(
+        context: widget.navigatorKey.currentContext!,
+        barrierDismissible: false,
+        builder: (context) => _ImportDialog(url: url),
+      ),
     );
   }
 
-  void _showSaveLinkDialog(String url) {
-    ref.read(importUrlStateProvider.notifier).clear(); // Ensure cleared
-    final navContext = widget.navigatorKey.currentContext;
-    if (navContext == null) return;
-
-    showDialog(
-      context: navContext,
-      barrierDismissible: false,
-      builder: (context) => _SaveLinkDialog(url: url),
+  void _showSaveLinkDialog(String url, {String? thumbnail, String? title}) {
+    ref.read(importUrlStateProvider.notifier).clear();
+    widget.navigatorKey.currentState?.push(
+      DialogRoute(
+        context: widget.navigatorKey.currentContext!,
+        barrierDismissible: false,
+        builder: (context) =>
+            _SaveLinkDialog(url: url, thumbnail: thumbnail, title: title),
+      ),
     );
   }
 
   void _showSharedPreviewDialog(String token) {
     ref.read(importUrlStateProvider.notifier).clear();
+    widget.navigatorKey.currentState?.push(
+      DialogRoute(
+        context: widget.navigatorKey.currentContext!,
+        barrierDismissible: false,
+        builder: (context) => _SharedPreviewDialog(token: token),
+      ),
+    );
+  }
+
+  void _showRecipeReadyDialog(Map<String, dynamic> recipe) {
+    // Clear result after consuming
+    // ref.read(importedRecipeResultProvider.notifier).state = null; // Maybe keep it until dialog closed?
+
     final navContext = widget.navigatorKey.currentContext;
     if (navContext == null) return;
 
-    showDialog(
-      context: navContext,
-      barrierDismissible: false,
-      builder: (context) => _SharedPreviewDialog(token: token),
+    // Direct navigation is often preferred if the user just started it.
+    // But since it's background, maybe they navigated away.
+    // Let's show a "Recipe Ready" toast that opens it, OR a dialog.
+    // Dialog is intrusive but clear.
+
+    // Use push directly
+    widget.navigatorKey.currentState?.push(
+      DialogRoute(
+        context: widget.navigatorKey.currentContext!,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppColors.deepCharcoal,
+          title: const Text("Recipe Ready! 🍳",
+              style: TextStyle(color: AppColors.zestyLime)),
+          content: Text("ChefMind has finished analyzing a recipe.",
+              style: TextStyle(color: Colors.white)),
+          actions: [
+            TextButton(
+              child: const Text("View",
+                  style: TextStyle(
+                      color: AppColors.zestyLime, fontWeight: FontWeight.bold)),
+              onPressed: () {
+                final nav = widget.navigatorKey.currentState!;
+                nav.pop(); // Close dialog uses Navigator within dialog or use key
+                // If we use nav.pop(), it pops top. Correct.
+
+                nav.push(MaterialPageRoute(
+                    builder: (_) => RecipeDetailScreen(
+                        recipe: recipe, isSharedPreview: true)));
+              },
+            )
+          ],
+        ),
+      ),
     );
   }
 }
@@ -224,7 +318,10 @@ class _SharedPreviewDialogState extends ConsumerState<_SharedPreviewDialog> {
 
 class _SaveLinkDialog extends ConsumerStatefulWidget {
   final String url;
-  const _SaveLinkDialog({required this.url});
+  final String? thumbnail;
+  final String? title;
+
+  const _SaveLinkDialog({required this.url, this.thumbnail, this.title});
 
   @override
   ConsumerState<_SaveLinkDialog> createState() => _SaveLinkDialogState();
@@ -234,6 +331,14 @@ class _SaveLinkDialogState extends ConsumerState<_SaveLinkDialog> {
   final TextEditingController _titleController = TextEditingController();
   final _formKey = GlobalKey<FormState>(); // Add Form validation
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.title != null) {
+      _titleController.text = widget.title!;
+    }
+  }
 
   @override
   void dispose() {
@@ -248,9 +353,8 @@ class _SaveLinkDialogState extends ConsumerState<_SaveLinkDialog> {
 
     try {
       final title = _titleController.text.trim();
-      await ref
-          .read(vaultControllerProvider.notifier)
-          .saveLink(widget.url, title: title.isNotEmpty ? title : null);
+      await ref.read(vaultControllerProvider.notifier).saveLink(widget.url,
+          title: title.isNotEmpty ? title : null, thumbnail: widget.thumbnail);
 
       if (mounted) {
         if (mounted) {
@@ -336,76 +440,84 @@ class _SaveLinkDialogState extends ConsumerState<_SaveLinkDialog> {
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: Colors.white12),
         ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Save Video Link",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                "Give it a name:",
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _titleController,
-                style: const TextStyle(color: Colors.white),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Please enter a name";
-                  }
-                  if (existingTitles.contains(value.trim().toLowerCase())) {
-                    return "Name already exists. Try '${value.trim()} 2'";
-                  }
-                  return null;
-                },
-                decoration: InputDecoration(
-                  hintText: "e.g. Brownie Recipe",
-                  hintStyle: const TextStyle(color: Colors.white38),
-                  errorStyle: const TextStyle(color: AppColors.errorRed),
-                  enabledBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: Colors.white24),
-                      borderRadius: BorderRadius.circular(12)),
-                  focusedBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: AppColors.zestyLime),
-                      borderRadius: BorderRadius.circular(12)),
-                  errorBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: AppColors.errorRed),
-                      borderRadius: BorderRadius.circular(12)),
-                  focusedErrorBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: AppColors.errorRed),
-                      borderRadius: BorderRadius.circular(12)),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Save Video Link",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Cancel",
-                        style: TextStyle(color: Colors.white54)),
+                const SizedBox(height: 16),
+                const Text(
+                  "Give it a name:",
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _titleController,
+                  style: const TextStyle(color: Colors.white),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return "Please enter a name";
+                    }
+                    if (existingTitles.contains(value.trim().toLowerCase())) {
+                      return "Name already exists. Try '${value.trim()} 2'";
+                    }
+                    if (existingTitles
+                        .contains(value.replaceAll(' ', '').toLowerCase())) {
+                      // Extra check for spaceless match?
+                      // Nah, simple check is fine.
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    hintText: "e.g. Brownie Recipe",
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    errorStyle: const TextStyle(color: AppColors.errorRed),
+                    enabledBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.white24),
+                        borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide:
+                            const BorderSide(color: AppColors.zestyLime),
+                        borderRadius: BorderRadius.circular(12)),
+                    errorBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: AppColors.errorRed),
+                        borderRadius: BorderRadius.circular(12)),
+                    focusedErrorBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: AppColors.errorRed),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.zestyLime,
-                      foregroundColor: AppColors.deepCharcoal,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel",
+                          style: TextStyle(color: Colors.white54)),
                     ),
-                    child: const Text("Save"),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.zestyLime,
+                        foregroundColor: AppColors.deepCharcoal,
+                      ),
+                      child: const Text("Save"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -431,35 +543,27 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
   }
 
   Future<void> _startImport() async {
-    try {
-      final recipe = await importRecipeFromUrl(widget.url);
-      if (recipe != null) {
-        if (mounted) {
-          Navigator.pop(context); // Close dialog
-          // Navigate to detail screen
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => RecipeDetailScreen(recipe: recipe)));
-        }
-      } else {
-        if (mounted) {
-          setState(() => _status = "Could not find a recipe.");
-          await Future.delayed(const Duration(seconds: 2));
-          if (mounted) Navigator.pop(context);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _status = "Error: $e");
-        await Future.delayed(const Duration(seconds: 3));
-        if (mounted) Navigator.pop(context);
-      }
-    }
+    // Navigate via Controller (Robust Multimodal Logic)
+    ref.read(importControllerProvider.notifier).startImport(widget.url);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen for completion to close this dialog
+    ref.listen(importUrlStateProvider, (previous, next) {
+      if (next != null) {
+        if (next.startsWith("IMPORT_COMPLETE") ||
+            next.startsWith("SUCCESS") ||
+            next.startsWith("ERROR")) {
+          if (mounted) Navigator.pop(context);
+        } else if (next.startsWith("SAVING:")) {
+          setState(() => _status = "Saving...");
+        } else if (next.startsWith("INFO:")) {
+          setState(() => _status = next.substring(5));
+        }
+      }
+    });
+
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(

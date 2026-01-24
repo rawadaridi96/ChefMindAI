@@ -54,6 +54,7 @@ class VaultController extends _$VaultController {
       throw PremiumLimitReachedException(
         "Vault is full ($limit items).",
         "Vault Limit Reached",
+        PremiumLimitType.vaultFull,
       );
     }
 
@@ -62,7 +63,13 @@ class VaultController extends _$VaultController {
         () => ref.read(vaultRepositoryProvider).saveRecipe(recipe));
   }
 
-  Future<void> saveLink(String url, {String? title}) async {
+  Future<void> updateRecipeImage(String recipeId, String imageUrl) async {
+    await _performOfflineSafe(() => ref
+        .read(vaultRepositoryProvider)
+        .updateRecipeImage(recipeId, imageUrl));
+  }
+
+  Future<void> saveLink(String url, {String? title, String? thumbnail}) async {
     final textTier = await ref.read(subscriptionControllerProvider.future);
 
     final limit = (textTier == SubscriptionTier.sousChef ||
@@ -75,11 +82,13 @@ class VaultController extends _$VaultController {
       throw PremiumLimitReachedException(
         "Vault is full ($limit items).",
         "Vault Limit Reached",
+        PremiumLimitType.vaultFull,
       );
     }
 
-    await _performOfflineSafe(
-        () => ref.read(vaultRepositoryProvider).saveLink(url, title: title));
+    await _performOfflineSafe(() => ref
+        .read(vaultRepositoryProvider)
+        .saveLink(url, title: title, thumbnail: thumbnail));
   }
 
   Future<void> deleteRecipe(String recipeId) async {
@@ -104,7 +113,7 @@ class VaultController extends _$VaultController {
     try {
       await ref.read(vaultRepositoryProvider).shareRecipe(recipeId);
     } catch (e) {
-      throw e;
+      rethrow;
     }
   }
 
@@ -112,8 +121,9 @@ class VaultController extends _$VaultController {
     // Household check
     final householdState = ref.read(householdControllerProvider);
     final householdId = householdState.valueOrNull?['id'];
-    if (householdId == null)
+    if (householdId == null) {
       throw Exception("You are not part of a household.");
+    }
 
     // Check Duplicate
     final repo = ref.read(vaultRepositoryProvider);
@@ -140,8 +150,27 @@ class VaultController extends _$VaultController {
     try {
       await repo.saveRecipe(recipeToSave, householdId: householdId);
     } catch (e) {
-      throw e;
+      rethrow;
     }
+  }
+
+  Future<Map<String, dynamic>> saveSharedRecipe(
+      Map<String, dynamic> recipe) async {
+    // 1. Create Deep Copy
+    final recipeToSave = Map<String, dynamic>.from(recipe);
+
+    // 2. Generate New ID (This becomes a NEW recipe in the user's vault)
+    recipeToSave['id'] = const Uuid().v4();
+    recipeToSave['recipe_id'] = recipeToSave['id'];
+
+    // 3. Clear Owner/Dates (Let backend/repo handle defaults for current user)
+    recipeToSave.remove('user_id');
+    recipeToSave.remove('created_at');
+
+    // 4. Save
+    await saveRecipe(recipeToSave);
+
+    return recipeToSave;
   }
 
   Future<String> createUniversalLink(Map<String, dynamic> recipe) async {
@@ -163,7 +192,8 @@ class VaultController extends _$VaultController {
       if (count >= 5) {
         throw PremiumLimitReachedException(
             "Daily share limit reached (5/5). Upgrade for unlimited sharing!",
-            "Daily Share Limit");
+            "Daily Share Limit",
+            PremiumLimitType.dailyShareLimit);
       }
 
       await prefs.setInt('share_count', count + 1);

@@ -7,6 +7,8 @@ import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
 import 'package:chefmind_ai/features/recipes/presentation/recipe_detail_screen.dart';
 import 'package:chefmind_ai/features/recipes/presentation/vault_controller.dart';
+import 'package:chefmind_ai/core/exceptions/premium_limit_exception.dart';
+import 'package:chefmind_ai/core/widgets/premium_paywall.dart';
 
 class DeepLinkService {
   static final DeepLinkService _instance = DeepLinkService._internal();
@@ -127,19 +129,47 @@ class DeepLinkService {
           .getSharedRecipe(token); // Use new method
 
       if (context.mounted) {
-        Navigator.pop(context); // Close loading
+        // Do not pop yet, we try to save immediately
 
         if (recipe != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (ctx) => RecipeDetailScreen(
-                recipe: recipe,
-                isSharedPreview: true, // Enable SAVE button
-              ),
-            ),
-          );
+          try {
+            // Auto Save
+            final savedRecipe = await container
+                .read(vaultControllerProvider.notifier)
+                .saveSharedRecipe(recipe);
+
+            if (context.mounted) {
+              Navigator.pop(context); // Close loading
+              NanoToast.showSuccess(context, "Recipe saved to your Vault! 📥");
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => RecipeDetailScreen(
+                    recipe: savedRecipe,
+                    // isSharedPreview: false, // Default is false, it's saved now
+                  ),
+                ),
+              );
+            }
+          } on PremiumLimitReachedException catch (e) {
+            if (context.mounted) {
+              Navigator.pop(context); // Close loading
+              PremiumPaywall.show(context,
+                  message: e.message, featureName: e.featureName);
+            }
+          } catch (e) {
+            if (context.mounted) {
+              Navigator.pop(context); // Close loading
+              NanoToast.showError(context, "Failed to save recipe: $e");
+              // Option: Show it in preview mode if save failed?
+              // For now, just error is safer/simpler as per request "automatically save".
+              // If save fails due to other reasons (network?), maybe preview is nice,
+              // but let's stick to the prompt.
+            }
+          }
         } else {
+          Navigator.pop(context); // Close loading
           NanoToast.showError(context, "Link expired or invalid.");
         }
       }

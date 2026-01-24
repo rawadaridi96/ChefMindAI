@@ -49,6 +49,9 @@ class VaultRepository {
         .map((e) {
       // Reconstruct the 'row' expected by UI
       // UI expects { 'id':..., 'recipe_id':..., 'title':..., 'recipe_json':... }
+      // Merge ID/Image updates from model if JSON is stale?
+      // Actually, we should trust the model fields if we update them.
+      // But currently model stores blob in 'recipeJson'.
       return {
         'id': e.id,
         'user_id': e.userId,
@@ -60,6 +63,53 @@ class VaultRepository {
         'is_shared': e.isShared,
       };
     }).toList();
+  }
+
+  Future<void> updateRecipeImage(String recipeId, String imageUrl) async {
+    // 1. Update Local Hive
+    final box = Hive.box<SavedRecipeModel>('saved_recipes');
+    final p = box.values.firstWhere((e) => e.recipeId == recipeId);
+
+    // Update JSON blob
+    final newJson = Map<String, dynamic>.from(p.recipeJson);
+    newJson['image'] = imageUrl;
+    newJson['thumbnail'] = imageUrl; // Update both to be sure
+
+    // Create updated model (Hive objects are immutable-ish if we use copyWith pattern, or just replace)
+    final newModel = SavedRecipeModel(
+        id: p.id,
+        userId: p.userId,
+        recipeId: p.recipeId,
+        title: p.title,
+        recipeJson: newJson,
+        householdId: p.householdId,
+        createdAt: p.createdAt,
+        isShared: p.isShared);
+
+    // Replace in box
+    // To replace, we need key. box.values gives values.
+    // If we use key:
+    final key = box.keyAt(box.values.toList().indexOf(p));
+    await box.put(key, newModel);
+
+    // 2. Update Backend
+    if (!_offlineManager.hasConnection) {
+      // Queue
+      await _syncQueueService.queueOperation('saved_recipes', 'update_image',
+          {'recipe_id': recipeId, 'image_url': imageUrl});
+      return;
+    }
+
+    try {
+      // We need to update the 'recipe_json' column in Supabase
+      await _client
+          .from('saved_recipes')
+          .update({'recipe_json': newJson}).eq('recipe_id', recipeId);
+    } catch (e) {
+      // Queue fallback
+      await _syncQueueService.queueOperation('saved_recipes', 'update_image',
+          {'recipe_id': recipeId, 'image_url': imageUrl});
+    }
   }
 
   StreamSubscription? _realtimeSubscription;
@@ -121,8 +171,10 @@ class VaultRepository {
         final tempTitle = temp.title.toLowerCase();
         final remoteHousehold = remote['household_id'];
         final tempHousehold = temp.householdId;
+        final remoteRecipeId = remote['recipe_id'];
 
-        return remoteTitle == tempTitle && remoteHousehold == tempHousehold;
+        return (remoteTitle == tempTitle && remoteHousehold == tempHousehold) ||
+            (remoteRecipeId != null && remoteRecipeId == temp.recipeId);
       });
       return !isDuplicate;
     }).toList();
@@ -172,8 +224,6 @@ class VaultRepository {
     );
     box.add(model);
 
-    box.add(model);
-
     final payload = {
       'user_id': userId,
       'recipe_id': recipeId,
@@ -197,7 +247,8 @@ class VaultRepository {
     }
   }
 
-  Map<String, dynamic> generateLinkMetadata(String url, {String? title}) {
+  Map<String, dynamic> generateLinkMetadata(String url,
+      {String? title, String? thumbnail}) {
     final linkId = const Uuid().v4();
     final linkTitle = title?.isNotEmpty == true ? title! : url;
 
@@ -228,12 +279,14 @@ class VaultRepository {
       'url': url,
       'title': linkTitle,
       'platform': platform,
+      'thumbnail': thumbnail,
       'saved_at': DateTime.now().toIso8601String(),
     };
   }
 
-  Future<void> saveLink(String url, {String? title}) async {
-    final linkData = generateLinkMetadata(url, title: title);
+  Future<void> saveLink(String url, {String? title, String? thumbnail}) async {
+    final linkData =
+        generateLinkMetadata(url, title: title, thumbnail: thumbnail);
     await saveRecipe(linkData);
   }
 

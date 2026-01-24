@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/services/offline_manager.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/services/sync_queue_service.dart';
 
 import 'models/shopping_item_model.dart';
@@ -72,11 +73,11 @@ class ShoppingRepository {
 
       // Fallback: If sync succeeded, we're definitely online.
       // Process any queued operations (connectivity detection may be unreliable)
-      print(
+      debugPrint(
           "DEBUG syncCartItems: Sync succeeded, processing any pending queue...");
       await _syncQueueService.processQueue();
     } catch (e) {
-      print("DEBUG syncCartItems: Sync failed (likely offline): $e");
+      debugPrint("DEBUG syncCartItems: Sync failed (likely offline): $e");
       // Don't rethrow on sync fail (offline), just silent
     }
   }
@@ -84,14 +85,15 @@ class ShoppingRepository {
   void subscribeToRealtime() {
     if (_realtimeSubscription != null) return;
 
-    print("DEBUG Realtime: Subscribing to shopping_cart stream...");
+    debugPrint("DEBUG Realtime: Subscribing to shopping_cart stream...");
     _realtimeSubscription = _client
         .from('shopping_cart')
         .stream(primaryKey: ['id']).listen((remoteItems) {
-      print("DEBUG Realtime: Received ${remoteItems.length} items from stream");
+      debugPrint(
+          "DEBUG Realtime: Received ${remoteItems.length} items from stream");
       _updateLocalBoxFromRemote(remoteItems);
     }, onError: (e) {
-      print("Realtime Error: $e");
+      debugPrint("Realtime Error: $e");
     });
   }
 
@@ -186,12 +188,12 @@ class ShoppingRepository {
 
     // Remote or Queue
     if (!_offlineManager.hasConnection) {
-      print("DEBUG Repo addItem: OFFLINE - Queuing insert. Data: $data");
+      debugPrint("DEBUG Repo addItem: OFFLINE - Queuing insert. Data: $data");
       await _syncQueueService.queueOperation('shopping_cart', 'insert', data);
       return;
     }
 
-    print("DEBUG Repo addItem: ONLINE - Inserting directly. Data: $data");
+    debugPrint("DEBUG Repo addItem: ONLINE - Inserting directly. Data: $data");
 
     try {
       await _client.from('shopping_cart').insert(data);
@@ -207,7 +209,7 @@ class ShoppingRepository {
     final box = Hive.box<ShoppingItemModel>('shopping_items');
     final strId = id.toString();
     try {
-      print(
+      debugPrint(
           "RefDebug: updateAmount called with id: $id (${id.runtimeType}), newAmount: $newAmount");
       final item = box.values.firstWhere((e) => e.id == strId);
       // We can't modify HiveObject fields directly if they are final.
@@ -267,7 +269,7 @@ class ShoppingRepository {
           createdAt: item.createdAt);
       if (item.key != null) await box.put(item.key, newItem);
     } catch (e) {
-      print("Error updating amount in Hive: $e");
+      debugPrint("Error updating amount in Hive: $e");
     }
 
     final Map<String, dynamic> updates = {'amount': newAmount};

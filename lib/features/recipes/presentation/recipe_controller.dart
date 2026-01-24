@@ -21,6 +21,9 @@ class RecipeController extends _$RecipeController {
     String? mealType,
     String? allergies,
     String? mood,
+    String? cuisine,
+    int? maxTime,
+    String? skillLevel,
     bool includeGlobalDiet = false,
   }) async {
     state = const AsyncLoading();
@@ -42,6 +45,7 @@ class RecipeController extends _$RecipeController {
           throw PremiumLimitReachedException(
             "Mood-based suggestions require an Executive Chef plan.",
             "Executive Feature",
+            PremiumLimitType.executiveFeatureMood,
           );
         }
       }
@@ -55,6 +59,7 @@ class RecipeController extends _$RecipeController {
           throw PremiumLimitReachedException(
             "Advanced Dietary Intelligence requires a Sous Chef plan.",
             "Advanced Intelligence",
+            PremiumLimitType.sousFeatureADI,
           );
         }
 
@@ -99,14 +104,27 @@ class RecipeController extends _$RecipeController {
           throw PremiumLimitReachedException(
             "You've reached your daily limit of $limit recipes.",
             "Daily Recipe Limit",
+            PremiumLimitType.dailyRecipeLimit,
           );
         }
+      }
+
+      // Pack new parameters into filters
+      final List<String> effectiveFilters = [...(filters ?? [])];
+      if (cuisine != null && cuisine.isNotEmpty) {
+        effectiveFilters.add("Cuisine: $cuisine");
+      }
+      if (maxTime != null) {
+        effectiveFilters.add("Max Time: $maxTime minutes");
+      }
+      if (skillLevel != null && skillLevel.isNotEmpty) {
+        effectiveFilters.add("Skill Level: $skillLevel");
       }
 
       final recipes = await ref.read(recipeRepositoryProvider).generateRecipes(
             mode: mode,
             query: query,
-            filters: filters,
+            filters: effectiveFilters,
             mealType: mealType,
             allergies: finalAllergies,
             mood: mood,
@@ -129,10 +147,10 @@ class RecipeController extends _$RecipeController {
   }
 
   Future<Map<String, dynamic>> consultChef(
-      String question, String contextRecipe) {
+      String question, Map<String, dynamic> recipeContext) {
     return ref.read(recipeRepositoryProvider).consultChef(
           question: question,
-          contextRecipe: contextRecipe,
+          recipeContext: recipeContext,
         );
   }
 

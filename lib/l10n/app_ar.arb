@@ -1,0 +1,628 @@
+{
+  "@@locale": "ar",
+  
+  "appTitle": "شيف مايند",
+  
+  "navHome": "الرئيسية",
+  "navPantry": "المخزن",
+  "navRecipes": "الوصفات",
+  "navCart": "السلة",
+  
+  "homePrompt": "ماذا سنطبخ اليوم؟",
+  "homeSearchHint": "مثال: وجبة خفيفة غنية بالبروتين...",
+  "homeGenerateButton": "اقترح بالذكاء الاصطناعي",
+  "homeDiscoverMode": "اكتشف 🌍",
+  "homePantryMode": "مخزني 🥬",
+  "homeEmptyPrompt": "أخبرني ماذا تريد أن تطبخ أولاً! 🍳",
+  "homeImportFromLink": "استيراد من رابط",
+  "homePasteUrl": "الصق رابط الوصفة هنا...",
+  "homeCancel": "إلغاء",
+  "homeImport": "استيراد",
+  "homeRecentIdeas": "الأفكار الأخيرة",
+  "homeClearAll": "مسح الكل",
+  "homeHistoryCleared": "تم مسح السجل",
+  "homeUndo": "تراجع",
+  "homeNoRecentHistory": "لا يوجد سجل حديث",
+
+  "generalCancel": "إلغاء",
+  "generalDelete": "حذف",
+  "generalRetry": "إعادة المحاولة",
+  "generalOops": "عفواً! حدث خطأ ما.",
+  "homeSetMood": "اختر مزاجك",
+  "homeMoodDescription": "اختر شعورك للحصول على اقتراحات وصفات ملهمة",
+  "homeChefSkills": "مهارات الطبخ",
+  "homeDietaryProfile": "الملف الغذائي",
+  "homeClear": "مسح",
+  "homeMoodComfort": "راحة",
+  "homeMoodDateNight": "سهرة رومانسية",
+  "homeMoodQuickEasy": "سريع وسهل",
+  "homeMoodEnergetic": "منشط",
+  "homeMoodAdventurous": "مغامر",
+  "homeMoodFancy": "فاخر",
+  
+  "allergenTreeNuts": "مكسرات",
+  "allergenPeanuts": "فول سوداني",
+  "allergenFish": "سمك",
+  "allergenEggs": "بيض",
+  "allergenMilk": "حليب",
+  "allergenShellfish": "محار",
+  "allergenWheat": "قمح",
+  "allergenSoy": "صويا",
+  "allergenSesame": "سمسم",
+  "allergenBig9": "\"التسع الكبار\"",
+  "dietaryNext": "التالي",
+  "dietaryFinish": "إنهاء وحفظ",
+  "dietaryFoodAllergiesTitle": "حساسية الطعام",
+  "dietaryFoodAllergiesSubtitle": "حدد أي استثناءات مناعية (التسع الكبار).",
+  "dietaryIntolerancesTitle": "عدم التحمل",
+  "dietaryIntolerancesSubtitle": "حساسيات هضمية لتجنبها.",
+  "dietaryLifestyleTitle": "نمط الحياة والمعتقدات",
+  "dietaryLifestyleSubtitle": "خيارات تعتمد على الأخلاق، الدين، أو التفضيل.",
+  "dietaryHealthGoalsTitle": "أهداف صحية",
+  "dietaryHealthGoalsSubtitle": "تركيز غذائي لوجباتك.",
+  
+  "dietaryLactose": "حساسية اللاكتوز",
+  "dietaryGluten": "حساسية الجلوتين",
+  "dietaryFructose": "فركتوز",
+  "dietaryHistamine": "هستامين",
+  "dietaryVegetarian": "نباتي",
+  "dietaryVegan": "نباتي صرف",
+  "dietaryPescatarian": "نباتي بحري",
+  "dietaryHalal": "حلال",
+  "dietaryKosher": "كوشير",
+  "dietaryKeto": "كيتو",
+  "dietaryPaleo": "باليو",
+  "dietaryLowCarb": "قليل الكربوهيدرات",
+  "dietaryLowSodium": "قليل الصوديوم",
+  "dietaryDiabetic": "صديق للسكري",
+  
+  "householdTitle": "إدارة الأسرة",
+  "householdShareCode": "شارك هذا الرمز مع شريكك",
+  "householdLeave": "مغادرة الأسرة",
+  "householdLeaveConfirm": "مغادرة الأسرة؟",
+  "householdLeaveMessage": "ستفقد الوصول إلى السلة والخزنة المشتركة.",
+  "householdLeaveButton": "مغادرة",
+  "householdSyncKitchen": "زامن مطبخك 🤝",
+  "householdSyncDescription": "أنشئ منزلاً لمشاركة سلة التسوق والخزنة مع أفراد العائلة.",
+  "householdCreateNew": "إنشاء منزل جديد",
+  "householdNameHint": "اسم المنزل (مثل عائلة أحمد)",
+  "householdCreate": "إنشاء المنزل",
+  "householdOr": "أو",
+  "householdJoinExisting": "انضمام إلى منزل موجود",
+  "householdEnterCode": "أدخل رمز المنزل",
+  "householdJoin": "انضمام",
+  "householdScanQR": "مسح رمز QR",
+  "householdExecutiveRequired": "يتطلب اشتراك الشيف التنفيذي لإنشاء منزل.",
+  "householdEnterName": "يرجى إدخال اسم",
+  "householdSomethingWrong": "حدث خطأ ما",
+  "householdSessionExpired": "انتهت جلستك. يرجى إعادة تشغيل التطبيق أو تسجيل الخروج.",
+
+  "errorSessionExpired": "Session from session_id claim in JWT does not exist",
+  "errorSessionInvalid": "جلستك غير صالحة. يرجى تسجيل الخروج وتسجيل الدخول مرة أخرى.",
+  
+  "settingsHelpSupport": "المساعدة والدعم",
+  "settingsMasterGuide": "دليل الإرشادات الرئيسي",
+  
+  "guideTitle": "الدليل الرئيسي",
+  "guideQuickStart": "بداية سريعة",
+  "guideQuickStartDesc": "وصفتك الأولى",
+  "guideVault": "الخزنة",
+  "guideVaultDesc": "إدارة كتاب الطبخ",
+  "guidePantryCart": "المخزن والسلة",
+  "guidePantryCartDesc": "تسوق ذكي",
+  "guideFamilySync": "مزامنة العائلة",
+  "guideFamilySyncDesc": "التعاون (للشيف التنفيذي فقط)",
+  
+  "guideOpenDiscover": "افتح الاكتشاف",
+  "guideOpenDiscoverDesc": "اضغط على أيقونة البوصلة لبدء رحلتك في الطهي.",
+  "guideEnterPrompt": "أدخل الطلب",
+  "guideEnterPromptDesc": "اكتب رغبتك أو استخدم \"شريحة حديثة\" لتوفير الوقت.",
+  "guideGenerateMagic": "اصنع السحر",
+  "guideGenerateMagicDesc": "اضغط \"إنشاء\" وشاهد الذكاء الاصطناعي يصنع وجبتك.",
+  "guideGenerateMagicTip": "نصيحة: اضغط على \"العصا السحرية\" لترقية طلبك البسيط إلى طلب بمستوى الشيف.",
+  
+  "guideDigitalCookbook": "كتاب الطبخ الرقمي",
+  "guideDigitalCookbookDesc": "الخزنة هي المكان الذي تعيش فيه كل روائعك المحفوظة.",
+  "guideStorageLimits": "حدود التخزين",
+  "guideStorageLimitsDesc": "الطهاة المنزليون لديهم حد للحفظ. الشيف المساعد يحصل على تخزين غير محدود.",
+  "guideSmartSearch": "بحث ذكي",
+  "guideSmartSearchDesc": "استخدم أيقونة سجل البحث داخل شريط البحث للعثور على الأفكار السابقة فوراً.",
+  
+  "guidePantryTracking": "تتبع المخزن",
+  "guidePantryTrackingDesc": "تتبع ما لديك حتى لا تشتري مكررات.",
+  "guideSmartCart": "سلة ذكية",
+  "guideSmartCartDesc": "ينقصك الملح؟ نضيف علبة كاملة، وليس ملعقة صغيرة فقط!",
+  "guideEasyAdjustments": "تعديلات سهلة",
+  "guideEasyAdjustmentsDesc": "استخدم متحكم الكمية (+/-) لضبط الكميات أثناء التنقل.",
+  
+  "guideRealtimeShop": "تسوق فوري",
+  "guideRealtimeShopDesc": "فعّل \"مزامنة العائلة\" على السلة للتسوق معاً في الوقت الفعلي.",
+  "guideShareRecipes": "شارك الوصفات",
+  "guideShareRecipesDesc": "\"انشر\" وصفة في الخزنة المشتركة ليتمكن الجميع من رؤيتها.",
+  
+  "guideNext": "التالي",
+
+  "settingsExperimentalFeatures": "ميزات تجريبية",
+  "settingsSousChefPlus": "شيف مساعد+",
+
+  "tierHomeCook": "طباخ منزلي",
+  "tierSousChef": "شيف مساعد",
+  "tierExecutiveChef": "شيف تنفيذي",
+  "tierFree": "نسخة مجانية",
+
+  "generalLoading": "جاري التحميل...",
+  
+  "pantryTitle": "مخزني",
+  "pantrySearchHint": "ابحث عن المكونات...",
+  "pantryEmpty": "مخزنك فارغ",
+  "pantryAddFirst": "امسح أو أضف أول مكون!",
+  "pantryAddIngredient": "إضافة مكون",
+  "pantryEditIngredient": "تعديل المكون",
+  "pantryIngredientName": "اسم المكون",
+  "pantryQuantity": "الكمية",
+  "pantryUnit": "الوحدة",
+  "pantryExpiryDate": "تاريخ انتهاء الصلاحية",
+  "pantryCategory": "الفئة",
+  "pantryAdd": "إضافة",
+  "pantrySave": "حفظ",
+  "pantryDeleteConfirm": "حذف {name}؟",
+  "@pantryDeleteConfirm": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "pantryDeleteMessage": "سيتم إزالة المكون من مخزنك.",
+  "pantryDeleted": "تم حذف {name}",
+  "@pantryDeleted": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  
+  "recipesCurrentResults": "النتائج الحالية",
+  "recipesVault": "الخزنة",
+  "recipesGenerating": "جاري إنشاء الوصفات...",
+  "recipesEmpty": "لا توجد وصفات بعد",
+  "recipesStartSearching": "ابدأ بالبحث عن شيء لذيذ!",
+  "recipesSaved": "تم حفظ الوصفة في الخزنة!",
+  "recipesAlreadySaved": "الوصفة موجودة بالفعل في الخزنة",
+  "recipesSaveToVault": "حفظ في الخزنة",
+  "recipesViewDetails": "عرض التفاصيل",
+  "recipesIngredients": "المكونات",
+  "recipesInstructions": "طريقة التحضير",
+  "recipesNutrition": "القيم الغذائية",
+  "recipesCalories": "السعرات",
+  "recipesProtein": "البروتين",
+  "recipesCarbs": "الكربوهيدرات",
+  "recipesFat": "الدهون",
+  "recipesPrepTime": "وقت التحضير",
+  "recipesCookTime": "وقت الطهي",
+  "recipesServings": "الحصص",
+  "recipesDifficulty": "مستوى الصعوبة",
+  "recipesShare": "مشاركة",
+  "recipesAddToCart": "أضف للسلة",
+  "recipesDelete": "حذف",
+  "recipesDeleteConfirm": "حذف هذه الوصفة؟",
+  "recipesDeleteMessage": "سيتم إزالة الوصفة من خزنتك.",
+  "recipesDeleted": "تم حذف الوصفة",
+  "recipesMyRecipes": "وصفاتي",
+  "recipesHouseholdVault": "خزنة العائلة",
+  "recipesPersonalVault": "الخزنة الشخصية",
+  "recipesEmptyVault": "خزنتك فارغة",
+  "recipesSaveFirst": "احفظ وصفة لتراها هنا!",
+  "recipesChefLimitation": "حد الشيف",
+  "recipesLimitationReached": "تم الوصول للحد الأقصى",
+  "recipesUpgradeForMore": "قم بالترقية للمزيد",
+  "recipesAvailable": "متوفر!",
+  "recipesHaveCount": "{have}/{total} لديك",
+  "recipesTapForDetails": "اضغط للتفاصيل والتعليمات >",
+  "recipesGenerateSomeMagic": "اصنع بعض السحر!",
+  "recipesLinks": "الروابط",
+  
+  "shoppingTitle": "قائمة التسوق",
+  "shoppingEmpty": "سلتك فارغة",
+  "shoppingAddFromRecipes": "أضف المكونات من الوصفات!",
+  "shoppingAddItem": "إضافة عنصر",
+  "shoppingItemName": "اسم العنصر",
+  "shoppingClearCompleted": "مسح المكتملة",
+  "shoppingItemsCleared": "تم مسح العناصر المكتملة",
+  "shoppingAllItems": "جميع العناصر",
+  "shoppingCompleted": "مكتمل",
+  "shoppingPending": "قيد الانتظار",
+  "shoppingAddToCart": "أضف للسلة",
+  "shoppingItemNameLabel": "اسم العنصر",
+  "shoppingQuantityOpt": "الكمية (اختياري)",
+  "shoppingRemoveConfirm": "إزالة {name}؟",
+  "shoppingRemoveMessage": "هل أنت متأكد من إزالة {name} من سلتك؟",
+  "shoppingItemRemoved": "تم إزالة العنصر من السلة",
+  "shoppingNeededFor": "مطلوب لـ: {recipe}",
+  "shoppingRecipeSources": "مصادر الوصفات",
+  "shoppingAddQuantity": "إضافة كمية",
+  "shoppingToBuy": "للشراء",
+  "shoppingClearDialogTitle": "مسح قائمة التسوق؟",
+  "shoppingClearDialogContent": "سيتم إزالة جميع العناصر من السلة. لا يمكن التراجع عن هذا الإجراء.",
+  "shoppingClearDialogCancel": "إلغاء",
+  "shoppingClearDialogConfirm": "مسح الكل",
+  "generalRemove": "إزالة",
+  "pantryAddToPantry": "أضف للمخزن",
+  "pantryIngredientNameLabel": "اسم المكون",
+  "pantryQuantityOpt": "الكمية (اختياري)",
+  "pantryAddedDate": "أضيف: {date}",
+  "pantryIngredientRemoved": "تم إزالة المكون من المخزن",
+  "pantryRemoveMessage": "هل أنت متأكد من إزالة {name} من مخزنك؟",
+  
+  "settingsTitle": "الإعدادات",
+  "settingsAccount": "الحساب",
+  "settingsProfile": "الملف الشخصي",
+  "settingsSubscription": "الاشتراك",
+  "settingsHousehold": "العائلة",
+  "settingsPreferences": "التفضيلات",
+  "settingsDietary": "التفضيلات الغذائية",
+  "settingsPersonalizeAI": "تخصيص الشيف الذكي",
+  "settingsLanguage": "اللغة",
+  "settingsSecurity": "الأمان",
+  "settingsBiometrics": "تسجيل الدخول البيومتري",
+  "settingsRememberMe": "تذكرني",
+  "settingsAbout": "حول التطبيق",
+  "settingsChefLabs": "مختبر الشيف",
+  "settingsVersion": "الإصدار",
+  "settingsLogout": "تسجيل الخروج",
+  "settingsLogoutConfirm": "هل أنت متأكد من تسجيل الخروج؟",
+  "settingsDeleteAccount": "حذف الحساب",
+  "settingsDeleteAccountConfirm": "سيتم حذف حسابك وجميع بياناتك نهائياً.",
+  "settingsConfirmPassword": "تأكيد كلمة المرور",
+  "settingsEnterPassword": "أدخل كلمة المرور للمتابعة",
+  "settingsShowDetails": "عرض التفاصيل",
+  "settingsSignupToSave": "سجل لحفظ إعداداتك",
+  "settingsNotifications": "الإشعارات",
+  "settingsSubscriptionBilling": "الاشتراك والفوترة",
+  "settingsUserDetailsUsername": "اسم المستخدم",
+  "settingsUserDetailsEmail": "البريد الإلكتروني",
+  "settingsUserDetailsPlan": "الخطة",
+  "settingsUserDetailsMemberId": "رقم العضوية",
+  "settingsEditProfile": "تعديل الملف الشخصي",
+  "settingsChooseFromLibrary": "اختيار من المعرض",
+  "settingsRemovePhoto": "إزالة الصورة",
+  "settingsEnterNewPassword": "أدخل كلمة مرور جديدة فقط إذا كنت تريد تغييرها.",
+  "settingsLeaveBlank": "اتركه فارغاً للاحتفاظ بالحالية",
+  "settingsReEnterPassword": "أعد إدخال كلمة المرور الجديدة",
+  "settingsNewPassword": "كلمة المرور الجديدة",
+  "settingsSecurity": "الأمان",
+  "settingsNameEmpty": "الاسم لا يمكن أن يكون فارغاً",
+  "settingsProfileUpdated": "تم تحديث الملف الشخصي بنجاح",
+  "settingsProfilePicUpdated": "تم تحديث الصورة الشخصية",
+  "settingsProfilePicRemoved": "تم إزالة الصورة الشخصية",
+  "settingsUploadFailed": "فشل التحميل",
+  "settingsRemoveFailed": "فشل إزالة الصورة",
+  "settingsSave": "حفظ",
+  
+  "subscriptionTitle": "خطط الاشتراك",
+  "subscriptionCurrentPlan": "الخطة الحالية",
+  "subscriptionHomeCook": "طباخ منزلي",
+  "subscriptionSousChef": "مساعد شيف",
+  "subscriptionExecutiveChef": "شيف تنفيذي",
+  "subscriptionFree": "مجاني",
+  "subscriptionPerMonth": "/شهرياً",
+  "subscriptionPerYear": "/سنوياً",
+  "subscriptionUpgrade": "ترقية",
+  "subscriptionDowngrade": "تخفيض",
+  "subscriptionRestore": "استعادة المشتريات",
+  "subscriptionFeatures": "المميزات",
+  "subscriptionUnlimitedRecipes": "وصفات غير محدودة",
+  "subscriptionAdvancedDietary": "ذكاء غذائي متقدم",
+  "subscriptionHouseholdSharing": "مشاركة عائلية",
+  "subscriptionPrioritySupport": "دعم ذو أولوية",
+  "subscriptionNoAds": "بدون إعلانات",
+  "subscriptionLimitedRecipes": "وصفات محدودة",
+  "subscriptionBasicFeatures": "مميزات أساسية",
+  "subscriptionMonthly": "شهري",
+  "subscriptionYearlySave": "سنوي (وفر 20%)",
+  "subscriptionFreeForever": "مجاني للأبد",
+  "subscriptionAIRecipesDay": "5 وصفات ذكية/يومياً",
+  "subscriptionSave3Favorites": "حفظ 3 مفضلات",
+  "subscriptionDailyLinkShares": "5 مشاركات يومية",
+  "subscriptionUnlimitedAI": "وصفات ذكية غير محدودة",
+  "subscriptionFullLinkScraper": "استخراج كامل للروابط",
+  "subscriptionUnlimitedVault": "حفظ غير محدود",
+  "subscriptionUnlimitedSharing": "مشاركة غير محدودة",
+  "subscriptionHighSpeedAI": "ذكاء اصطناعي فائق السرعة",
+  "subscriptionMoodSuggestions": "اقتراحات حسب المزاج",
+  "subscriptionFamilySync": "مزامنة العائلة",
+  "subscriptionPriorityAccess": "وصول مبكر",
+  "subscriptionUpgradeTo": "ترقية إلى {tier}",
+  "@subscriptionUpgradeTo": {
+    "placeholders": {
+      "tier": {"type": "String"}
+    }
+  },
+  "subscriptionDowngradeTo": "تخفيض إلى {tier}",
+  "@subscriptionDowngradeTo": {
+    "placeholders": {
+      "tier": {"type": "String"}
+    }
+  },
+  "subscriptionGoExecutive": "انتقل للتنفيذي",
+  "subscriptionMostPopular": "الأكثر شعبية",
+  "subscriptionBilledYearly": "تُدفع {amount} سنوياً",
+  "@subscriptionBilledYearly": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "subscriptionPlanUpdated": "تم تحديث الخطة بنجاح!",
+  "subscriptionPlanUpdateFailed": "فشل تحديث الخطة",
+
+  "generatorMealTypeBreakfast": "إفطار",
+  "generatorMealTypeMainMeal": "وجبة رئيسية",
+  "generatorMealTypeDessert": "حلى",
+  "generatorMealTypeSnack": "وجبة خفيفة",
+  "generatorMealTypeSurpriseMe": "فاجئني",
+  "generatorVibe": "المزاج:",
+  "generatorFilterGourmet": "ذواقة",
+  "generatorFilterHealthy": "صحي",
+  "generatorFilter15Min": "15 دقيقة",
+  "generatorFilterComfort": "مريح",
+  "generatorFilterExotic": "غريب",
+  "generatorFilterVegan": "نباتي صرف",
+  "generatorFilterKeto": "كيتو",
+  "generatorFilterLowCarb": "قليل الكربوهيدرات",
+  "generatorFilterHighProtein": "عالي البروتين",
+  "generatorFiltersAndDiet": "الفلاتر والنظام الغذائي",
+  "generatorAllergiesExclusions": "الحساسية / الاستثناءات",
+  "generatorAllergiesHint": "مثال: بدون مكسرات، خالي من الجلوتين",
+  "generatorGenerateRecipes": "إنشاء وصفات",
+  "generatorPantryEmptyTitle": "مخزنك فارغ!",
+  "generatorPantryEmptyDesc": "الرجاء إضافة عناصر أو استخدام البحث العام.",
+  "generatorCuisine": "المطبخ",
+  "generatorMaxTime": "الوقت الأقصى",
+  "generatorSkillLevel": "المستوى",
+  "generatorDietaryLabels": "تسميات غذائية",
+  "generatorReset": "إعادة تعيين",
+  "cuisineItalian": "إيطالي",
+  "cuisineMexican": "مكسيكي",
+  "cuisineAsian": "آسيوي",
+  "cuisineMediterranean": "متوسطي",
+  "cuisineAmerican": "أمريكي",
+  "cuisineFrench": "فرنسي",
+  "cuisineIndian": "هندي",
+  "cuisineMiddleEastern": "شرق أوسطي",
+  "skillBeginner": "مبتدأ",
+  "skillIntermediate": "متوسط",
+  "skillPro": "محترف",
+
+  "authWelcome": "مرحباً بك في شيف مايند",
+  "authTagline": "مساعدك الذكي في المطبخ",
+  "authLogin": "تسجيل الدخول",
+  "authSignup": "إنشاء حساب",
+  "authEmail": "البريد الإلكتروني",
+  "authPassword": "كلمة المرور",
+  "authConfirmPassword": "تأكيد كلمة المرور",
+  "authForgotPassword": "نسيت كلمة المرور؟",
+  "authResetPassword": "إعادة تعيين كلمة المرور",
+  "authContinueWithGoogle": "المتابعة مع جوجل",
+  "authContinueWithApple": "المتابعة مع آبل",
+  "authContinueAsGuest": "المتابعة كضيف",
+  "authAlreadyHaveAccount": "لديك حساب بالفعل؟",
+  "authDontHaveAccount": "ليس لديك حساب؟",
+  "authTermsAgree": "بالمتابعة، أنت توافق على",
+  "authTermsOfService": "شروط الخدمة",
+  "authAnd": "و",
+  "authPrivacyPolicy": "سياسة الخصوصية",
+  "authWelcomeBack": "مرحباً بعودتك، {name}!",
+  "@authWelcomeBack": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "authWelcomeGuest": "مرحباً أيها الشيف الضيف!",
+  "authSignedInGoogle": "تم تسجيل الدخول عبر Google!",
+  "authSignedInApple": "تم تسجيل الدخول عبر Apple!",
+  "authAccountCreated": "تم إنشاء الحساب بنجاح! مرحباً بك في ChefMindAI.",
+  "authPasswordResetSent": "تم إرسال رابط إعادة التعيين",
+  "authInvalidEmail": "البريد الإلكتروني غير صالح",
+  "authWeakPassword": "كلمة المرور ضعيفة جداً",
+  "authEmailInUse": "البريد الإلكتروني مستخدم بالفعل",
+  "authInvalidCredentials": "البريد أو كلمة المرور غير صحيحة",
+  "authOrContinueWith": "أو تابع باستخدام",
+  "authFullName": "الاسم الكامل",
+  
+  "scannerTitle": "مسح المكونات",
+  "scannerTapToScan": "اضغط للمسح",
+  "scannerAnalyzing": "جاري التحليل...",
+  "scannerDetectedItems": "العناصر المكتشفة",
+  "scannerAddAll": "إضافة الكل",
+  "scannerAddSelected": "إضافة المحدد",
+  "scannerNoItemsFound": "لم يتم اكتشاف عناصر",
+  "scannerTryAgain": "حاول مرة أخرى مع إضاءة أفضل",
+  "scannerFromGallery": "من المعرض",
+  
+  "householdTitle": "العائلة",
+  "householdCreate": "إنشاء عائلة",
+  "householdJoin": "الانضمام لعائلة",
+  "householdLeave": "مغادرة العائلة",
+  "householdMembers": "الأعضاء",
+  "householdInvite": "دعوة أعضاء",
+  "householdInviteCode": "رمز الدعوة",
+  "householdScanCode": "مسح الرمز",
+  "householdShareVault": "مشاركة خزنة الوصفات",
+  "householdNoHousehold": "لا توجد عائلة بعد",
+  "householdCreateOrJoin": "أنشئ أو انضم لعائلة لمشاركة الوصفات",
+  
+  "errorGeneric": "حدث خطأ ما",
+  "errorNoConnection": "لا يوجد اتصال بالإنترنت",
+  "errorTryAgain": "حاول مرة أخرى",
+  "errorTimeout": "انتهت مهلة الطلب",
+  "errorServerError": "خطأ في الخادم. يرجى المحاولة لاحقاً.",
+  
+  "generalSave": "حفظ",
+  "generalCancel": "إلغاء",
+  "generalDelete": "حذف",
+  "generalEdit": "تعديل",
+  "generalDone": "تم",
+  "generalClose": "إغلاق",
+  "generalConfirm": "تأكيد",
+  "generalYes": "نعم",
+  "generalNo": "لا",
+  "generalOk": "حسناً",
+  "generalLoading": "جاري التحميل...",
+  "generalSearch": "بحث",
+  "generalRefresh": "تحديث",
+  "generalShare": "مشاركة",
+  "generalCopy": "نسخ",
+  "generalCopied": "تم النسخ!",
+  
+  "dietaryVegetarian": "نباتي",
+  "dietaryVegan": "نباتي صرف",
+  "dietaryGlutenFree": "خالي من الغلوتين",
+  "dietaryDairyFree": "خالي من الألبان",
+  "dietaryNutFree": "خالي من المكسرات",
+  "dietaryHalal": "حلال",
+  "dietaryKosher": "كوشر",
+  "dietaryKeto": "كيتو",
+  "dietaryPaleo": "باليو",
+  "dietaryLowCarb": "قليل الكربوهيدرات",
+  "dietaryLowFat": "قليل الدهون",
+  "dietaryHighProtein": "غني بالبروتين",
+  
+  "unitGrams": "غ",
+  "unitKilograms": "كغ",
+  "unitMilliliters": "مل",
+  "unitLiters": "ل",
+  "unitCups": "كوب",
+  "unitTablespoons": "ملعقة ك",
+  "unitTeaspoons": "ملعقة ص",
+  "unitPieces": "قطعة",
+  "unitMinutes": "دقيقة",
+  
+  "languageEnglish": "English",
+  "languageArabic": "العربية",
+  "languageFrench": "Français",
+  "languageSpanish": "Español",
+  "languageChinese": "简体中文",
+  "languageHindi": "हिन्दी",
+  "languagePortuguese": "Português",
+  "languageSelectTitle": "اختر اللغة",
+  
+  "premiumFeature": "ميزة مميزة",
+  "premiumUnlock": "افتح مع مساعد شيف+",
+  "premiumUpgradeNow": "ترقية الآن",
+  "premiumLimitReached": "تم الوصول للحد",
+  "premiumNotNow": "ليس الآن",
+  "premiumUpgradeToSous": "ترقية إلى شيف مساعد",
+  "premiumUpgradeToExecutive": "ترقية إلى شيف تنفيذي",
+  "premiumUpgradeToSousOrExecutive": "ترقية إلى شيف مساعد أو تنفيذي",
+
+  "premiumVaultFull": "الخزنة ممتلئة. قم بالترقية لحفظ المزيد!",
+  "premiumDailyShareLimit": "تم الوصول للحد اليومي للمشاركة (5/5). قم بالترقية لمشاركة غير محدودة!",
+  "premiumMoodExecutive": "الاقتراحات حسب المزاج تتطلب خطة شيف تنفيذي.",
+  "premiumADISous": "الذكاء الغذائي المتقدم يتطلب خطة شيف مساعد.",
+  "premiumFeatureADI": "الذكاء الغذائي المتقدم",
+  "premiumDailyRecipeLimit": "لقد وصلت إلى حدك اليومي البالغ {limit} وصفات.",
+  "premiumLinkScraper": "استيراد الروابط هو ميزة للشيف المساعد.",
+
+  "recipeLocked": "الوصفة مقفلة",
+  "recipeUnlock": "فتح الوصفة الكاملة",
+  "recipeUnlockTitle": "فتح الوصفة الكاملة",
+  "recipeGuestLimit": "لقد وصلت إلى حد الزوار. سجل مجاناً لفتح هذه الوصفة ومتابعة الطبخ!",
+  "authSignUpFree": "تسجيل مجاني",
+  "authHaveAccount": "لديك حساب بالفعل؟ تسجيل الدخول",
+  
+  "vaultDeleteTitle": "حذف الوصفة؟",
+  "vaultDeleteContent": "هل أنت متأكد من إزالة هذه الوصفة من الخزنة؟",
+  "vaultRemovedToast": "تم إزالة الوصفة من الخزنة",
+  "recipeSaved": "تم حفظ الوصفة في الخزنة!",
+  "recipeOriginal": "الأصلية",
+  "recipeMyVersion": "نسختي",
+  "recipeEquipment": "المعدات المطلوبة",
+  "recipeIngredients": "المكونات",
+  "recipeInstructions": "التعليمات",
+
+  "actionDelete": "حذف",
+  "vaultJoinHousehold": "انضم إلى منزل في الإعدادات للمزامنة.",
+  "vaultViewingHousehold": "عرض خزنة المنزل",
+  "vaultViewingPersonal": "عرض الخزنة الشخصية",
+  "vaultNoLinks": "لا توجد روابط محفوظة بعد.",
+  "vaultNoRecipes": "لا توجد وصفات محفوظة بعد.",
+  "vaultDeleteConfirmTitle": "حذف {item}؟",
+  "vaultDeleteConfirmMessage": "هل أنت متأكد أنك تريد حذف هذا؟",
+  "vaultDeleteConfirmAction": "حذف",
+  "recipeAddMissingToCart": "إضافة الناقص للسلة",
+  "recipeAddedToCartCount": "تم إضافة {count} عناصر للسلة!",
+  "recipeReadyForCheckout": "جاهز للدفع.",
+  "recipeNoMissingIngredients": "لا توجد مكونات ناقصة للإضافة.",
+  "recipeAddedToCart": "تم إضافة {name} للسلة!",
+  "recipeStartCooking": "ابدأ وضع الطبخ",
+  "recipeSaveIngredientsTitle": "حفظ المكونات في...",
+  "cartPersonal": "سلة شخصية",
+  "cartPersonalSubtitle": "مرئية لك فقط على هذا الجهاز",
+  "cartHousehold": "سلة العائلة",
+  "cartHouseholdSubtitle": "متزامنة مع جميع أفراد العائلة",
+  "cartSavedToHousehold": "تم الحفظ في سلة العائلة",
+
+  "authBiometricFailed": "فشلت المصادقة البيومترية: {error}",
+  "@authBiometricFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "authEmailRequired": "البريد الإلكتروني مطلوب",
+  "authPasswordResetSent": "تم إرسال إعادة تعيين كلمة المرور إلى",
+
+  "recipeUpdated": "تم تحديث الوصفة! استخدم التبديل لعرض الأصل.",
+  "recipeIngredientNotFound": "لم يتم العثور على المكون للتعديل.",
+  "recipeUnlocked": "تم فتح الوصفة!",
+  "recipeSavedToVault": "تم حفظ الوصفة في خزنتك!",
+  "shareWithHousehold": "مشاركة مع العائلة",
+  "shareWithHouseholdSubtitle": "اجعلها مرئية لأفراد العائلة",
+  "shareAlreadyShared": "تمت مشاركتها بالفعل مع عائلتك",
+  "shareJoinHouseholdError": "انضم لمنزل في الإعدادات للمشاركة.",
+  "shareSharing": "جاري المشاركة مع العائلة...",
+  "shareSaving": "جاري الحفظ للعائلة...",
+
+  "importSaving": "جاري الحفظ للخزنة...",
+  "importLinkSaved": "تم حفظ الرابط في الخزنة! 📂",
+  "importError": "خطأ: {error}",
+  "@importError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "sharedRecipeTitle": "وصفة مشتركة",
+  "sharedRecipeLoading": "جاري تحميل الوصفة المشتركة...",
+  "sharedRecipeNotFound": "الوصفة غير موجودة أو انتهت صلاحيتها.",
+
+  "scanFailed": "فشل المسح: {error}",
+  "@scanFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "scanError": "خطأ: {error}",
+  "@scanError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "scannerAIFoundItems": "العناصر المكتشفة",
+  "scannerUncheckMistakes": "قم بإلغاء تحديد أي أخطاء",
+  "scannerItemAlreadyInPantry": "موجود بالفعل في المخزن",
+  "scannerAddedToPantry": "تم إضافة {count} عناصر للمخزن!",
+  "@scannerAddedToPantry": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "scannerAddItemsToPantry": "إضافة {count} عنصر",
+  "@scannerAddItemsToPantry": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  
+  "homeError": "خطأ: {error}",
+  "@homeError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  }
+}

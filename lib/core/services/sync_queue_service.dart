@@ -93,6 +93,16 @@ class SyncQueueService {
         await query.upsert(Map<String, dynamic>.from(op.payload));
         break;
       case 'delete':
+        if (op.table == 'saved_recipes') {
+          // Handle legacy/migrated delete ops for saved_recipes which lack 'id' column
+          // The payload likely contains 'id' (which is actually the recipe_id) or 'recipe_id'
+          final targetId = op.payload['recipe_id'] ?? op.payload['id'];
+          if (targetId != null) {
+            await query.delete().eq('recipe_id', targetId);
+          }
+          break;
+        }
+
         final id = op.payload['id'];
         if (id != null) {
           await query.delete().eq('id', id);

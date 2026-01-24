@@ -68,28 +68,32 @@ class RetailUnitHelper {
 
   static String _getStapleUnit(String name, double qty) {
     String unit = 'Unit';
-    if (name.contains('salt'))
+    if (name.contains('salt')) {
       unit = 'Box';
-    else if (name.contains('sugar'))
+    } else if (name.contains('sugar')) {
       unit = 'Bag';
-    else if (name.contains('flour'))
+    } else if (name.contains('flour')) {
       unit = 'Bag';
-    else if (name.contains('oil'))
+    } else if (name.contains('oil')) {
       unit = 'Bottle';
-    else if (name.contains('vinegar'))
+    } else if (name.contains('vinegar')) {
       unit = 'Bottle';
-    else if (name.contains('soy sauce'))
+    } else if (name.contains('soy sauce')) {
       unit = 'Bottle';
-    else if (name.contains('pepper'))
+    } else if (name.contains('pepper')) {
       unit = 'Jar';
-    else if (name.contains('spice')) unit = 'Jar';
+    } else if (name.contains('spice')) {
+      unit = 'Jar';
+    }
 
     // Pluralize
+    // Pluralize
     if (qty > 1) {
-      if (unit == 'Box')
+      if (unit == 'Box') {
         unit = 'Boxes';
-      else
+      } else {
         unit += 's';
+      }
     }
 
     return qty % 1 == 0 ? '${qty.toInt()} $unit' : '$qty $unit';
