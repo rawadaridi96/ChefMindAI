@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Brand Colors
   static const Color deepCharcoal = Color(0xFF121212);
+  static const Color richBlack = Color(0xFF0A0A0A); // Deeper than deepCharcoal
   static const Color zestyLime = Color(0xFFC0FF00);
   static const Color electricWhite = Color(0xFFFFFFFF);
   static const Color electricBlue = Color(0xFF007AFF); // Apple Blue-ish

@@ -24,7 +24,7 @@ final shoppingSyncEnabledProvider =
 
 typedef _$ShoppingSyncEnabled = AutoDisposeNotifier<bool>;
 String _$shoppingControllerHash() =>
-    r'761f91d7af4688768493bfe08a20eff1b0584eb5';
+    r'6ce50366f7db2cbf5d6abd26552982205652d2ce';
 
 /// See also [ShoppingController].
 @ProviderFor(ShoppingController)

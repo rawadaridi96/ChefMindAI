@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +25,14 @@ serve(async (req) => {
     if (!authHeader) throw new Error('Missing Authorization header')
 
     // Determine Model based on Tier
-    const modelVersion = is_executive ? 'gemini-2.5-flash' : 'gemini-2.0-flash-exp';
+    // Using 2.0 Flash for everyone for stability/quality.
+    const modelVersion = 'gemini-2.0-flash';
+
+    // Artificial differentiation: Standard users wait a bit (Simulated Queue)
+    if (!is_executive) {
+       console.log("Standard Tier: Simulating processing queue...");
+       await new Promise(resolve => setTimeout(resolve, 4000)); // 4s delay
+    }
     
     // --- MODE 3: CONSULT CHEF (Substitution Assistant) ---
     if (mode === 'consult_chef') {
@@ -139,7 +147,13 @@ serve(async (req) => {
         // Fallback behavior: Don't error, just suggest recipes based on filters
         promptText += `\n\nThe user's pantry is empty. Suggest 3 simple, accessible recipes fitting the Meal Type and Filters provided.`
       } else {
-        promptText += `\n\nCreate recipes that primarily use the ingredients from the user's pantry list below.`
+        promptText += `\n\nCreate recipes that use the ingredients from the user's pantry list below.
+        CRITICAL CULINARY LOGIC:
+        1. **SELECT A THEME FIRST**: Decide if the recipe is SAVORY or SWEET.
+        2. **STRICT EXCLUSION**:
+           - If SAVORY (e.g., Meat, Chicken, Pasta), YOU MUST IGNORE all sweet ingredients (Chocolate, Biscuits, Vanilla) unless used in a trivial authentic way (e.g. pinch of sugar in sauce).
+           - If SWEET (e.g., Dessert), YOU MUST IGNORE all savory ingredients (Meat, Garlic, Onions).
+        3. **DO NOT MIX** incompatible logical groups just to use more items. A simple Chicken Breast recipe is better than "Chicken with Chocolate Glaze".`
       }
     } else {
       throw new Error(`Invalid mode: ${mode}`)
@@ -187,6 +201,7 @@ serve(async (req) => {
     4. Include detailed step-by-step instructions.
     5. List required kitchen equipment.
     6. Provide a macro breakdown (protein, carbs, fat).
+    7. For every recipe, provide a "image_prompt" field. This should be a highly detailed, professional food photography prompt for an AI image generator (e.g., "Mouth-watering [Recipe Title], vibrant colors, garnishes, soft cinematic lighting, 8k, macro photography, wooden table background").
     
     JSON Structure:
     {
@@ -197,6 +212,7 @@ serve(async (req) => {
           "time": "15 mins",
           "calories": "350 kcal",
           "macros": { "protein": "25g", "carbs": "10g", "fat": "15g" },
+          "image_prompt": "Detailed AI image prompt",
            "ingredients": [
             { "name": "Ingredient Name", "amount": "quantity", "is_missing": true }
           ],
@@ -254,11 +270,52 @@ serve(async (req) => {
     // Aggressive cleanup
     const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
-    return new Response(cleanedText, {
+    let finalData = cleanedText;
+    try {
+        const parsed = JSON.parse(cleanedText);
+        if (parsed.recipes && Array.isArray(parsed.recipes)) {
+            const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+            const supabase = (supabaseUrl && supabaseServiceKey) 
+                ? createClient(supabaseUrl, supabaseServiceKey) 
+                : null;
+
+            // Image Sourcing via Pexels API
+            const pexelsApiKey = Deno.env.get('PEXELS_API_KEY');
+
+            if (pexelsApiKey) {
+                 console.log(`Fetching images for ${parsed.recipes.length} recipes from Pexels...`);
+                 const recipesWithImages = await Promise.all(parsed.recipes.map(async (r: any) => {
+                     // Optimize Search: Use first 4 words + "food" to avoid over-specific failures
+                     const shortTitle = r.title.split(' ').slice(0, 4).join(' ');
+                     const imageUrl = await fetchPexelsImage(`${shortTitle} food`, pexelsApiKey);
+                     return {
+                         ...r,
+                         thumbnail: imageUrl,
+                         image: imageUrl, 
+                         image_prompt: undefined // Clean up
+                     };
+                 }));
+                 parsed.recipes = recipesWithImages;
+            } else {
+                // Fallback: Remove images if no keys configured
+                console.log('No Pexels API key found. Skipping image search.');
+                parsed.recipes = parsed.recipes.map((r: any) => ({
+                    ...r,
+                    thumbnail: null,
+                    image: null
+                }));
+            }
+            finalData = JSON.stringify(parsed);
+        }
+    } catch (e: any) {
+        console.error("Failed to parse recipes:", e);
+    }
+
+    return new Response(finalData, {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Edge Function Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       // Use 400 so client libraries might read the body, though Flutter client might still throw generic FunctionException.
@@ -268,3 +325,33 @@ serve(async (req) => {
     })
   }
 })
+
+async function fetchPexelsImage(query: string, apiKey: string): Promise<string | null> {
+    try {
+        console.log(`Searching Pexels for: ${query}`);
+        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+        
+        const res = await fetch(url, {
+            headers: {
+                'Authorization': apiKey
+            }
+        });
+
+        if (!res.ok) {
+            console.error(`Pexels API Error: ${res.status} ${await res.text()}`);
+            return null;
+        }
+        
+        const data = await res.json();
+        const firstPhoto = data.photos?.[0];
+        
+        if (firstPhoto) {
+            // detailed: firstPhoto.src.medium or large
+            return firstPhoto.src.large2x || firstPhoto.src.large || firstPhoto.src.medium;
+        }
+        return null;
+    } catch (e) {
+        console.error("Pexels search exception:", e);
+        return null;
+    }
+}

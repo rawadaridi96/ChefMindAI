@@ -5,7 +5,7 @@ import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/brand_logo.dart';
 import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import 'pantry_controller.dart';
 import '../../../../core/widgets/nano_toast.dart';
@@ -297,10 +297,17 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Center(
-              child: Text(
-                AppLocalizations.of(context)!.pantryEmpty,
-                style: const TextStyle(color: Colors.white70),
-                textAlign: TextAlign.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.kitchen_outlined, size: 64, color: Colors.white12),
+                  SizedBox(height: 16),
+                  Text(
+                    AppLocalizations.of(context)!.pantryEmpty,
+                    style: const TextStyle(color: Colors.white54, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
           ),
@@ -308,120 +315,170 @@ class _PantryScreenState extends ConsumerState<PantryScreen>
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120), // Padding for FAB
       itemCount: filteredItems.length,
       itemBuilder: (context, index) {
         final item = filteredItems[index];
-        final createdString = item['created_at'] != null
-            ? DateFormat('MMM d').format(DateTime.parse(item['created_at']))
-            : 'Today';
+        return _buildPremiumCard(item);
+      },
+    );
+  }
 
-        String displayName = _capitalize(item['name'] ?? 'Unknown');
-        String? displayQty;
+  Widget _buildPremiumCard(Map<String, dynamic> item) {
+    final createdString = item['created_at'] != null
+        ? DateFormat('MMM d').format(DateTime.parse(item['created_at']))
+        : 'Today';
 
-        final parts = displayName.split(' ');
-        if (parts.isNotEmpty &&
-            double.tryParse(parts[0]) != null &&
-            parts.length > 1) {
-          displayQty = parts[0];
-          if (parts.length > 2 &&
-              [
-                'g',
-                'kg',
-                'ml',
-                'l',
-                'oz',
-                'lb',
-                'pcs',
-                'doz',
-                'bottle',
-                'box',
-                'can',
-                'jar',
-                'bag',
-                'pack'
-              ].contains(parts[1].toLowerCase().replaceAll('s', ''))) {
-            displayQty += " ${parts[1]}";
-            displayName = parts.sublist(2).join(' ');
-          } else {
-            displayName = parts.sublist(1).join(' ');
-          }
-        }
+    String displayName = _capitalize(item['name'] ?? 'Unknown');
+    String? displayQty;
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Slidable(
-              key: Key(item['id'].toString()),
-              endActionPane: ActionPane(
-                motion: const DrawerMotion(),
-                extentRatio: 0.25,
-                children: [
-                  SlidableAction(
-                    onPressed: (context) {
-                      _confirmDelete(item['id'], displayName);
-                    },
-                    backgroundColor: AppColors.errorRed,
-                    foregroundColor: Colors.white,
-                    icon: Icons.delete_outline,
-                    label: AppLocalizations.of(context)!.actionDelete,
+    // Quantity Parsing Logic
+    final parts = displayName.split(' ');
+    if (parts.isNotEmpty &&
+        double.tryParse(parts[0]) != null &&
+        parts.length > 1) {
+      displayQty = parts[0];
+      if (parts.length > 2 &&
+          [
+            'g',
+            'kg',
+            'ml',
+            'l',
+            'oz',
+            'lb',
+            'pcs',
+            'doz',
+            'bottle',
+            'box',
+            'can',
+            'jar',
+            'bag',
+            'pack'
+          ].contains(parts[1].toLowerCase().replaceAll('s', ''))) {
+        displayQty += " ${parts[1]}";
+        displayName = parts.sublist(2).join(' ');
+      } else {
+        displayName = parts.sublist(1).join(' ');
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05), // Fallback
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          image: item['image_url'] != null &&
+                  (item['image_url'] as String).isNotEmpty
+              ? DecorationImage(
+                  image: NetworkImage(item['image_url']),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.6), BlendMode.darken),
+                )
+              : null,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              // Icon Container (Hide if image exists to reduce clutter, or keep?)
+              // Keep for consistency, maybe transparent?
+              if (item['image_url'] == null)
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.zestyLime.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                ],
-              ),
-              child: GlassContainer(
-                borderRadius: 0,
-                child: ListTile(
-                  dense: true,
-                  visualDensity: const VisualDensity(vertical: -3),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  leading: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.zestyLime.withOpacity(0.2),
-                    child: const Icon(Icons.kitchen,
-                        color: AppColors.zestyLime, size: 16),
-                  ),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(displayName,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14)),
+                  child: const Icon(Icons.kitchen,
+                      color: AppColors.zestyLime, size: 24),
+                )
+              else
+                const SizedBox(
+                    height: 48), // Spacer to keep height consistency if needed
+
+              if (item['image_url'] == null) const SizedBox(width: 16),
+
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        shadows: [Shadow(color: Colors.black, blurRadius: 4)],
                       ),
-                      if (displayQty != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.white12),
-                          ),
-                          child: Text(displayQty,
-                              style: const TextStyle(
-                                  color: AppColors.zestyLime,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time_rounded,
+                            size: 12, color: Colors.white70),
+                        SizedBox(width: 4),
+                        Text(
+                          "Added $createdString",
+                          style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              shadows: [
+                                Shadow(color: Colors.black, blurRadius: 4)
+                              ]),
                         ),
-                    ],
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 2.0),
-                    child: Text(
-                        AppLocalizations.of(context)!
-                            .pantryAddedDate(createdString),
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 10)),
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
+
+              // Quantity Badge (if exists)
+              if (displayQty != null) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color:
+                        AppColors.zestyLime.withOpacity(0.2), // Keep same style
+                    borderRadius: BorderRadius.circular(10),
+                    border:
+                        Border.all(color: AppColors.zestyLime.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    displayQty,
+                    style: const TextStyle(
+                      color: AppColors.zestyLime,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+
+              // Delete Button
+              GestureDetector(
+                onTap: () => _confirmDelete(item['id'], displayName),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color:
+                        Colors.black45, // Darker bg for visibility over image
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.delete_outline,
+                      color: Colors.white70, size: 18),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

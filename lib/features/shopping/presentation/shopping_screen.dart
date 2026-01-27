@@ -5,9 +5,9 @@ import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/brand_logo.dart';
 import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
 import 'shopping_controller.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
 import '../../../../core/widgets/network_error_view.dart';
+import '../../../../core/utils/emoji_helper.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../../settings/presentation/household_controller.dart';
@@ -34,7 +34,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                 amount: fullAmount,
               );
 
-          Navigator.pop(ctx);
+          if (ctx.mounted) {
+            Navigator.pop(ctx);
+          }
           if (mounted) NanoToast.showInfo(context, "Added $name to Cart");
         },
       ),
@@ -359,294 +361,285 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
 
   Widget _buildCartItem(Map<String, dynamic> item, bool isBought) {
     return Padding(
-        padding: const EdgeInsets.only(bottom: 8.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Slidable(
-            key: Key(item['id'].toString()),
-            endActionPane: ActionPane(
-              motion: const DrawerMotion(),
-              extentRatio: 0.25,
-              children: [
-                SlidableAction(
-                  onPressed: (context) {
-                    _confirmDelete(item['id'], item['item_name'] ?? 'Item');
-                  },
-                  backgroundColor: AppColors.errorRed,
-                  foregroundColor: Colors.white,
-                  icon: Icons.delete_outline,
-                  label: 'Delete',
-                ),
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Dismissible(
+        key: Key(item['id'].toString()),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.errorRed.withOpacity(0.8),
+                AppColors.errorRed,
               ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
-            child: GlassContainer(
-              borderRadius: 0, // Wrapped by ClipRRect via Slidable
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              // isBought styling handled by text opacity mostly, or we can use another widget if needed
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 48),
-                child: Row(
-                  children: [
-                    // Custom Checkbox
-                    GestureDetector(
-                      onTap: () {
-                        ref
-                            .read(shoppingControllerProvider.notifier)
-                            .toggleItem(item['id'], isBought);
-                      },
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: isBought
-                                  ? Colors.white38
-                                  : AppColors.zestyLime,
-                              width: 2),
-                          color: isBought ? Colors.white12 : null,
-                        ),
-                        child: isBought
-                            ? const Icon(Icons.check,
-                                size: 16, color: Colors.white38)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Text
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['item_name'] ?? 'Unknown',
-                            style: TextStyle(
-                              color: isBought ? Colors.white38 : Colors.white,
-                              decoration:
-                                  isBought ? TextDecoration.lineThrough : null,
-                              decorationColor: Colors.white38,
-                              fontSize: 16,
-                            ),
-                          ),
-                          if (item['recipe_source'] != null)
-                            Builder(builder: (context) {
-                              final rawSource =
-                                  item['recipe_source']!.toString();
-                              final sources = rawSource
-                                  .split(',')
-                                  .map((e) => e.trim())
-                                  .where((e) => e.isNotEmpty)
-                                  .toList();
-
-                              if (sources.isEmpty)
-                                return const SizedBox.shrink();
-
-                              if (sources.length == 1) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 2.0),
-                                  child: Text(
-                                    "Needed for: ${sources.first}",
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        color: Colors.white38, fontSize: 10),
-                                  ),
-                                );
-                              }
-
-                              // Multiple sources
-                              return GestureDetector(
-                                onTap: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      backgroundColor: AppColors.deepCharcoal,
-                                      title: const Text("Recipe Sources",
-                                          style:
-                                              TextStyle(color: Colors.white)),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: sources
-                                            .map((s) => Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 4),
-                                                  child: Text("• $s",
-                                                      style: const TextStyle(
-                                                          color:
-                                                              Colors.white70)),
-                                                ))
-                                            .toList(),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            child: const Text("Close",
-                                                style: TextStyle(
-                                                    color:
-                                                        AppColors.zestyLime)))
-                                      ],
-                                    ),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 2.0),
-                                  child: Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: "Needed for: ${sources.first} ",
-                                          style: const TextStyle(
-                                              color: Colors.white38,
-                                              fontSize: 10),
-                                        ),
-                                        WidgetSpan(
-                                          alignment:
-                                              PlaceholderAlignment.middle,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 4, vertical: 1),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white24,
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              "+${sources.length - 1}",
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              );
-                            }),
-                        ],
-                      ),
-                    ),
-
-                    // Quantity Stepper
-                    // Trailing Action
-                    if (!isBought) ...[
-                      if (item['amount'] != null &&
-                          item['amount'].toString().trim().isNotEmpty)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildStepperBtn(
-                                  Icons.remove,
-                                  Colors.white54,
-                                  () => _updateQuantity(
-                                      item['id'], item['amount'] ?? '1', -1)),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
-                                child: ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 60),
-                                  child: Text(
-                                    item['amount'] ?? '1',
-                                    textAlign: TextAlign.center,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              _buildStepperBtn(
-                                  Icons.add,
-                                  AppColors.zestyLime,
-                                  () => _updateQuantity(
-                                      item['id'], item['amount'] ?? '1', 1)),
-                            ],
-                          ),
-                        )
-                      else
-                        IconButton(
-                          onPressed: () {
-                            // Initialize to 1
-                            // We call updateQuantity with current='', change=1 -> result '1'
-                            _updateQuantity(item['id'], '', 1);
-                          },
-                          icon: const Icon(Icons.add_circle_outline,
-                              color: AppColors.zestyLime),
-                          tooltip: "Add Quantity",
-                        )
-                    ] else if (item['amount'] != null &&
-                        item['amount'].toString().isNotEmpty &&
-                        item['amount'] != '1')
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white10,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildStepperBtn(
-                                Icons.remove,
-                                Colors.white54,
-                                () => _updateQuantity(
-                                    item['id'], item['amount'] ?? '1', -1)),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 60),
-                                child: Text(
-                                  item['amount'] ?? '1',
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                            _buildStepperBtn(
-                                Icons.add,
-                                AppColors.zestyLime,
-                                () => _updateQuantity(
-                                    item['id'], item['amount'] ?? '1', 1)),
-                          ],
-                        ),
-                      )
-                    else if (item['amount'] != null && item['amount'] != '1')
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white10,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(item['amount'],
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 12)),
-                      ),
-                  ],
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.errorRed.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 24),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Delete",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
+              const SizedBox(width: 8),
+              const Icon(Icons.delete_forever_rounded,
+                  color: Colors.white, size: 28),
+            ],
+          ),
+        ),
+        confirmDismiss: (direction) async {
+          // Use existing confirm dialog logic, adapted to return bool
+          return await _confirmDelete(item['id'], item['item_name'] ?? 'Item');
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: isBought
+                ? Colors.white.withOpacity(0.02)
+                : Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: isBought
+                    ? Colors.transparent
+                    : Colors.white.withOpacity(0.08)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Row(
+              children: [
+                // Custom Checkbox
+                GestureDetector(
+                  onTap: () {
+                    ref
+                        .read(shoppingControllerProvider.notifier)
+                        .toggleItem(item['id'], isBought);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color:
+                              isBought ? Colors.white38 : AppColors.zestyLime,
+                          width: 2),
+                      color: isBought ? Colors.white12 : null,
+                    ),
+                    child: isBought
+                        ? const Icon(Icons.check,
+                            size: 16, color: Colors.white38)
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Thumbnail (New)
+                // Thumbnail (New Sticker Style)
+                // Emoji Icon (Glass Bubble Style)
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08), // Glassy background
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(4),
+                  child: Text(
+                    EmojiHelper.getEmoji(item['item_name'] ?? ''),
+                    style: const TextStyle(fontSize: 24),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['item_name'] ?? 'Unknown',
+                        style: TextStyle(
+                          color: isBought ? Colors.white38 : Colors.white,
+                          decoration:
+                              isBought ? TextDecoration.lineThrough : null,
+                          decorationColor: AppColors.zestyLime,
+                          decorationThickness: 2,
+                          fontSize: 16,
+                          fontWeight:
+                              isBought ? FontWeight.normal : FontWeight.w600,
+                        ),
+                      ),
+                      if (item['recipe_source'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: _buildRecipeSources(
+                              item['recipe_source'].toString()),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Quantity / Add Buttons
+                if (!isBought) ...[
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildStepperBtn(
+                            Icons.remove,
+                            Colors.white54,
+                            () => _updateQuantity(
+                                item['id'], item['amount'] ?? '1', -1)),
+                        Container(
+                          constraints: const BoxConstraints(minWidth: 24),
+                          alignment: Alignment.center,
+                          child: Text(
+                            item['amount'] ?? '1',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        _buildStepperBtn(
+                            Icons.add,
+                            AppColors.zestyLime,
+                            () => _updateQuantity(
+                                item['id'], item['amount'] ?? '1', 1)),
+                      ],
+                    ),
+                  )
+                ] else if (item['amount'] != null && item['amount'] != '1')
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(item['amount'],
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 12)),
+                  ),
+              ],
             ),
           ),
-        ));
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecipeSources(String rawSource) {
+    final sources = rawSource
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    if (sources.isEmpty) return const SizedBox.shrink();
+
+    if (sources.length == 1) {
+      return Row(
+        children: [
+          Icon(Icons.restaurant_menu,
+              size: 10, color: AppColors.zestyLime.withOpacity(0.7)),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              "For: ${sources.first}",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  color: AppColors.zestyLime.withOpacity(0.7), fontSize: 11),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Multiple sources
+    return GestureDetector(
+      onTap: () {
+        // Show dialog (keep existing logic or simplified)
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppColors.deepCharcoal,
+            title: const Text("Recipe Sources",
+                style: TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: sources
+                  .map((s) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text("• $s",
+                            style: const TextStyle(color: Colors.white70)),
+                      ))
+                  .toList(),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Close",
+                      style: TextStyle(color: AppColors.zestyLime)))
+            ],
+          ),
+        );
+      },
+      child: Row(
+        children: [
+          Icon(Icons.restaurant_menu,
+              size: 10, color: AppColors.zestyLime.withOpacity(0.7)),
+          const SizedBox(width: 4),
+          Text(
+            "For: ${sources.first}",
+            style: TextStyle(
+                color: AppColors.zestyLime.withOpacity(0.7), fontSize: 11),
+          ),
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+            decoration: BoxDecoration(
+              color: AppColors.zestyLime.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              "+${sources.length - 1}",
+              style: const TextStyle(
+                  color: AppColors.zestyLime,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _updateQuantity(
@@ -667,7 +660,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     );
   }
 
-  Future<void> _confirmDelete(dynamic id, String name) async {
+  Future<bool> _confirmDelete(dynamic id, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -691,10 +684,13 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
 
     if (confirm == true) {
       await ref.read(shoppingControllerProvider.notifier).deleteItem(id);
-      if (mounted)
+      if (mounted) {
         NanoToast.showInfo(
             context, AppLocalizations.of(context)!.shoppingItemRemoved);
+      }
+      return true;
     }
+    return false;
   }
 }
 

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -9,7 +8,6 @@ import 'package:chefmind_ai/core/widgets/fun_loading_tips.dart';
 import 'package:chefmind_ai/core/widgets/brand_logo.dart';
 import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../../core/widgets/nano_toast.dart';
 import '../../../../core/widgets/network_error_view.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -18,6 +16,8 @@ import 'import_recipe_dialog.dart';
 import 'recipe_controller.dart';
 import 'vault_controller.dart';
 import 'recipe_detail_screen.dart';
+import 'widgets/vault_recipe_card.dart'; // Keep this
+import 'widgets/premium_recipe_card.dart'; // Add this
 import '../../../../core/widgets/premium_paywall.dart';
 import '../../../../core/exceptions/premium_limit_exception.dart';
 import '../../settings/presentation/household_controller.dart';
@@ -38,6 +38,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
   // Vault Search State
   final TextEditingController _vaultSearchController = TextEditingController();
+  bool _isGridView = false;
   String _vaultSearchQuery = '';
 
   @override
@@ -447,17 +448,6 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                 itemCount: recipes.length,
                 itemBuilder: (context, index) {
                   final recipe = recipes[index];
-                  final ingredients = (recipe['ingredients'] as List?) ?? [];
-
-                  // Calculate missing count
-                  int missingCount = 0;
-                  int totalIngredients = ingredients.length;
-
-                  for (var i in ingredients) {
-                    if (i is Map && i['is_missing'] == true) {
-                      missingCount++;
-                    }
-                  }
 
                   final isLimitation = recipe['title'] == "Chef's Limitation";
 
@@ -498,104 +488,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                       ),
                     );
                   }
-
-                  int haveCount = totalIngredients - missingCount;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: GestureDetector(
-                      onTap: () {
-                        // Navigate to Detail Screen
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    RecipeDetailScreen(recipe: recipe)));
-                      },
-                      child: GlassContainer(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(recipe['title'] ?? 'Untitled',
-                                      style: const TextStyle(
-                                          color: AppColors.zestyLime,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                      color: missingCount == 0
-                                          ? AppColors.zestyLime.withOpacity(0.2)
-                                          : Colors.white10,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                          color: missingCount == 0
-                                              ? AppColors.zestyLime
-                                              : Colors.white24)),
-                                  child: Text(
-                                    missingCount == 0
-                                        ? AppLocalizations.of(context)!
-                                            .recipesAvailable
-                                        : AppLocalizations.of(context)!
-                                            .recipesHaveCount(
-                                                haveCount, totalIngredients),
-                                    style: TextStyle(
-                                        color: missingCount == 0
-                                            ? AppColors.zestyLime
-                                            : Colors.white70,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                )
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(recipe['description'] ?? '',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 14)),
-
-                            const SizedBox(height: 16),
-
-                            // Macro Summary Row
-                            if (recipe['macros'] != null)
-                              Row(
-                                children: [
-                                  _buildMacroBadge("PROTEIN",
-                                      recipe['macros']['protein'] ?? '?g'),
-                                  const SizedBox(width: 8),
-                                  _buildMacroBadge("CARBS",
-                                      recipe['macros']['carbs'] ?? '?g'),
-                                  const SizedBox(width: 8),
-                                  _buildMacroBadge(
-                                      "FAT", recipe['macros']['fat'] ?? '?g'),
-                                ],
-                              ),
-
-                            const SizedBox(height: 12),
-                            Align(
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  AppLocalizations.of(context)!
-                                      .recipesTapForDetails,
-                                  style: const TextStyle(
-                                      color: Colors.white30,
-                                      fontSize: 12,
-                                      fontStyle: FontStyle.italic),
-                                ))
-                          ],
-                        ),
-                      ),
-                    ),
+                  return PremiumRecipeCard(
+                    recipe: recipe,
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  RecipeDetailScreen(recipe: recipe)));
+                    },
                   );
                 },
               );
@@ -647,23 +548,31 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
           // Vault Search Bar
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: GlassContainer(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0), // Wider alignment
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05), // Sleek subtle bg
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
                   const Icon(Icons.search,
-                      color: AppColors.zestyLime, size: 20),
-                  const SizedBox(width: 8),
+                      color: AppColors.zestyLime, size: 22),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
                       controller: _vaultSearchController,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
                       decoration: InputDecoration(
                         hintText: AppLocalizations.of(context)!.generalSearch,
                         hintStyle: const TextStyle(color: Colors.white38),
                         border: InputBorder.none,
                         isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                       textCapitalization: TextCapitalization.sentences,
                     ),
@@ -671,8 +580,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                   if (_vaultSearchQuery.isNotEmpty)
                     GestureDetector(
                       onTap: () {
-                        _vaultSearchController.clear();
-                        FocusScope.of(context).unfocus();
+                        setState(() {
+                          // Needs setState to update UI immediately
+                          _vaultSearchController.clear();
+                          FocusScope.of(context).unfocus();
+                        });
                       },
                       child: const Icon(Icons.close,
                           color: Colors.white54, size: 20),
@@ -684,13 +596,19 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
           const SizedBox(height: 16),
 
-          // Vault Filter Toggles
+          // Vault Filter Toggles (Pill Design)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: GlassContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
               padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(50), // Pill shape
+                border: Border.all(color: Colors.white12),
+              ),
               child: Row(
                 children: [
+                  // RECIPES Button
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _showVaultLinks = false),
@@ -701,32 +619,33 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                           color: !_showVaultLinks
                               ? AppColors.zestyLime
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(40),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.menu_book,
+                            Icon(Icons.inventory_2_outlined,
                                 size: 18,
                                 color: !_showVaultLinks
-                                    ? AppColors.deepCharcoal
-                                    : Colors.white54),
+                                    ? Colors.black // Active text is black
+                                    : Colors.white60),
                             const SizedBox(width: 8),
                             Text(
                               AppLocalizations.of(context)!.navRecipes,
                               style: TextStyle(
-                                color: !_showVaultLinks
-                                    ? AppColors.deepCharcoal
-                                    : Colors.white54,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
+                                  color: !_showVaultLinks
+                                      ? Colors.black
+                                      : Colors.white60,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14),
                             ),
                           ],
                         ),
                       ),
                     ),
                   ),
+
+                  // LINKS Button
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _showVaultLinks = true),
@@ -737,7 +656,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                           color: _showVaultLinks
                               ? AppColors.zestyLime
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(40),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -745,18 +664,17 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                             Icon(Icons.link,
                                 size: 18,
                                 color: _showVaultLinks
-                                    ? AppColors.deepCharcoal
-                                    : Colors.white54),
+                                    ? Colors.black
+                                    : Colors.white60),
                             const SizedBox(width: 8),
                             Text(
-                              AppLocalizations.of(context)!.recipesLinks,
+                              "Links",
                               style: TextStyle(
-                                color: _showVaultLinks
-                                    ? AppColors.deepCharcoal
-                                    : Colors.white54,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
+                                  color: _showVaultLinks
+                                      ? Colors.black
+                                      : Colors.white60,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14),
                             ),
                           ],
                         ),
@@ -768,7 +686,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
             ),
           ),
 
-          const SizedBox(height: 5),
+          const SizedBox(height: 12),
 
           Expanded(
             child: RefreshIndicator(
@@ -825,235 +743,80 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                     );
                   }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: recipes.length,
-                    itemBuilder: (context, index) {
-                      final output = recipes[index];
-                      final recipe = output['recipe_json'] ?? output;
-                      final isLink = recipe['type'] == 'link';
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Slidable(
-                            key: Key(output['recipe_id']?.toString() ??
-                                UniqueKey().toString()),
-                            endActionPane: ActionPane(
-                              motion: const DrawerMotion(),
-                              extentRatio: 0.25,
-                              children: [
-                                SlidableAction(
-                                  onPressed: (context) {
-                                    _confirmDelete(output['recipe_id'],
-                                        recipe['title'] ?? 'this item');
-                                  },
-                                  backgroundColor: AppColors.errorRed,
-                                  foregroundColor: Colors.white,
-                                  icon: Icons.delete_outline,
-                                  label: AppLocalizations.of(context)!
-                                      .actionDelete,
-                                ),
-                              ],
+                  return Column(
+                    children: [
+                      // View Toggle & Count
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24.0, vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "${recipes.length} ${recipes.length == 1 ? 'Item' : 'Items'}",
+                              style: const TextStyle(
+                                  color: Colors.white38,
+                                  fontWeight: FontWeight.bold),
                             ),
-                            child: GlassContainer(
-                              borderRadius: 0,
-                              child: InkWell(
-                                onTap: () {
-                                  if (isLink) {
-                                    // Smart Link Check: If we have ingredients, open Detail View
-                                    if (recipe['ingredients'] != null &&
-                                        (recipe['ingredients'] as List)
-                                            .isNotEmpty) {
-                                      Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (_) =>
-                                                  RecipeDetailScreen(
-                                                      recipe: recipe)));
-                                    } else {
-                                      // Standard Link: Launch URL
-                                      final urlText = recipe['url'];
-                                      if (urlText != null) {
-                                        final uri = Uri.parse(urlText);
-                                        launchUrl(uri,
-                                            mode:
-                                                LaunchMode.externalApplication);
-                                      }
-                                    }
-                                  } else {
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (_) => RecipeDetailScreen(
-                                                recipe: recipe)));
-                                  }
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Row(
-                                    children: [
-                                      Builder(builder: (context) {
-                                        final thumbUrl = recipe['thumbnail'] ??
-                                            recipe['image'] as String?;
-                                        final hasThumb = thumbUrl != null &&
-                                            thumbUrl.isNotEmpty;
-
-                                        ImageProvider? imageProvider;
-                                        if (hasThumb) {
-                                          if (thumbUrl!.startsWith('data:')) {
-                                            try {
-                                              final base64String =
-                                                  thumbUrl.split(',').last;
-                                              imageProvider = MemoryImage(
-                                                  base64Decode(base64String));
-                                            } catch (e) {
-                                              debugPrint("Base64 Error: $e");
-                                            }
-                                          } else if (thumbUrl
-                                              .startsWith('http')) {
-                                            imageProvider =
-                                                NetworkImage(thumbUrl);
-                                          }
-                                        }
-
-                                        return Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.zestyLime
-                                                .withOpacity(0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            border: Border.all(
-                                                color: AppColors.zestyLime
-                                                    .withOpacity(0.3)),
-                                            image: imageProvider != null
-                                                ? DecorationImage(
-                                                    image: imageProvider,
-                                                    fit: BoxFit.cover,
-                                                    onError: (e, s) {})
-                                                : null,
-                                          ),
-                                          child: imageProvider != null
-                                              ? null
-                                              : Icon(
-                                                  isLink
-                                                      ? Icons.link
-                                                      : Icons
-                                                          .restaurant_menu_rounded,
-                                                  color: AppColors.zestyLime,
-                                                  size: 28,
-                                                ),
-                                        );
-                                      }),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              recipe['title'] ?? 'Untitled',
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.calendar_today,
-                                                    size: 12,
-                                                    color: Colors.white38),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  output['created_at']
-                                                          ?.toString()
-                                                          .split('T')[0] ??
-                                                      'Recently',
-                                                  style: const TextStyle(
-                                                      color: Colors.white54,
-                                                      fontSize: 12),
-                                                ),
-                                                if (isLink &&
-                                                    recipe['platform'] !=
-                                                        null) ...[
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                      width: 3,
-                                                      height: 3,
-                                                      decoration:
-                                                          const BoxDecoration(
-                                                              color: Colors
-                                                                  .white38,
-                                                              shape: BoxShape
-                                                                  .circle)),
-                                                  const SizedBox(width: 8),
-                                                  Flexible(
-                                                    child: Text(
-                                                      "via ${recipe['platform']}",
-                                                      style: const TextStyle(
-                                                          color: AppColors
-                                                              .zestyLime,
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.bold),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                ],
-                                                if (!isLink &&
-                                                    recipe['calories'] !=
-                                                        null) ...[
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                      width: 3,
-                                                      height: 3,
-                                                      decoration:
-                                                          const BoxDecoration(
-                                                              color: Colors
-                                                                  .white38,
-                                                              shape: BoxShape
-                                                                  .circle)),
-                                                  const SizedBox(width: 8),
-                                                  Flexible(
-                                                    child: Text(
-                                                      recipe['calories'] ?? '',
-                                                      style: const TextStyle(
-                                                          color: AppColors
-                                                              .zestyLime,
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.bold),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                ]
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Icon(Icons.play_circle_fill,
-                                          color: Colors.white24, size: 28),
-                                    ],
-                                  ),
-                                ),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ),
-                          ),
+                              child: Row(
+                                children: [
+                                  _buildViewToggle(
+                                      icon: Icons.grid_view_rounded,
+                                      isSelected: _isGridView,
+                                      onTap: () =>
+                                          setState(() => _isGridView = true)),
+                                  _buildViewToggle(
+                                      icon: Icons.view_list_rounded,
+                                      isSelected: !_isGridView,
+                                      onTap: () =>
+                                          setState(() => _isGridView = false)),
+                                ],
+                              ),
+                            )
+                          ],
                         ),
-                      );
-                    },
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      Expanded(
+                        child: _isGridView
+                            ? GridView.builder(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  childAspectRatio: 0.75,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                ),
+                                itemCount: recipes.length,
+                                itemBuilder: (context, index) {
+                                  return _buildRecipeItem(
+                                      context, recipes[index]);
+                                },
+                              )
+                            : ListView.builder(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                                itemCount: recipes.length,
+                                itemBuilder: (context, index) {
+                                  return _buildRecipeItem(
+                                      context, recipes[index]);
+                                },
+                              ),
+                      ),
+                    ],
                   );
                 },
+                // On error, we just show the prompt again (toast handles the message)
                 error: (e, s) {
                   if (NetworkErrorView.isNetworkError(e)) {
                     return NetworkErrorView(
@@ -1107,6 +870,67 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildViewToggle({
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.zestyLime : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isSelected ? AppColors.deepCharcoal : Colors.white54,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecipeItem(BuildContext context, dynamic output) {
+    final recipe = output['recipe_json'] ?? output;
+    final isLink = recipe['type'] == 'link';
+
+    return VaultRecipeCard(
+      recipe: recipe,
+      isGrid: _isGridView,
+      deleteLabel: AppLocalizations.of(context)!.actionDelete,
+      onDelete: () {
+        // Existing delete confirmation logic
+        _confirmDelete(output['recipe_id'], recipe['title'] ?? 'this item');
+      },
+      onTap: () {
+        if (isLink) {
+          // Smart Link Check: If we have ingredients, open Detail View
+          if (recipe['ingredients'] != null &&
+              (recipe['ingredients'] as List).isNotEmpty) {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => RecipeDetailScreen(recipe: recipe)));
+          } else {
+            // Standard Link: Launch URL
+            final urlText = recipe['url'];
+            if (urlText != null) {
+              final uri = Uri.parse(urlText);
+              launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          }
+        } else {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => RecipeDetailScreen(recipe: recipe)));
+        }
+      },
     );
   }
 

@@ -74,6 +74,7 @@ dependencies:
   connectivity_plus: ^6.0.3
   internet_connection_checker: ^1.0.0+1
   lucide_icons: ^0.257.0
+  http: ^1.2.2
 
 dependency_overrides:
   js: ^0.7.1

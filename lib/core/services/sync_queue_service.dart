@@ -63,6 +63,20 @@ class SyncQueueService {
         print("DEBUG SyncQueue: Op ${op.id} SUCCESS");
       } catch (e) {
         print("Sync Failed for Op ${op.id}: $e");
+
+        // FIX: Discard operations with invalid UUID syntax (legacy temp IDs or BigInt mismatch)
+        // Code 22P02 is Postgres "invalid input syntax"
+        final msg = e.toString();
+        if (msg.contains('22P02')) {
+          if (msg.contains('temp_') ||
+              (msg.contains('type bigint') && op.table == 'shopping_cart')) {
+            print(
+                "DEBUG SyncQueue: Discarding invalid legacy op ${op.id} to unblock queue.");
+            await op.delete();
+            continue; // Proceed to next op
+          }
+        }
+
         // Decide: Stop? Skip? Retry later?
         // For now, we stop to preserve order dependency.
         return;
@@ -74,56 +88,114 @@ class SyncQueueService {
   Future<void> _performOperation(SyncOperation op) async {
     final query = _client.from(op.table);
 
+    // 1. Recursive Clean: convert any "null" strings to actual nulls
+    // 2. Wrap in Map.from to ensure it's mutable
+    final payload = _cleanPayload(Map<String, dynamic>.from(op.payload));
+
+    bool isInvalidId(dynamic val) =>
+        val == null || val.toString() == "null" || val.toString().isEmpty;
+
     switch (op.action) {
       case 'insert':
-        await query.insert(Map<String, dynamic>.from(op.payload));
+        await query.insert(payload);
         break;
       case 'update':
-        // Expecting 'id' in payload to identify row
-        final id = op.payload['id'];
-        if (id != null) {
-          // Remove ID from update payload if strictly update?
-          // For simplicity we pass payload.
-          await query
-              .update(Map<String, dynamic>.from(op.payload))
-              .eq('id', id);
+        final id = payload['id'];
+        if (!isInvalidId(id)) {
+          await query.update(payload).eq('id', id);
+        } else {
+          print(
+              "SyncQueue: Skipping update on ${op.table} due to invalid ID: $id");
         }
         break;
       case 'upsert':
-        await query.upsert(Map<String, dynamic>.from(op.payload));
+        await query.upsert(payload);
         break;
       case 'delete':
+        // Handle optional storage cleanup if path is provided
+        final storagePath = payload['image_path'];
+        if (storagePath != null && storagePath.toString().isNotEmpty) {
+          try {
+            print(
+                "SyncQueue: Cleaning up storage for deleted item: $storagePath");
+            await _client.storage
+                .from('images')
+                .remove([storagePath.toString()]);
+          } catch (e) {
+            print("SyncQueue: Storage cleanup failed (non-critical): $e");
+          }
+        }
+
         if (op.table == 'saved_recipes') {
-          // Handle legacy/migrated delete ops for saved_recipes which lack 'id' column
-          // The payload likely contains 'id' (which is actually the recipe_id) or 'recipe_id'
-          final targetId = op.payload['recipe_id'] ?? op.payload['id'];
-          if (targetId != null) {
+          final targetId = payload['recipe_id'] ?? payload['id'];
+          if (!isInvalidId(targetId)) {
             await query.delete().eq('recipe_id', targetId);
+          } else {
+            print(
+                "SyncQueue: Skipping delete on saved_recipes due to invalid ID: $targetId");
           }
           break;
         }
 
-        final id = op.payload['id'];
-        if (id != null) {
+        final id = payload['id'];
+        if (!isInvalidId(id)) {
           await query.delete().eq('id', id);
+        } else {
+          print(
+              "SyncQueue: Skipping delete on ${op.table} due to invalid ID: $id");
         }
         break;
       case 'delete_by_recipe_id':
-        // Special case for saved_recipes which uses recipe_id as identifier
-        final recipeId = op.payload['recipe_id'];
-        if (recipeId != null) {
+        // Handle optional storage cleanup
+        final storagePath = payload['image_path'];
+        if (storagePath != null && storagePath.toString().isNotEmpty) {
+          try {
+            print(
+                "SyncQueue: Cleaning up storage for deleted item: $storagePath");
+            await _client.storage
+                .from('images')
+                .remove([storagePath.toString()]);
+          } catch (e) {
+            print("SyncQueue: Storage cleanup failed (non-critical): $e");
+          }
+        }
+
+        final recipeId = payload['recipe_id'];
+        if (!isInvalidId(recipeId)) {
           await query.delete().eq('recipe_id', recipeId);
+        } else {
+          print(
+              "SyncQueue: Skipping delete_by_recipe_id due to invalid recipeId: $recipeId");
         }
         break;
       case 'rpc':
-        // Payload should have 'function_name' and 'params'
-        final func = op.payload['_rpc_function'];
-        final params = Map<String, dynamic>.from(op.payload)
-          ..remove('_rpc_function');
+        final func = payload['_rpc_function'];
+        payload.remove('_rpc_function');
         if (func != null) {
-          await _client.rpc(func, params: params);
+          await _client.rpc(func, params: payload);
         }
         break;
     }
+  }
+
+  Map<String, dynamic> _cleanPayload(Map<String, dynamic> payload) {
+    return payload.map((key, value) {
+      if (value is String && value == "null") {
+        return MapEntry(key, null);
+      }
+      if (value is Map<String, dynamic>) {
+        return MapEntry(key, _cleanPayload(value));
+      }
+      if (value is List) {
+        return MapEntry(
+            key,
+            value
+                .map((e) => e is Map<String, dynamic>
+                    ? _cleanPayload(e)
+                    : (e == "null" ? null : e))
+                .toList());
+      }
+      return MapEntry(key, value);
+    });
   }
 }

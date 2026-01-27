@@ -316,22 +316,36 @@ class VaultRepository {
     final matching = box.values.where((e) => e.recipeId == recipeId).toList();
     print(
         "DEBUG deleteRecipe: Found ${matching.length} matching items in Hive");
-    for (var m in matching) {
-      print(
-          "DEBUG deleteRecipe: Match - id=${m.id}, title=${m.title}, householdId=${m.householdId}");
-    }
 
-    final itemToDelete = matching.isNotEmpty
-        ? matching.first
-        : SavedRecipeModel(
-            id: '',
-            userId: '',
-            recipeId: '',
-            title: '',
-            recipeJson: {},
-            createdAt: DateTime.now());
+    final itemToDelete = matching.isNotEmpty ? matching.first : null;
 
-    if (itemToDelete.id.isNotEmpty && itemToDelete.isInBox) {
+    if (itemToDelete != null && itemToDelete.isInBox) {
+      // --- IMAGE CLEANUP ---
+      // Check if the recipe has a Supabase Storage image and delete it
+      try {
+        final recipeJson = itemToDelete.recipeJson;
+        final String? imageUrl = recipeJson['image'] ?? recipeJson['thumbnail'];
+
+        if (imageUrl != null &&
+            imageUrl.contains('/storage/v1/object/public/images/')) {
+          print(
+              "DEBUG deleteRecipe: Detected Supabase Storage image. Attempting cleanup...");
+          // Extract path: recipes/filename.ext or recipe_photos/filename.ext
+          // URL format: .../public/images/recipe_photos/uuid.png
+          final pathParts = imageUrl.split('/public/images/');
+          if (pathParts.length > 1) {
+            final storagePath = pathParts[1];
+            print("DEBUG deleteRecipe: Deleting storage object: $storagePath");
+            // Perform delete (Swallow errors for now to ensure recipe deletion continues)
+            await _client.storage.from('images').remove([storagePath]);
+            print("DEBUG deleteRecipe: Storage cleanup successful");
+          }
+        }
+      } catch (storageErr) {
+        print(
+            "DEBUG deleteRecipe: Storage cleanup failed (non-critical): $storageErr");
+      }
+
       print("DEBUG deleteRecipe: Deleting from Hive - id=${itemToDelete.id}");
       await itemToDelete.delete();
     } else {
@@ -339,16 +353,30 @@ class VaultRepository {
     }
 
     if (!_offlineManager.hasConnection) {
+      // Find storage path if exists
+      String? storagePath;
+      try {
+        final recipeJson = itemToDelete?.recipeJson;
+        final String? imageUrl =
+            recipeJson?['image'] ?? recipeJson?['thumbnail'];
+        if (imageUrl != null &&
+            imageUrl.contains('/storage/v1/object/public/images/')) {
+          final pathParts = imageUrl.split('/public/images/');
+          if (pathParts.length > 1) storagePath = pathParts[1];
+        }
+      } catch (_) {}
+
       // Queue delete by recipe_id (id column doesn't exist in DB)
-      await _syncQueueService.queueOperation(
-          'saved_recipes', 'delete_by_recipe_id', {'recipe_id': recipeId});
+      await _syncQueueService
+          .queueOperation('saved_recipes', 'delete_by_recipe_id', {
+        'recipe_id': recipeId,
+        if (storagePath != null) 'image_path': storagePath,
+      });
       return;
     }
 
     try {
-      // Delete by recipe_id - this is the functional identifier
-      // The DB table doesn't have an 'id' column, so we use recipe_id
-      print("DEBUG deleteRecipe: Attempting delete with recipe_id=$recipeId");
+      // Delete from Supabase Database
       await _client.from('saved_recipes').delete().eq('recipe_id', recipeId);
       print("DEBUG deleteRecipe: Server delete successful");
     } catch (e) {

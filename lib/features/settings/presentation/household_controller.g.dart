@@ -7,7 +7,7 @@ part of 'household_controller.dart';
 // **************************************************************************
 
 String _$householdControllerHash() =>
-    r'f03a981b0b52a50b38f051234c643074ab1ee189';
+    r'db7a347f96bb0ed8bf57b9c439b9cf5212e5bbf4';
 
 /// See also [HouseholdController].
 @ProviderFor(HouseholdController)

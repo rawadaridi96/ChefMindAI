@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/services/offline_manager.dart';
 import '../../../../core/services/sync_queue_service.dart';
 import 'models/pantry_item_model.dart';
@@ -113,96 +114,131 @@ class PantryRepository {
     return _boxToMapList(Hive.box<PantryItemModel>('pantry_items'), null);
   }
 
+  // FIXED Batch Implementation
   Future<void> addIngredients_Batch(List<String> ingredients) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return;
 
-    final data = ingredients
-        .map((name) => {
-              'user_id': userId,
-              'name': name,
-              'category': 'Uncategorized',
-            })
-        .toList();
-
-    // 1. Optimistic Update (Write to Local immediately)
+    final List<Map<String, dynamic>> payload = [];
     final box = Hive.box<PantryItemModel>('pantry_items');
-    for (var item in data) {
-      // Generate temp ID for display
-      final tempId =
-          "temp_${DateTime.now().millisecondsSinceEpoch}_${item['name']}";
-      final model = PantryItemModel(
-        id: tempId,
+
+    for (var name in ingredients) {
+      final newId = const Uuid().v4();
+      payload.add({
+        'id': newId,
+        'user_id': userId,
+        'name': name,
+        'category': 'Uncategorized',
+      });
+
+      // Optimistic
+      box.add(PantryItemModel(
+        id: newId,
         userId: userId,
-        name: item['name'] as String,
+        name: name,
         category: 'Uncategorized',
         createdAt: DateTime.now(),
-      );
-      box.add(model);
+      ));
     }
 
-    // 2. Network Request or Queue
     if (!_offlineManager.hasConnection) {
-      for (var item in data) {
+      for (var item in payload) {
         await _syncQueueService.queueOperation('pantry_items', 'upsert', item);
       }
       return;
     }
 
     try {
-      await _client.from('pantry_items').upsert(data);
+      await _client.from('pantry_items').upsert(payload);
     } catch (_) {
-      for (var item in data) {
+      for (var item in payload) {
         await _syncQueueService.queueOperation('pantry_items', 'upsert', item);
       }
     }
 
-    // 3. Re-Sync to get real IDs/Data
-    try {
-      await syncPantryItems();
-    } catch (_) {}
+    // No need to re-sync immediately if we used correct UUIDs
   }
 
-  Future<void> addIngredient(String name, String category) async {
+  Future<String> addIngredient(String name, String category,
+      {String? imageUrl}) async {
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
+    if (userId == null) return '';
 
     // Optimistic Update
     final box = Hive.box<PantryItemModel>('pantry_items');
-    final tempId = "temp_${DateTime.now().millisecondsSinceEpoch}";
+    final newId = const Uuid().v4(); // Valid UUID
     final model = PantryItemModel(
-      id: tempId,
+      id: newId,
       userId: userId,
       name: name,
       category: category,
       createdAt: DateTime.now(),
+      imageUrl: imageUrl,
     );
     box.add(model);
 
+    final payload = {
+      'id': newId, // Allow client to specify ID
+      'user_id': userId,
+      'name': name,
+      'category': category,
+      'image_url': imageUrl,
+    };
+
     if (!_offlineManager.hasConnection) {
-      await _syncQueueService.queueOperation('pantry_items', 'upsert', {
-        'user_id': userId,
-        'name': name,
-        'category': category,
-      });
-      return;
+      await _syncQueueService.queueOperation('pantry_items', 'upsert', payload);
+      return newId;
     }
 
     try {
-      await _client.from('pantry_items').upsert({
-        'user_id': userId,
-        'name': name,
-        'category': category,
-      });
-
-      await syncPantryItems();
+      await _client.from('pantry_items').upsert(payload);
+      // No need to sync immediately if we trust our generated ID
+      // await syncPantryItems();
     } catch (_) {
       // Fallback to queue if network fails
-      await _syncQueueService.queueOperation('pantry_items', 'upsert', {
-        'user_id': userId,
-        'name': name,
-        'category': category,
-      });
+      await _syncQueueService.queueOperation('pantry_items', 'upsert', payload);
+    }
+    return newId;
+  }
+
+  Future<void> updateImage(String id, String imageUrl) async {
+    final box = Hive.box<PantryItemModel>('pantry_items');
+    try {
+      final item = box.values.firstWhere((e) => e.id == id);
+      // Create copy with new image
+      final newItem = PantryItemModel(
+        id: item.id,
+        userId: item.userId,
+        name: item.name,
+        category: item.category,
+        createdAt: item.createdAt,
+        householdId: item.householdId,
+        imageUrl: imageUrl,
+      );
+      if (item.key != null) await box.put(item.key, newItem);
+    } catch (_) {}
+
+    // Remote Update
+    // Only proceed if ID is NOT temporary
+    if (!id.startsWith('temp_')) {
+      if (!_offlineManager.hasConnection) {
+        await _syncQueueService.queueOperation('pantry_items', 'update', {
+          'id': id,
+          'image_url': imageUrl,
+        });
+        return;
+      }
+
+      try {
+        await _client
+            .from('pantry_items')
+            .update({'image_url': imageUrl}).eq('id', id);
+      } catch (_) {
+        await _syncQueueService.queueOperation('pantry_items', 'update', {
+          'id': id,
+          'image_url': imageUrl,
+        });
+      }
     }
   }
 

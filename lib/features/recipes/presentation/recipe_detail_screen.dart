@@ -234,49 +234,55 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     fit: StackFit.expand,
                     children: [
                       if (imageUrl != null && imageUrl.isNotEmpty)
-                        Builder(builder: (context) {
-                          if (imageUrl!.startsWith('data:')) {
-                            try {
-                              return Image.memory(
-                                base64Decode(imageUrl!.split(',').last),
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                    color: Colors.grey[900], // Fallback color
-                                    child: const Center(
-                                        child: Icon(Icons.broken_image,
-                                            color: Colors.white54))),
-                              );
-                            } catch (e) {
-                              return Container(color: Colors.grey[900]);
+                        Hero(
+                          tag:
+                              'recipe_thumb_${recipe['recipe_id'] ?? recipe['title']}',
+                          child: Builder(builder: (context) {
+                            if (imageUrl!.startsWith('data:')) {
+                              try {
+                                return Image.memory(
+                                  base64Decode(imageUrl!.split(',').last),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                      color: Colors.grey[900], // Fallback color
+                                      child: const Center(
+                                          child: Icon(Icons.broken_image,
+                                              color: Colors.white54))),
+                                );
+                              } catch (e) {
+                                return Container(color: Colors.grey[900]);
+                              }
                             }
-                          }
-                          return Image.network(
-                            imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                                decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                        colors: [
-                                      Color(0xFF2C3E50),
-                                      Color(0xFF4CA1AF)
-                                    ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight)),
-                                child: Center(
-                                  child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.broken_image_outlined,
-                                            color: Colors.white54, size: 48),
-                                        const SizedBox(height: 16),
-                                        const Text("Image unavailable",
-                                            style: TextStyle(
-                                                color: Colors.white54,
-                                                fontSize: 12))
-                                      ]),
-                                )),
-                          );
-                        })
+                            return Image.network(
+                              imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                  decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                          colors: [
+                                        Color(0xFF2C3E50),
+                                        Color(0xFF4CA1AF)
+                                      ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight)),
+                                  child: Center(
+                                    child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                              Icons.broken_image_outlined,
+                                              color: Colors.white54,
+                                              size: 48),
+                                          const SizedBox(height: 16),
+                                          const Text("Image unavailable",
+                                              style: TextStyle(
+                                                  color: Colors.white54,
+                                                  fontSize: 12))
+                                        ]),
+                                  )),
+                            );
+                          }),
+                        )
                       else
                         // Improved Placeholder with "Add Photo" CTA
                         Container(

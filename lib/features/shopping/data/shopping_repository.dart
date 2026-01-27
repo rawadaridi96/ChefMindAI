@@ -156,10 +156,10 @@ class ShoppingRepository {
     // Actually getItems isn't used much if we stream.
   }
 
-  Future<void> addItem(String name, String amount, String category,
-      {String? recipeSource, String? householdId}) async {
+  Future<String> addItem(String name, String amount, String category,
+      {String? recipeSource, String? householdId, String? imageUrl}) async {
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
+    if (userId == null) return '';
 
     // Optimistic Hive
     final box = Hive.box<ShoppingItemModel>('shopping_items');
@@ -173,10 +173,12 @@ class ShoppingRepository {
       householdId: householdId,
       recipeSource: recipeSource,
       createdAt: DateTime.now(),
+      imageUrl: imageUrl,
     );
     box.add(model);
 
     final data = {
+      // 'id': ... OMIT ID, let Postgres generate BigInt
       'user_id': userId,
       'item_name': name,
       'amount': amount,
@@ -184,23 +186,87 @@ class ShoppingRepository {
       'is_bought': false,
       if (householdId != null) 'household_id': householdId,
       if (recipeSource != null) 'recipe_source': recipeSource,
+      if (imageUrl != null) 'image_url': imageUrl,
     };
 
     // Remote or Queue
     if (!_offlineManager.hasConnection) {
       debugPrint("DEBUG Repo addItem: OFFLINE - Queuing insert. Data: $data");
       await _syncQueueService.queueOperation('shopping_cart', 'insert', data);
-      return;
+      return tempId;
     }
 
     debugPrint("DEBUG Repo addItem: ONLINE - Inserting directly. Data: $data");
 
     try {
-      await _client.from('shopping_cart').insert(data);
-      await syncCartItems();
+      final response =
+          await _client.from('shopping_cart').insert(data).select().single();
+
+      // We got the real ID back (e.g. 12345).
+      // Replace the temp item in Hive with the real one immediately?
+      // Or just let syncCartItems handle it.
+      // Ideally replace to avoid "jump".
+      final realId = response['id'].toString();
+      if (model.key != null) {
+        // Create new model with real ID
+        final newModel = ShoppingItemModel(
+          id: realId,
+          userId: userId,
+          itemName: name,
+          amount: amount,
+          isBought: false,
+          householdId: householdId,
+          recipeSource: recipeSource,
+          createdAt: DateTime.now(), // or response['created_at']
+          imageUrl: imageUrl,
+        );
+        box.put(model.key, newModel);
+        return realId;
+      }
+
+      // await syncCartItems();
     } catch (_) {
       // Fallback to queue on failure
       await _syncQueueService.queueOperation('shopping_cart', 'insert', data);
+    }
+    return tempId;
+  }
+
+  Future<void> updateImage(dynamic id, String imageUrl) async {
+    final box = Hive.box<ShoppingItemModel>('shopping_items');
+    final strId = id.toString();
+    try {
+      final item = box.values.firstWhere((e) => e.id == strId);
+      final newItem = ShoppingItemModel(
+        id: item.id,
+        userId: item.userId,
+        itemName: item.itemName,
+        amount: item.amount,
+        isBought: item.isBought,
+        recipeSource: item.recipeSource,
+        householdId: item.householdId,
+        createdAt: item.createdAt,
+        imageUrl: imageUrl,
+      );
+      if (item.key != null) await box.put(item.key, newItem);
+    } catch (_) {}
+
+    if (id is int || int.tryParse(strId) != null) {
+      final intId = id is int ? id : int.parse(strId);
+
+      if (!_offlineManager.hasConnection) {
+        await _syncQueueService.queueOperation(
+            'shopping_cart', 'update', {'id': intId, 'image_url': imageUrl});
+        return;
+      }
+      try {
+        await _client
+            .from('shopping_cart')
+            .update({'image_url': imageUrl}).eq('id', intId);
+      } catch (_) {
+        await _syncQueueService.queueOperation(
+            'shopping_cart', 'update', {'id': intId, 'image_url': imageUrl});
+      }
     }
   }
 

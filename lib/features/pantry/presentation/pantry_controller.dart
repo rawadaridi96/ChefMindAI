@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/pantry_repository.dart';
 import '../../../core/services/offline_manager.dart';
+import '../../../core/services/pexels_service.dart';
 
 part 'pantry_controller.g.dart';
 
@@ -14,6 +15,24 @@ class PantryController extends _$PantryController {
 
   Future<void> refresh() async {
     await ref.read(pantryRepositoryProvider).syncPantryItems();
+    // Auto-Retry fetching images for items missing them
+    refreshImages();
+  }
+
+  Future<void> refreshImages() async {
+    final items = state.value ?? [];
+    for (var item in items) {
+      if (item['image_url'] == null || (item['image_url'] as String).isEmpty) {
+        // Fetch in background
+        PexelsService.searchImage(item['name'],
+                orientation: 'landscape', suffix: 'food')
+            .then((url) {
+          if (url != null) {
+            ref.read(pantryRepositoryProvider).updateImage(item['id'], url);
+          }
+        });
+      }
+    }
   }
 
   Future<int> addIngredients(List<String> ingredients) async {
@@ -35,6 +54,14 @@ class PantryController extends _$PantryController {
         .read(pantryRepositoryProvider)
         .addIngredients_Batch(newIngredients));
 
+    // Note: Batch add doesn't support images easily yet without refactoring batch logic
+    // We can iterate and fetch images for them separately if needed.
+    // For now, let refreshImages() handle it on next load or explicitly call it?
+    // Let's explicitly trigger it for these new items if we could know their IDs.
+    // Since we don't know IDs for batch add easily (it returns void), we rely on refreshImages().
+    // We can trigger refreshImages() after a short delay to allow Hive to populate?
+    Future.delayed(const Duration(milliseconds: 500), () => refreshImages());
+
     return newIngredients.length;
   }
 
@@ -46,8 +73,23 @@ class PantryController extends _$PantryController {
 
     if (exists) return false;
 
-    await _performOfflineSafe(
-        () => ref.read(pantryRepositoryProvider).addIngredient(name, category));
+    // 1. Add item immediately (no image yet)
+    String id = '';
+    await _performOfflineSafe(() async {
+      id = await ref
+          .read(pantryRepositoryProvider)
+          .addIngredient(name, category);
+    });
+
+    // 2. Fire-and-forget image fetch
+    if (id.isNotEmpty) {
+      PexelsService.searchImage(name, orientation: 'landscape', suffix: 'food')
+          .then((url) {
+        if (url != null) {
+          ref.read(pantryRepositoryProvider).updateImage(id, url);
+        }
+      });
+    }
 
     return true;
   }

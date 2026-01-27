@@ -3,8 +3,6 @@ import '../data/shopping_repository.dart';
 import '../data/retail_unit_helper.dart';
 import '../../../../core/services/offline_manager.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:flutter/foundation.dart';
-
 import '../../settings/presentation/household_controller.dart';
 
 part 'shopping_controller.g.dart';
@@ -22,26 +20,26 @@ class ShoppingSyncEnabled extends _$ShoppingSyncEnabled {
 class ShoppingController extends _$ShoppingController {
   @override
   Stream<List<Map<String, dynamic>>> build() {
-    // Check Toggle State
     final isSyncEnabled = ref.watch(shoppingSyncEnabledProvider);
 
     String? householdId;
-    // We can't use await in Stream build easily for initial value if we want to be synchronous-like
-    // But we CAN read current value if we want, or just watch.
-    // However, householdControllerProvider returns AsyncValue.
-    // We should watch it.
     final householdAsync = ref.watch(householdControllerProvider);
 
     if (isSyncEnabled && householdAsync.hasValue) {
       householdId = householdAsync.value?['id'] as String?;
     }
 
-    // Trigger background sync (repository is keepAlive, so this is safe)
     final repo = ref.read(shoppingRepositoryProvider);
-    repo.syncCartItems().ignore();
+    repo
+        .syncCartItems()
+        .then((_) => refreshImages()); // Auto-retry images after sync
 
-    // Subscribe to Hive Stream
     return repo.watchCartItems(householdId: householdId);
+  }
+
+  Future<void> refreshImages() async {
+    // Disabled Pexels auto-fetch for Shopping Cart in favor of Emojis.
+    // Keeping method stub if needed later for Pantry or other logic.
   }
 
   Future<void> addItem(String name,
@@ -62,30 +60,18 @@ class ShoppingController extends _$ShoppingController {
     } else if (isSyncEnabled) {
       final household = ref.read(householdControllerProvider).valueOrNull;
       householdId = household?['id'] as String?;
-      debugPrint("DEBUG addItem: Provider householdId = $householdId");
-
-      // Fallback: If provider is not ready (e.g. offline init), check cache directly
       if (householdId == null) {
         try {
           final box = Hive.box('app_prefs');
           final cached = box.get('household_data');
           if (cached != null) {
             householdId = cached['id'];
-            debugPrint(
-                "DEBUG addItem: Cache fallback householdId = $householdId");
           }
-        } catch (e) {
-          debugPrint("DEBUG addItem: Cache fallback error = $e");
-        }
+        } catch (e) {}
       }
     }
-    debugPrint(
-        "DEBUG addItem: Final householdId = $householdId, isSyncEnabled = $isSyncEnabled, forcePrivate=$forcePrivate, override=$householdIdOverride");
 
-    // We can't easily check for duplicates synchronously against "state" if state is Stream
-    // But we can check state.value if available
     final currentItems = state.value ?? [];
-
     final normalizedName = name.toLowerCase().trim();
 
     final existingItem = currentItems.firstWhere(
@@ -128,14 +114,21 @@ class ShoppingController extends _$ShoppingController {
             existingItem['id'], finalAmount,
             newSource: finalSource));
       } else {
+        // Fallback add (should rare)
         await _performOfflineSafe(() => repo.addItem(
             name, RetailUnitHelper.toRetailUnit(name, amount), category,
             recipeSource: recipeSource, householdId: householdId));
       }
     } else {
       String finalAmount = RetailUnitHelper.toRetailUnit(name, amount);
-      await _performOfflineSafe(() => repo.addItem(name, finalAmount, category,
-          recipeSource: recipeSource, householdId: householdId));
+      String id = '';
+      await _performOfflineSafe(() async {
+        await repo.addItem(name, finalAmount, category,
+            recipeSource: recipeSource, householdId: householdId);
+      });
+
+      // Fire-and-forget Image Fetch -> DISABLED for Emojis
+      // if (id.isNotEmpty) { ... }
     }
   }
 

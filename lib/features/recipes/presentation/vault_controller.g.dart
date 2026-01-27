@@ -6,7 +6,7 @@ part of 'vault_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$vaultControllerHash() => r'5c8ce50887b17b26ea17762dfcc6f8d97eeeec09';
+String _$vaultControllerHash() => r'5291ebe3e0df44e336d50a7e775ca834878d45cb';
 
 /// See also [VaultController].
 @ProviderFor(VaultController)

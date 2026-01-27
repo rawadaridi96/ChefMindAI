@@ -22,6 +22,9 @@ class PantryItemModel extends HiveObject {
   @HiveField(5)
   final String? householdId;
 
+  @HiveField(6)
+  final String? imageUrl;
+
   PantryItemModel({
     required this.id,
     required this.userId,
@@ -29,6 +32,7 @@ class PantryItemModel extends HiveObject {
     required this.category,
     required this.createdAt,
     this.householdId,
+    this.imageUrl,
   });
 
   factory PantryItemModel.fromJson(Map<String, dynamic> json) {
@@ -39,6 +43,7 @@ class PantryItemModel extends HiveObject {
       category: json['category'] as String? ?? 'Uncategorized',
       createdAt: DateTime.parse(json['created_at'] as String),
       householdId: json['household_id'] as String?,
+      imageUrl: json['image_url'] as String?,
     );
   }
 
@@ -50,6 +55,7 @@ class PantryItemModel extends HiveObject {
       'category': category,
       'created_at': createdAt.toIso8601String(),
       'household_id': householdId,
+      'image_url': imageUrl,
     };
   }
 }

@@ -23,13 +23,14 @@ class PantryItemModelAdapter extends TypeAdapter<PantryItemModel> {
       category: fields[3] as String,
       createdAt: fields[4] as DateTime,
       householdId: fields[5] as String?,
+      imageUrl: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, PantryItemModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class PantryItemModelAdapter extends TypeAdapter<PantryItemModel> {
       ..writeByte(4)
       ..write(obj.createdAt)
       ..writeByte(5)
-      ..write(obj.householdId);
+      ..write(obj.householdId)
+      ..writeByte(6)
+      ..write(obj.imageUrl);
   }
 
   @override

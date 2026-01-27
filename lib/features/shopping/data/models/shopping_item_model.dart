@@ -28,6 +28,9 @@ class ShoppingItemModel extends HiveObject {
   @HiveField(7)
   final DateTime createdAt;
 
+  @HiveField(8)
+  final String? imageUrl;
+
   ShoppingItemModel({
     required this.id,
     required this.userId,
@@ -37,6 +40,7 @@ class ShoppingItemModel extends HiveObject {
     this.recipeSource,
     this.householdId,
     required this.createdAt,
+    this.imageUrl,
   });
 
   factory ShoppingItemModel.fromJson(Map<String, dynamic> json) {
@@ -49,6 +53,7 @@ class ShoppingItemModel extends HiveObject {
       recipeSource: json['recipe_source'] as String?,
       householdId: json['household_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
+      imageUrl: json['image_url'] as String?,
     );
   }
 
@@ -62,6 +67,7 @@ class ShoppingItemModel extends HiveObject {
       'recipe_source': recipeSource,
       'household_id': householdId,
       'created_at': createdAt.toIso8601String(),
+      'image_url': imageUrl,
     };
   }
 }
