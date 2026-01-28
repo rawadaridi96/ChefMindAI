@@ -1,24 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
-import 'package:chefmind_ai/core/widgets/haptic_button.dart';
 import 'package:chefmind_ai/features/recipes/presentation/recipe_controller.dart';
+import 'package:chefmind_ai/core/widgets/premium_paywall.dart';
+import 'package:chefmind_ai/features/auth/data/auth_repository.dart';
 import 'package:chefmind_ai/features/pantry/presentation/pantry_controller.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
 import 'package:chefmind_ai/features/subscription/presentation/subscription_controller.dart';
-import 'package:toastification/toastification.dart';
 import 'package:chefmind_ai/core/widgets/network_error_view.dart';
+import 'package:chefmind_ai/features/recipes/presentation/generation_options_controller.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import '../generation_options_controller.dart';
 
 class PantryGeneratorWidget extends ConsumerStatefulWidget {
   final VoidCallback onGenerate;
   final bool applyDietaryProfile;
+  final ValueChanged<bool> onDietaryChanged;
 
   const PantryGeneratorWidget({
     super.key,
     required this.onGenerate,
     required this.applyDietaryProfile,
+    required this.onDietaryChanged,
   });
 
   @override
@@ -27,32 +29,24 @@ class PantryGeneratorWidget extends ConsumerStatefulWidget {
 }
 
 class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
-  // Local controller for text field to avoid rebuilding on every character
   final TextEditingController _allergyController = TextEditingController();
+
+  @override
+  void dispose() {
+    _allergyController.dispose();
+    super.dispose();
+  }
+
+  // --- Lists & Getters --- //
 
   List<String> get _mealTypes {
     final l10n = AppLocalizations.of(context)!;
     return [
-      l10n.generatorMealTypeSurpriseMe,
       l10n.generatorMealTypeBreakfast,
       l10n.generatorMealTypeMainMeal,
       l10n.generatorMealTypeDessert,
       l10n.generatorMealTypeSnack,
-    ];
-  }
-
-  List<String> get _availableFilters {
-    final l10n = AppLocalizations.of(context)!;
-    return [
-      l10n.generatorFilterGourmet,
-      l10n.generatorFilterHealthy,
-      l10n.generatorFilter15Min,
-      l10n.generatorFilterComfort,
-      l10n.generatorFilterExotic,
-      l10n.generatorFilterVegan,
-      l10n.generatorFilterKeto,
-      l10n.generatorFilterLowCarb,
-      l10n.generatorFilterHighProtein,
+      l10n.generatorMealTypeSurpriseMe,
     ];
   }
 
@@ -70,7 +64,7 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
     ];
   }
 
-  List<int> get _timeOptions => [15, 30, 45, 60, 90];
+  final List<int> _timeOptions = [15, 30, 45, 60];
 
   List<String> get _skillLevels {
     final l10n = AppLocalizations.of(context)!;
@@ -81,9 +75,32 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
     ];
   }
 
-  String _getLocalizedMood(String moodKey) {
+  List<String> get _availableFilters {
     final l10n = AppLocalizations.of(context)!;
-    switch (moodKey) {
+    return [
+      l10n.generatorFilterGourmet,
+      l10n.generatorFilterHealthy,
+      l10n.generatorFilterVegan,
+      l10n.generatorFilterKeto,
+      l10n.generatorFilterLowCarb,
+      l10n.generatorFilterHighProtein,
+      l10n.generatorFilterComfort,
+      l10n.generatorFilterExotic,
+    ];
+  }
+
+  final List<String> _moods = [
+    'Comfort',
+    'Date Night',
+    'Quick & Easy',
+    'Energetic',
+    'Adventurous',
+    'Fancy'
+  ];
+
+  String _getLocalizedMood(String mood) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (mood) {
       case 'Comfort':
         return l10n.homeMoodComfort;
       case 'Date Night':
@@ -97,319 +114,410 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
       case 'Fancy':
         return l10n.homeMoodFancy;
       default:
-        return moodKey;
+        return mood;
     }
   }
 
-  final List<String> _moods = [
-    'Comfort',
-    'Date Night',
-    'Quick & Easy',
-    'Energetic',
-    'Adventurous',
-    'Fancy'
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    // Sync allergy text with controller if present (unlikely on first init but good practice)
-    final initialAllergies =
-        ref.read(generationOptionsControllerProvider).allergies;
-    if (initialAllergies != null) {
-      _allergyController.text = initialAllergies;
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Initialize default meal type if not set
-    final currentMealType =
-        ref.read(generationOptionsControllerProvider).mealType;
-    if (currentMealType == null) {
-      Future.microtask(() {
-        ref.read(generationOptionsControllerProvider.notifier).setMealType(
-            AppLocalizations.of(context)!.generatorMealTypeSurpriseMe);
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _allergyController.dispose();
-    super.dispose();
-  }
+  // --- Build --- //
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(recipeControllerProvider);
     final options = ref.watch(generationOptionsControllerProvider);
+    final l10n = AppLocalizations.of(context)!;
+    final pantryState = ref.watch(pantryControllerProvider);
+
+    // Dietary Logic (Match Discover Tab)
+    final user = ref.watch(authRepositoryProvider).currentUser;
+    final subState = ref.watch(subscriptionControllerProvider);
+    final tier = subState.valueOrNull ?? SubscriptionTier.homeCook;
+    final isPremium = tier != SubscriptionTier.homeCook;
+    final prefs = user?.userMetadata?['dietary_preferences'];
+    final hasPreferences = prefs != null && prefs is List && prefs.isNotEmpty;
+    // Allow toggle if premium AND has preferences set
+    final isDietaryEnabled = hasPreferences && isPremium;
+
+    void handleDietaryToggle(bool val) {
+      if (!isPremium) {
+        PremiumPaywall.show(context,
+            featureName: l10n.premiumFeatureADI,
+            message: l10n.premiumADISous,
+            ctaLabel: l10n.premiumUpgradeToSous);
+        return;
+      }
+      if (!hasPreferences) {
+        NanoToast.showInfo(context, "Set your profile in Settings first 🧑‍🍳");
+        return;
+      }
+      widget.onDietaryChanged(val);
+    }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 1. Top Row: Meal Type & Filter Button
-        SizedBox(
-          height: 38,
-          child: Row(
-            children: [
-              Expanded(
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _mealTypes.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final type = _mealTypes[index];
-                    final isSelected = type == options.mealType;
-                    return GestureDetector(
-                      onTap: () => ref
-                          .read(generationOptionsControllerProvider.notifier)
-                          .setMealType(type),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color:
-                              isSelected ? AppColors.zestyLime : Colors.white10,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(type,
-                            style: TextStyle(
-                                color: isSelected
-                                    ? AppColors.deepCharcoal
-                                    : Colors.white70,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _showFilterSheet,
-                child: Container(
-                  width: 38,
-                  decoration: BoxDecoration(
-                    color: (options.filters.isNotEmpty ||
-                            (options.allergies?.isNotEmpty ?? false) ||
-                            options.cuisine != null ||
-                            options.maxTime != null ||
-                            options.skillLevel != null)
-                        ? AppColors.zestyLime.withOpacity(0.2)
-                        : Colors.white10,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(Icons.tune,
-                      size: 18,
+        // 1. Preferences Row (Moved Up)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Filter Button
+            GestureDetector(
+              onTap: _showFilterSheet,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: (options.filters.isNotEmpty ||
+                          (options.allergies?.isNotEmpty ?? false) ||
+                          options.cuisine != null ||
+                          options.maxTime != null ||
+                          options.skillLevel != null)
+                      ? AppColors.zestyLime.withOpacity(0.2)
+                      : Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
                       color: (options.filters.isNotEmpty ||
                               (options.allergies?.isNotEmpty ?? false) ||
                               options.cuisine != null ||
                               options.maxTime != null ||
                               options.skillLevel != null)
-                          ? AppColors.zestyLime
-                          : Colors.white70),
+                          ? AppColors.zestyLime.withOpacity(0.5)
+                          : Colors.white10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.tune,
+                        size: 16,
+                        color: (options.filters.isNotEmpty)
+                            ? AppColors.zestyLime
+                            : Colors.white70),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Filters${options.filters.isNotEmpty ? ' (${options.filters.length})' : ''}",
+                      style: TextStyle(
+                          color: (options.filters.isNotEmpty)
+                              ? AppColors.zestyLime
+                              : Colors.white70,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+
+            // Dietary Profile Toggle (Enhanced)
+            Opacity(
+              opacity: isDietaryEnabled ? 1.0 : 0.5,
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () =>
+                        handleDietaryToggle(!widget.applyDietaryProfile),
+                    child: Row(
+                      children: [
+                        Text(
+                          l10n.homeDietaryProfile,
+                          style: const TextStyle(
+                              color: Colors.white54, fontSize: 13),
+                        ),
+                        if (!isPremium) ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.lock_outline,
+                              color: AppColors.zestyLime, size: 12),
+                        ]
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Switch.adaptive(
+                    value: isDietaryEnabled && widget.applyDietaryProfile,
+                    onChanged: (val) => handleDietaryToggle(val),
+                    activeColor: AppColors.zestyLime,
+                    activeTrackColor: AppColors.zestyLime.withOpacity(0.2),
+                    inactiveThumbColor: Colors.white54,
+                    inactiveTrackColor: Colors.white10,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 16),
 
-        // 2. Mood Selector
-        SizedBox(
-          height: 36,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _moods.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.emoji_objects_outlined,
-                            size: 14, color: Colors.white54),
-                        const SizedBox(width: 4),
-                        Text(
-                          AppLocalizations.of(context)!.generatorVibe,
-                          style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              final mood = _moods[index - 1];
-              final isSelected = options.mood == mood;
-              final subscriptionState =
-                  ref.watch(subscriptionControllerProvider);
-              final isExecutive = subscriptionState.valueOrNull ==
-                  SubscriptionTier.executiveChef;
-
-              IconData moodIcon;
-              switch (mood) {
-                case 'Comfort':
-                  moodIcon = Icons.fireplace;
-                  break;
-                case 'Date Night':
-                  moodIcon = Icons.wine_bar;
-                  break;
-                case 'Quick & Easy':
-                  moodIcon = Icons.bolt;
-                  break;
-                case 'Energetic':
-                  moodIcon = Icons.fitness_center;
-                  break;
-                case 'Adventurous':
-                  moodIcon = Icons.explore;
-                  break;
-                case 'Fancy':
-                  moodIcon = Icons.diamond;
-                  break;
-                default:
-                  moodIcon = Icons.star;
-              }
-
-              return GestureDetector(
-                onTap: () {
-                  if (!isExecutive) {
-                    NanoToast.showError(context,
-                        AppLocalizations.of(context)!.recipesUpgradeForMore);
-                    return;
-                  }
-                  ref
-                      .read(generationOptionsControllerProvider.notifier)
-                      .setMood(isSelected ? null : mood);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.zestyLime
-                        : Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: isSelected
-                        ? null
-                        : Border.all(color: Colors.white12, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(moodIcon,
-                          size: 14,
-                          color: isSelected
-                              ? AppColors.deepCharcoal
-                              : Colors.white54),
-                      const SizedBox(width: 6),
-                      Text(_getLocalizedMood(mood),
-                          style: TextStyle(
-                              color: isSelected
-                                  ? AppColors.deepCharcoal
-                                  : Colors.white70,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12)),
-                      if (!isExecutive) ...[
-                        const SizedBox(width: 6),
-                        Icon(Icons.lock,
-                            size: 10,
-                            color: isSelected
-                                ? AppColors.deepCharcoal
-                                : Colors.white30)
-                      ]
-                    ],
-                  ),
-                ),
-              );
-            },
+        // 2. Selector Group (Glassy Look)
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Column(
+            children: [
+              // Meal Type Selector
+              _buildSelectorTile(
+                context,
+                icon: Icons.restaurant,
+                label: l10n.recipesMealType,
+                value: options.mealType ?? l10n.generatorMealTypeSurpriseMe,
+                onTap: () => _showMealTypePicker(context),
+              ),
+              Divider(height: 1, color: Colors.white.withOpacity(0.1)),
+              // Vibe Selector
+              _buildSelectorTile(
+                context,
+                icon: Icons.emoji_objects_outlined,
+                label: l10n.generatorVibe,
+                value: options.mood ?? "Any",
+                isLocked:
+                    ref.watch(subscriptionControllerProvider).valueOrNull !=
+                        SubscriptionTier.executiveChef,
+                onTap: () => _showMoodPicker(context),
+              ),
+            ],
           ),
         ),
 
         const SizedBox(height: 24),
 
         // 3. Generate Button
-        if (state.isLoading)
-          const Center(
-              child: CircularProgressIndicator(color: AppColors.zestyLime))
-        else
-          SizedBox(
-              width: double.infinity,
-              child: HapticButton(
-                onTap: () {
-                  FocusScope.of(context).unfocus();
-                  final pantryState = ref.read(pantryControllerProvider);
+        GestureDetector(
+          onTap: () {
+            FocusScope.of(context).unfocus();
 
-                  if (pantryState.hasError) {
-                    if (NetworkErrorView.isNetworkError(pantryState.error!)) {
-                      NanoToast.showError(context,
-                          AppLocalizations.of(context)!.errorNoConnection);
-                    } else {
-                      NanoToast.showError(
-                          context, AppLocalizations.of(context)!.errorGeneric);
-                    }
-                    return;
-                  }
+            if (pantryState.hasError) {
+              if (NetworkErrorView.isNetworkError(pantryState.error!)) {
+                NanoToast.showError(
+                    context, AppLocalizations.of(context)!.errorNoConnection);
+              } else {
+                NanoToast.showError(
+                    context, AppLocalizations.of(context)!.errorGeneric);
+              }
+              return;
+            }
 
-                  final pantryItems = pantryState.valueOrNull ?? [];
-                  if (pantryItems.isEmpty) {
-                    toastification.show(
-                      context: context,
-                      type: ToastificationType.warning,
-                      style: ToastificationStyle.flat,
-                      title: Text(AppLocalizations.of(context)!
-                          .generatorPantryEmptyTitle),
-                      description: Text(AppLocalizations.of(context)!
-                          .generatorPantryEmptyDesc),
-                      alignment: Alignment.bottomCenter,
-                      autoCloseDuration: const Duration(seconds: 4),
-                      backgroundColor: AppColors.deepCharcoal,
-                      primaryColor: AppColors.zestyLime,
-                      foregroundColor: Colors.white,
-                      showProgressBar: false,
-                      icon:
-                          const Icon(Icons.kitchen, color: AppColors.zestyLime),
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.zestyLime),
-                    );
-                    return;
-                  }
+            final pantryItems = pantryState.valueOrNull ?? [];
+            if (pantryItems.isEmpty) {
+              NanoToast.showInfo(
+                context,
+                "${l10n.generatorPantryEmptyTitle}\n${l10n.generatorPantryEmptyDesc}",
+              );
+              return;
+            }
 
-                  final subState = ref.read(subscriptionControllerProvider);
-                  final isPremium =
-                      subState.valueOrNull != SubscriptionTier.homeCook;
-
-                  // Trigger Generation with Unified Options
-                  ref.read(recipeControllerProvider.notifier).generate(
-                        mode: 'pantry_chef',
-                        mealType: options.mealType,
-                        mood: options.mood,
-                        filters: options.filters,
-                        allergies: options.allergies,
-                        cuisine: options.cuisine,
-                        maxTime: options.maxTime,
-                        skillLevel: options.skillLevel,
-                        includeGlobalDiet:
-                            isPremium && widget.applyDietaryProfile,
-                      );
-
-                  widget.onGenerate();
-                },
-                label: AppLocalizations.of(context)!.generatorGenerateRecipes,
-                icon: Icons.auto_awesome,
-              )),
+            ref.read(recipeControllerProvider.notifier).generate(
+                  mode: 'pantry_chef',
+                  mealType: options.mealType,
+                  mood: options.mood,
+                  filters: options.filters,
+                  allergies: options.allergies,
+                  cuisine: options.cuisine,
+                  maxTime: options.maxTime,
+                  skillLevel: options.skillLevel,
+                  includeGlobalDiet: isPremium && widget.applyDietaryProfile,
+                );
+            widget.onGenerate();
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            decoration: BoxDecoration(
+              color: AppColors.zestyLime,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.zestyLime.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                )
+              ],
+            ),
+            alignment: Alignment.center,
+            child: state.isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: AppColors.deepCharcoal,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.auto_awesome,
+                          color: AppColors.deepCharcoal),
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.generatorGenerateRecipes,
+                        style: const TextStyle(
+                          color: AppColors.deepCharcoal,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
       ],
+    );
+  }
+
+  // --- Helpers --- //
+
+  Widget _buildSelectorTile(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required String value,
+      required VoidCallback onTap,
+      bool isLocked = false}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: AppColors.zestyLime, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(value,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600)),
+                      if (isLocked) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.lock, size: 14, color: Colors.white30)
+                      ]
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMealTypePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.deepCharcoal,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(AppLocalizations.of(context)!.recipesMealType,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            ..._mealTypes.map((type) => ListTile(
+                  title:
+                      Text(type, style: const TextStyle(color: Colors.white)),
+                  trailing:
+                      ref.read(generationOptionsControllerProvider).mealType ==
+                              type
+                          ? const Icon(Icons.check, color: AppColors.zestyLime)
+                          : null,
+                  onTap: () {
+                    ref
+                        .read(generationOptionsControllerProvider.notifier)
+                        .setMealType(type);
+                    Navigator.pop(context);
+                  },
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMoodPicker(BuildContext context) {
+    final isExecutive = ref.read(subscriptionControllerProvider).valueOrNull ==
+        SubscriptionTier.executiveChef;
+    if (!isExecutive) {
+      PremiumPaywall.show(context,
+          featureName: "Mood-Based Suggestions",
+          message: "Unlock precise mood-based cooking with Executive Chef.",
+          ctaLabel: "Upgrade to Executive Chef");
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.deepCharcoal,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(AppLocalizations.of(context)!.generatorVibe,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ListTile(
+                title: const Text("Any", style: TextStyle(color: Colors.white)),
+                trailing:
+                    ref.read(generationOptionsControllerProvider).mood == null
+                        ? const Icon(Icons.check, color: AppColors.zestyLime)
+                        : null,
+                onTap: () {
+                  ref
+                      .read(generationOptionsControllerProvider.notifier)
+                      .setMood(null);
+                  Navigator.pop(context);
+                },
+              ),
+              ..._moods.map((mood) => ListTile(
+                    title: Text(_getLocalizedMood(mood),
+                        style: const TextStyle(color: Colors.white)),
+                    trailing: ref
+                                .read(generationOptionsControllerProvider)
+                                .mood ==
+                            mood
+                        ? const Icon(Icons.check, color: AppColors.zestyLime)
+                        : null,
+                    onTap: () {
+                      ref
+                          .read(generationOptionsControllerProvider.notifier)
+                          .setMood(mood);
+                      Navigator.pop(context);
+                    },
+                  )),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

@@ -349,21 +349,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          // Dietary Toggle for Pantry
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _buildDietaryToggle(ref),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
 
           // New Pantry Generator Widget
           PantryGeneratorWidget(
             applyDietaryProfile: _applyDietaryProfile,
+            onDietaryChanged: (val) =>
+                setState(() => _applyDietaryProfile = val),
             onGenerate: () {
               // Switch to Recipes tab after generation starts
               setState(() => _currentIndex = 2);
@@ -559,21 +550,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         Padding(
           padding: const EdgeInsets.only(top: 16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _performSearch(ref, _searchController.text),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.zestyLime,
-                foregroundColor: AppColors.deepCharcoal,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+          child: GestureDetector(
+            onTap: () => _performSearch(ref, _searchController.text),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                color: AppColors.zestyLime,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.zestyLime.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  )
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                AppLocalizations.of(context)!.homeGenerateButton,
+                style: const TextStyle(
+                  color: AppColors.deepCharcoal,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              child: Text(AppLocalizations.of(context)!.homeGenerateButton,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
         ),
@@ -981,33 +981,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         opacity: isEnabled ? 1.0 : 0.5,
         child: Row(
           children: [
-            Transform.scale(
-              scale: 0.8,
-              child: Switch(
-                value: isEnabled && _applyDietaryProfile,
-                activeColor: AppColors.zestyLime,
-                activeTrackColor: AppColors.zestyLime.withOpacity(0.3),
-                inactiveThumbColor: Colors.white54,
-                inactiveTrackColor: Colors.white10,
-                onChanged: (val) {
-                  if (!isPremium) {
-                    PremiumPaywall.show(context,
-                        featureName:
-                            AppLocalizations.of(context)!.premiumFeatureADI,
-                        message: AppLocalizations.of(context)!.premiumADISous,
-                        ctaLabel:
-                            AppLocalizations.of(context)!.premiumUpgradeToSous);
-                    return;
-                  }
-                  if (!hasPreferences) {
-                    NanoToast.showInfo(
-                        context, "Set your profile in Settings first 🧑‍🍳");
-                    return;
-                  }
-                  setState(() => _applyDietaryProfile = val);
-                },
-              ),
-            ),
             GestureDetector(
               onTap: () {
                 if (!isPremium) {
@@ -1030,15 +1003,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   Text(
                     AppLocalizations.of(context)!.homeDietaryProfile,
-                    style: TextStyle(
-                      color: (isEnabled && _applyDietaryProfile)
-                          ? Colors.white
-                          : Colors.white54,
-                      fontSize: 13,
-                      fontWeight: (isEnabled && _applyDietaryProfile)
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
                   ),
                   if (!isPremium) ...[
                     const SizedBox(width: 4),
@@ -1047,6 +1012,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ]
                 ],
               ),
+            ),
+            const SizedBox(width: 8),
+            Switch.adaptive(
+              value: isEnabled && _applyDietaryProfile,
+              activeColor: AppColors.zestyLime,
+              activeTrackColor: AppColors.zestyLime.withOpacity(0.3),
+              inactiveThumbColor: Colors.white54,
+              inactiveTrackColor: Colors.white10,
+              onChanged: (val) {
+                if (!isPremium) {
+                  PremiumPaywall.show(context,
+                      featureName:
+                          AppLocalizations.of(context)!.premiumFeatureADI,
+                      message: AppLocalizations.of(context)!.premiumADISous,
+                      ctaLabel:
+                          AppLocalizations.of(context)!.premiumUpgradeToSous);
+                  return;
+                }
+                if (!hasPreferences) {
+                  NanoToast.showInfo(
+                      context, "Set your profile in Settings first 🧑‍🍳");
+                  return;
+                }
+                setState(() => _applyDietaryProfile = val);
+              },
             ),
           ],
         ),

@@ -213,8 +213,10 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // Step Image (Main Recipe Image as Visual Anchor)
+
                       Text(
-                        "Step ${_currentStep + 1}",
+                        "Step ${_currentStep + 1} of ${_steps.length}",
                         style: const TextStyle(
                             color: AppColors.zestyLime,
                             fontSize: 24,

@@ -5,7 +5,6 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/fun_loading_tips.dart';
-import 'package:chefmind_ai/core/widgets/brand_logo.dart';
 import 'package:chefmind_ai/core/widgets/chefmind_watermark.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/nano_toast.dart';
@@ -40,6 +39,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   final TextEditingController _vaultSearchController = TextEditingController();
   bool _isGridView = false;
   String _vaultSearchQuery = '';
+  bool _isSearchVisible = false;
 
   @override
   void initState() {
@@ -166,12 +166,29 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Watch state here to use isLoading in AppBar
-    final state = ref.watch(recipeControllerProvider);
+    // Watch state here to use isLoading in AppBar - REMOVED since BrandLogo is gone
+    // final state = ref.watch(recipeControllerProvider);
 
     final isSyncEnabled = ref.watch(vaultSyncEnabledProvider);
 
     ref.listen(recipeControllerProvider, (previous, next) {
+      // Auto-switch to Results tab IMMEDIATELY on start of generation (Loading)
+      if (next.isLoading) {
+        if (_tabController.index != 0) {
+          _tabController.animateTo(0);
+        }
+      }
+
+      // Also ensure we stay there on completion (optional but good safety)
+      else if (next.hasValue &&
+          !next.hasError &&
+          next.value != null &&
+          next.value!.isNotEmpty) {
+        if (previous?.isLoading == true && _tabController.index != 0) {
+          _tabController.animateTo(0);
+        }
+      }
+
       if (next.hasError && !next.isLoading) {
         if (next.error is PremiumLimitReachedException) {
           final e = next.error as PremiumLimitReachedException;
@@ -256,9 +273,24 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
         child: const Icon(Icons.add_link, color: AppColors.deepCharcoal),
       ),
       appBar: AppBar(
-        title: BrandLogo(
-          fontSize: 24,
-          isBusy: state.isLoading,
+        // title: BrandLogo(...) -> Removed to save space
+        title: SizedBox(
+          height: 40,
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: AppColors.zestyLime,
+            indicatorWeight: 3,
+            labelColor: AppColors.zestyLime,
+            unselectedLabelColor: Colors.white54,
+            labelStyle:
+                const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            dividerColor: Colors.transparent, // Remove underlining divider
+            overlayColor: MaterialStateProperty.all(Colors.transparent),
+            tabs: [
+              Tab(text: AppLocalizations.of(context)!.recipesCurrentResults),
+              Tab(text: AppLocalizations.of(context)!.recipesVault),
+            ],
+          ),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
@@ -366,38 +398,6 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
             ),
           const SizedBox(width: 16),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50), // Standard TabBar + 1px
-          child: Column(
-            children: [
-              Container(
-                height: 1.0,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      Colors.white.withOpacity(0.2),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                  ),
-                ),
-              ),
-              TabBar(
-                controller: _tabController,
-                indicatorColor: AppColors.zestyLime,
-                labelColor: AppColors.zestyLime,
-                unselectedLabelColor: Colors.white54,
-                tabs: [
-                  Tab(
-                      text:
-                          AppLocalizations.of(context)!.recipesCurrentResults),
-                  Tab(text: AppLocalizations.of(context)!.recipesVault),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
       body: Stack(
         children: [
@@ -546,57 +546,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
         children: [
           const SizedBox(height: 16),
 
-          // Vault Search Bar
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0), // Wider alignment
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05), // Sleek subtle bg
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.search,
-                      color: AppColors.zestyLime, size: 22),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _vaultSearchController,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: AppLocalizations.of(context)!.generalSearch,
-                        hintStyle: const TextStyle(color: Colors.white38),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                  ),
-                  if (_vaultSearchQuery.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          // Needs setState to update UI immediately
-                          _vaultSearchController.clear();
-                          FocusScope.of(context).unfocus();
-                        });
-                      },
-                      child: const Icon(Icons.close,
-                          color: Colors.white54, size: 20),
-                    ),
-                ],
-              ),
-            ),
-          ),
-
           const SizedBox(height: 16),
 
-          // Vault Filter Toggles (Pill Design)
+          // 1. Vault Filter Toggles (Primary)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -686,6 +638,119 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
             ),
           ),
 
+          // 2. HEADER: Search Icon + Grid Toggle (Secondary)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                // Search Toggle Button
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isSearchVisible = !_isSearchVisible;
+                      if (!_isSearchVisible) {
+                        _vaultSearchController.clear();
+                        FocusScope.of(context).unfocus();
+                      }
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _isSearchVisible
+                          ? AppColors.zestyLime.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.05),
+                      shape: BoxShape.circle,
+                      border: _isSearchVisible
+                          ? Border.all(color: AppColors.zestyLime, width: 1.5)
+                          : Border.all(color: Colors.transparent),
+                    ),
+                    child: Icon(
+                      _isSearchVisible ? Icons.close : Icons.search,
+                      color:
+                          _isSearchVisible ? AppColors.zestyLime : Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                // Grid/List Toggle (Moved Here)
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildViewToggle(
+                          icon: Icons.grid_view_rounded,
+                          isSelected: _isGridView,
+                          onTap: () => setState(() => _isGridView = true)),
+                      _buildViewToggle(
+                          icon: Icons.view_list_rounded,
+                          isSelected: !_isGridView,
+                          onTap: () => setState(() => _isGridView = false)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 3. ANIMATED SEARCH BAR
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: _isSearchVisible
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08), // Sleek glass
+                        borderRadius: BorderRadius.circular(25), // Pill shape
+                        border: Border.all(
+                            color: AppColors.zestyLime.withOpacity(0.5)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.zestyLime.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search,
+                              color: AppColors.zestyLime, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _vaultSearchController,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 16),
+                              decoration: InputDecoration(
+                                hintText: AppLocalizations.of(context)!
+                                    .generalSearch, // "Search..."
+                                hintStyle:
+                                    const TextStyle(color: Colors.white38),
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
+                              textCapitalization: TextCapitalization.sentences,
+                              autofocus: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+
           const SizedBox(height: 12),
 
           Expanded(
@@ -745,43 +810,25 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
                   return Column(
                     children: [
-                      // View Toggle & Count
+                      // View Toggle & Count (Formerly here, now removed toggle. Keeping Count?)
+                      // Actually, let's keep a minimal "Count" row or integrate it.
+                      // For "Slickness", maybe just a small caption text.
                       Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 24.0, vertical: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "${recipes.length} ${recipes.length == 1 ? 'Item' : 'Items'}",
-                              style: const TextStyle(
-                                  color: Colors.white38,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.black26,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  _buildViewToggle(
-                                      icon: Icons.grid_view_rounded,
-                                      isSelected: _isGridView,
-                                      onTap: () =>
-                                          setState(() => _isGridView = true)),
-                                  _buildViewToggle(
-                                      icon: Icons.view_list_rounded,
-                                      isSelected: !_isGridView,
-                                      onTap: () =>
-                                          setState(() => _isGridView = false)),
-                                ],
-                              ),
-                            )
-                          ],
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "${recipes.length} ${recipes.length == 1 ? 'Item' : 'Items'}",
+                            style: const TextStyle(
+                                color: Colors.white38,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12),
+                          ),
                         ),
                       ),
+
+                      const SizedBox(height: 4),
 
                       const SizedBox(height: 8),
 

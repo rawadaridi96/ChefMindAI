@@ -1,13 +1,10 @@
 {
   "@@locale": "en",
-  
   "appTitle": "ChefMind AI",
-  
   "navHome": "Home",
   "navPantry": "Pantry",
   "navRecipes": "Recipes",
   "navCart": "Cart",
-  
   "homePrompt": "What are we cooking?",
   "homeSearchHint": "e.g. Healthy protein snack...",
   "homeGenerateButton": "Generate with AI",
@@ -23,7 +20,6 @@
   "homeHistoryCleared": "History cleared",
   "homeUndo": "UNDO",
   "homeNoRecentHistory": "No recent history",
-  
   "generalCancel": "Cancel",
   "generalDelete": "Delete",
   "generalRetry": "Retry",
@@ -39,7 +35,6 @@
   "homeMoodEnergetic": "Energetic",
   "homeMoodAdventurous": "Adventurous",
   "homeMoodFancy": "Fancy",
-  
   "allergenTreeNuts": "Tree Nuts",
   "allergenPeanuts": "Peanuts",
   "allergenFish": "Fish",
@@ -60,7 +55,6 @@
   "dietaryLifestyleSubtitle": "Choices based on ethics, religion, or preference.",
   "dietaryHealthGoalsTitle": "Health Goals",
   "dietaryHealthGoalsSubtitle": "Nutritional focuses for your meals.",
-  
   "dietaryLactose": "Lactose Intolerant",
   "dietaryGluten": "Gluten Intolerant",
   "dietaryFructose": "Fructose",
@@ -75,7 +69,6 @@
   "dietaryLowCarb": "Low-Carb",
   "dietaryLowSodium": "Low-Sodium",
   "dietaryDiabetic": "Diabetic-Friendly",
-  
   "householdTitle": "Household Management",
   "householdShareCode": "Share this code or QR with your partner",
   "householdLeave": "Leave Household",
@@ -96,13 +89,10 @@
   "householdEnterName": "Please enter a name",
   "householdSomethingWrong": "Something went wrong",
   "householdSessionExpired": "Your session has expired. Please restart the app or sign out.",
-  
   "errorSessionExpired": "Session from session_id claim in JWT does not exist",
   "errorSessionInvalid": "Your session is invalid. Please sign out and log in again.",
-  
   "settingsHelpSupport": "Help & Support",
   "settingsMasterGuide": "Master Instruction Guide",
-  
   "guideTitle": "Master Guide",
   "guideQuickStart": "Quick Start",
   "guideQuickStartDesc": "Your First Recipe",
@@ -112,7 +102,6 @@
   "guidePantryCartDesc": "Smart Shopping",
   "guideFamilySync": "Family Sync",
   "guideFamilySyncDesc": "Collaboration (Executive Only)",
-  
   "guideOpenDiscover": "Open Discover",
   "guideOpenDiscoverDesc": "Tap the compass icon to start your culinary journey.",
   "guideEnterPrompt": "Enter Prompt",
@@ -120,38 +109,30 @@
   "guideGenerateMagic": "Generate Magic",
   "guideGenerateMagicDesc": "Tap \"Generate\" and watch the AI craft your meal.",
   "guideGenerateMagicTip": "Tip: Tap the \"Magic Wand\" to upgrade your simple prompt into a chef-level request.",
-  
   "guideDigitalCookbook": "Digital Cookbook",
   "guideDigitalCookbookDesc": "The Vault is where all your saved masterpieces live.",
   "guideStorageLimits": "Storage Limits",
   "guideStorageLimitsDesc": "Home Cooks have a save limit. Sous Chefs get unlimited storage.",
   "guideSmartSearch": "Smart Search",
   "guideSmartSearchDesc": "Use the Search History icon inside the search bar to find past ideas instantly.",
-  
   "guidePantryTracking": "Pantry Tracking",
   "guidePantryTrackingDesc": "Keep track of what you have so you never buy doubles.",
   "guideSmartCart": "Smart Cart",
   "guideSmartCartDesc": "Missing salt? We add a full box, not just a teaspoon!",
   "guideEasyAdjustments": "Easy Adjustments",
   "guideEasyAdjustmentsDesc": "Use the Quantity Stepper (+/-) to adjust amounts on the fly.",
-  
   "guideRealtimeShop": "Real-time Shop",
   "guideRealtimeShopDesc": "Toggle \"Family Sync\" on the Cart to shop together in real-time.",
   "guideShareRecipes": "Share Recipes",
   "guideShareRecipesDesc": "\"Publish\" a recipe to the Shared Vault so everyone can see it.",
-  
   "guideNext": "Next",
-
   "settingsExperimentalFeatures": "Experimental Features",
   "settingsSousChefPlus": "Sous Chef+",
-
   "tierHomeCook": "Home Cook",
   "tierSousChef": "Sous Chef",
   "tierExecutiveChef": "Executive Chef",
   "tierFree": "Free Tier",
-
   "generalLoading": "Loading...",
-  
   "pantryTitle": "My Pantry",
   "pantrySearchHint": "Search ingredients...",
   "pantryEmpty": "Your pantry is empty",
@@ -168,17 +149,20 @@
   "pantryDeleteConfirm": "Delete {name}?",
   "@pantryDeleteConfirm": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "pantryDeleteMessage": "This will remove the ingredient from your pantry.",
   "pantryDeleted": "{name} deleted",
   "@pantryDeleted": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
-  
   "recipesCurrentResults": "Current Results",
   "recipesVault": "The Vault",
   "recipesGenerating": "Generating recipes...",
@@ -217,14 +201,17 @@
   "recipesHaveCount": "{have}/{total} Have",
   "@recipesHaveCount": {
     "placeholders": {
-      "have": {"type": "int"},
-      "total": {"type": "int"}
+      "have": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "recipesTapForDetails": "Tap for details & instructions >",
   "recipesGenerateSomeMagic": "Generate some magic!",
   "recipesLinks": "Links",
-  
   "shoppingTitle": "Shopping List",
   "shoppingEmpty": "Your cart is empty",
   "shoppingAddFromRecipes": "Add ingredients from recipes!",
@@ -241,20 +228,26 @@
   "shoppingRemoveConfirm": "Remove {name}?",
   "@shoppingRemoveConfirm": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "shoppingRemoveMessage": "Are you sure you want to remove {name} from your cart?",
   "@shoppingRemoveMessage": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "shoppingItemRemoved": "Item removed from cart",
   "shoppingNeededFor": "Needed for: {recipe}",
   "@shoppingNeededFor": {
     "placeholders": {
-      "recipe": {"type": "String"}
+      "recipe": {
+        "type": "String"
+      }
     }
   },
   "shoppingRecipeSources": "Recipe Sources",
@@ -271,17 +264,20 @@
   "pantryAddedDate": "Added: {date}",
   "@pantryAddedDate": {
     "placeholders": {
-      "date": {"type": "String"}
+      "date": {
+        "type": "String"
+      }
     }
   },
   "pantryIngredientRemoved": "Ingredient removed from pantry",
   "pantryRemoveMessage": "Are you sure you want to remove {name} from your pantry?",
   "@pantryRemoveMessage": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
-  
   "settingsTitle": "Settings",
   "settingsAccount": "Account",
   "settingsProfile": "Profile",
@@ -326,7 +322,6 @@
   "settingsUploadFailed": "Upload failed",
   "settingsRemoveFailed": "Failed to remove image",
   "settingsSave": "Save",
-  
   "subscriptionTitle": "Subscription Plans",
   "subscriptionCurrentPlan": "Current Plan",
   "subscriptionHomeCook": "Home Cook",
@@ -364,13 +359,17 @@
   "subscriptionUpgradeTo": "Upgrade to {tier}",
   "@subscriptionUpgradeTo": {
     "placeholders": {
-      "tier": {"type": "String"}
+      "tier": {
+        "type": "String"
+      }
     }
   },
   "subscriptionDowngradeTo": "Downgrade to {tier}",
   "@subscriptionDowngradeTo": {
     "placeholders": {
-      "tier": {"type": "String"}
+      "tier": {
+        "type": "String"
+      }
     }
   },
   "subscriptionGoExecutive": "Go Executive",
@@ -378,18 +377,20 @@
   "subscriptionBilledYearly": "Billed {amount} yearly",
   "@subscriptionBilledYearly": {
     "placeholders": {
-      "amount": {"type": "String"}
+      "amount": {
+        "type": "String"
+      }
     }
   },
   "subscriptionPlanUpdated": "Plan updated successfully!",
   "subscriptionPlanUpdateFailed": "Failed to update plan",
-
   "generatorMealTypeBreakfast": "Breakfast",
   "generatorMealTypeMainMeal": "Main Meal",
   "generatorMealTypeDessert": "Dessert",
   "generatorMealTypeSnack": "Snack",
   "generatorMealTypeSurpriseMe": "Surprise Me",
-  "generatorVibe": "Vibe:",
+  "generatorVibe": "Vibe",
+  "recipesMealType": "Meal Type",
   "generatorFilterGourmet": "Gourmet",
   "generatorFilterHealthy": "Healthy",
   "generatorFilter15Min": "15-min",
@@ -421,7 +422,6 @@
   "skillBeginner": "Beginner",
   "skillIntermediate": "Intermediate",
   "skillPro": "Pro",
-  
   "authWelcome": "Welcome to ChefMind AI",
   "authTagline": "Your AI-powered kitchen companion",
   "authLogin": "Login",
@@ -443,7 +443,9 @@
   "authWelcomeBack": "Welcome back, {name}!",
   "@authWelcomeBack": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "authWelcomeGuest": "Welcome, Guest Chef!",
@@ -460,7 +462,6 @@
   "authOrContinueWith": "or continue with",
   "authFullName": "Full Name",
   "authNoBiometricFound": "No biometric credentials found",
-  
   "scannerTitle": "Scan Ingredients",
   "scannerTapToScan": "Tap to scan",
   "scannerAnalyzing": "Analyzing...",
@@ -478,16 +479,19 @@
   "scannerAddItemsToPantry": "Add {count} Items to Pantry",
   "@scannerAddItemsToPantry": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "scannerAddedToPantry": "Added {count} items to Pantry!",
   "@scannerAddedToPantry": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
-  
   "householdTitle": "Household",
   "householdCreate": "Create Household",
   "householdJoin": "Join Household",
@@ -499,13 +503,11 @@
   "householdShareVault": "Share Recipe Vault",
   "householdNoHousehold": "No household yet",
   "householdCreateOrJoin": "Create or join a household to share recipes",
-  
   "errorGeneric": "Something went wrong",
   "errorNoConnection": "No internet connection",
   "errorTryAgain": "Try Again",
   "errorTimeout": "Request timed out",
   "errorServerError": "Server error. Please try again later.",
-  
   "generalSave": "Save",
   "generalCancel": "Cancel",
   "generalDelete": "Delete",
@@ -522,7 +524,6 @@
   "generalShare": "Share",
   "generalCopy": "Copy",
   "generalCopied": "Copied!",
-  
   "dietaryVegetarian": "Vegetarian",
   "dietaryVegan": "Vegan",
   "dietaryGlutenFree": "Gluten-Free",
@@ -535,7 +536,6 @@
   "dietaryLowCarb": "Low Carb",
   "dietaryLowFat": "Low Fat",
   "dietaryHighProtein": "High Protein",
-  
   "unitGrams": "g",
   "unitKilograms": "kg",
   "unitMilliliters": "ml",
@@ -545,7 +545,6 @@
   "unitTeaspoons": "tsp",
   "unitPieces": "pcs",
   "unitMinutes": "min",
-  
   "languageEnglish": "English",
   "languageArabic": "العربية",
   "languageFrench": "Français",
@@ -554,7 +553,6 @@
   "languageHindi": "हिन्दी",
   "languagePortuguese": "Português",
   "languageSelectTitle": "Select Language",
-  
   "premiumFeature": "Premium Feature",
   "premiumUnlock": "Unlock with Sous Chef+",
   "premiumUpgradeNow": "Upgrade Now",
@@ -564,7 +562,6 @@
   "premiumUpgradeToSous": "Upgrade to Sous Chef",
   "premiumUpgradeToExecutive": "Upgrade to Executive Chef",
   "premiumUpgradeToSousOrExecutive": "Upgrade to Sous or Executive Chef",
-
   "premiumVaultFull": "Vault is full. Upgrade to save more!",
   "premiumDailyShareLimit": "Daily share limit reached (5/5). Upgrade for unlimited sharing!",
   "premiumMoodExecutive": "Mood-based suggestions require an Executive Chef plan.",
@@ -578,7 +575,6 @@
   "recipeGuestLimit": "You've reached your guest limit. Sign up for free to unlock this recipe and keep cooking!",
   "authSignUpFree": "Sign Up for Free",
   "authHaveAccount": "Already have an account? Log In",
-  
   "vaultDeleteTitle": "Delete Recipe?",
   "vaultDeleteContent": "Are you sure you want to remove this from your Vault?",
   "vaultRemovedToast": "Recipe removed from Vault",
@@ -587,7 +583,6 @@
   "recipeMyVersion": "My Version",
   "recipeEquipment": "Equipment Needed",
   "recipeIngredients": "Ingredients",
-  
   "actionDelete": "Delete",
   "vaultJoinHousehold": "Join a household in Settings to sync.",
   "vaultViewingHousehold": "Viewing Household Vault",
@@ -605,7 +600,9 @@
   "recipeAddedToCartItem": "Added {item} to cart!",
   "@recipeAddedToCartItem": {
     "placeholders": {
-      "item": {"type": "String"}
+      "item": {
+        "type": "String"
+      }
     }
   },
   "recipeStartCooking": "Start Cooking Mode",
@@ -615,16 +612,16 @@
   "cartHousehold": "Household Cart",
   "cartHouseholdSubtitle": "Synced with all family members",
   "cartSavedToHousehold": "Saved to Household Cart",
-
   "authBiometricFailed": "Biometric Auth Failed: {error}",
   "@authBiometricFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "authEmailRequired": "Email required",
   "authPasswordResetSent": "Password reset sent to",
-
   "recipeUpdated": "Recipe updated! Use the toggle to view original.",
   "recipeIngredientNotFound": "Could not find ingredient to modify.",
   "recipeUnlocked": "Recipe Unlocked!",
@@ -636,29 +633,33 @@
   "shareJoinHouseholdError": "Join a household in Settings to share.",
   "shareSharing": "Sharing with household...",
   "shareSaving": "Saving to household...",
-
   "importSaving": "Saving to Vault...",
   "importLinkSaved": "Link Saved to Vault! 📂",
   "importError": "Error: {error}",
   "@importError": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "sharedRecipeTitle": "Shared Recipe",
   "sharedRecipeLoading": "Loading Shared Recipe...",
   "sharedRecipeNotFound": "Recipe not found or expired.",
-
   "scanFailed": "Scan failed: {error}",
   "@scanFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "scanError": "Error: {error}",
   "@scanError": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "scannerAIFoundItems": "Found Items",
@@ -667,20 +668,25 @@
   "scannerAddedToPantry": "Added {count} items to Pantry!",
   "@scannerAddedToPantry": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "scannerAddItemsToPantry": "Add {count} Items",
   "@scannerAddItemsToPantry": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
-  
   "homeError": "Error: {error}",
   "@homeError": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "generatorCuisine": "Cuisine",
@@ -688,7 +694,6 @@
   "generatorSkillLevel": "Skill Level",
   "generatorDietaryLabels": "Dietary Labels",
   "generatorReset": "Reset",
-
   "cuisineItalian": "Italian",
   "cuisineMexican": "Mexican",
   "cuisineAsian": "Asian",
@@ -697,11 +702,9 @@
   "cuisineFrench": "French",
   "cuisineIndian": "Indian",
   "cuisineMiddleEastern": "Middle Eastern",
-
   "skillBeginner": "Beginner",
   "skillIntermediate": "Intermediate",
   "skillPro": "Pro",
-
   "chefAssistantTitle": "AI Chef Assistant 👨‍🍳",
   "chefAssistantSubtitle": "Ask about substitutions, techniques, or equipment alternatives.",
   "chefAssistantHint": "e.g. Can I use almond milk instead?",
@@ -715,14 +718,20 @@
   "chefSwapInstruction": "Swap {target} with {replacement}",
   "@chefSwapInstruction": {
     "placeholders": {
-      "target": {"type": "String"},
-      "replacement": {"type": "String"}
+      "target": {
+        "type": "String"
+      },
+      "replacement": {
+        "type": "String"
+      }
     }
   },
   "chefRemoveInstruction": "Remove {target}",
   "@chefRemoveInstruction": {
     "placeholders": {
-      "target": {"type": "String"}
+      "target": {
+        "type": "String"
+      }
     }
   }
 }

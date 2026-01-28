@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
+import 'package:chefmind_ai/core/widgets/network_error_view.dart';
 import 'package:chefmind_ai/features/recipes/presentation/widgets/conflict_resolution_dialog.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -28,7 +29,9 @@ import '../../settings/presentation/household_controller.dart';
 import 'utils/scaling_helper.dart';
 import 'cooking_mode_screen.dart';
 import 'widgets/nutrition_circle.dart';
-import 'widgets/recipe_ingredient_item.dart';
+import '../../../../core/utils/emoji_helper.dart';
+import '../../pantry/presentation/pantry_controller.dart';
+
 import 'widgets/recipe_instruction_step.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
@@ -51,6 +54,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   bool _isEdited = false;
   bool _showOriginal = false;
   late ConfettiController _confettiController;
+  final Set<String> _checkedIngredients = {}; // Track checked ingredients
   int _baseServings = 2;
   int _currentServings = 2;
 
@@ -64,15 +68,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     // Deep copy for safety
     try {
       if (widget.recipe['original_version'] != null) {
-        _originalRecipe =
-            json.decode(json.encode(widget.recipe['original_version']));
-        _currentRecipe = json.decode(json.encode(widget.recipe));
+        _originalRecipe = _deepCopy(widget.recipe['original_version']);
+        _currentRecipe = _deepCopy(widget.recipe);
         _isEdited = true;
       } else {
-        _originalRecipe = json.decode(json.encode(widget.recipe));
-        _currentRecipe = json.decode(json.encode(widget.recipe));
+        _originalRecipe = _deepCopy(widget.recipe);
+        _currentRecipe = _deepCopy(widget.recipe);
       }
     } catch (e) {
+      // Fallback
       _originalRecipe = Map.from(widget.recipe);
       _currentRecipe = Map.from(widget.recipe);
     }
@@ -96,7 +100,57 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
     // Initialize Servings
     _initServings();
+
+    // Auto-check ingredients from Pantry
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPantryItems();
+    });
+
     debugPrint("Trace: RecipeDetailScreen initState done");
+  }
+
+  void _checkPantryItems() {
+    final pantryItems = ref.read(pantryControllerProvider).valueOrNull ?? [];
+    if (pantryItems.isEmpty) return;
+
+    final recipeIngredients = _currentRecipe['ingredients'];
+    if (recipeIngredients is! List) return;
+
+    final Set<String> newChecks = {};
+
+    for (var item in recipeIngredients) {
+      String name = '';
+      if (item is Map) {
+        name = item['name'].toString().toLowerCase();
+      } else {
+        name = item.toString().toLowerCase();
+      }
+
+      // Fuzzy Match: Check if any pantry item name is contained in the ingredient name OR vice versa
+      // E.g. Pantry has "Salt", Ingredient is "1 tsp Salt" -> Match
+      // E.g. Pantry has "Olive Oil", Ingredient is "Olive Oil" -> Match
+
+      bool exists = pantryItems.any((pItem) {
+        final pName = (pItem['name'] as String).toLowerCase();
+        return name.contains(pName) || pName.contains(name);
+      });
+
+      if (exists) {
+        if (item is Map) {
+          newChecks.add(item['name'].toString());
+        } else {
+          newChecks.add(item.toString());
+        }
+      }
+    }
+
+    if (newChecks.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _checkedIngredients.addAll(newChecks);
+        });
+      }
+    }
   }
 
   @override
@@ -136,6 +190,71 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     });
   }
 
+  // Helper for deep copy
+  Map<String, dynamic> _deepCopy(Map<String, dynamic> source) {
+    try {
+      // Use toEncodable to handle Datetime/Timestamp or other objects safely
+      return json.decode(
+          json.encode(source, toEncodable: (object) => object.toString()));
+    } catch (e) {
+      return _manualDeepCopy(source);
+    }
+  }
+
+  Map<String, dynamic> _manualDeepCopy(Map<String, dynamic> source) {
+    final copy = <String, dynamic>{};
+    source.forEach((key, value) {
+      if (value is Map<String, dynamic>) {
+        copy[key] = _manualDeepCopy(value);
+      } else if (value is Map) {
+        // Handle generic maps by casting if possible or copying
+        copy[key] = _manualDeepCopy(Map<String, dynamic>.from(value));
+      } else if (value is List) {
+        copy[key] = value.map((item) {
+          if (item is Map<String, dynamic>) return _manualDeepCopy(item);
+          if (item is Map)
+            return _manualDeepCopy(Map<String, dynamic>.from(item));
+          return item; // Primitives are copied by value (except objects, but we assume simple data)
+        }).toList();
+      } else {
+        copy[key] = value;
+      }
+    });
+    return copy;
+  }
+
+  String _cleanInstructionText(String text, String target, String replacement) {
+    // 1. naive replace
+    // 2. remove adjectives preceding the replacement
+    // e.g. "minced Garlic Powder" -> "Garlic Powder"
+
+    // First, do the replacement
+    final regex = RegExp(RegExp.escape(target), caseSensitive: false);
+    String newText = text.replaceAllMapped(regex, (match) => replacement);
+
+    // Now look for adjectives before the *new* ingredient name
+    // Common prep words: chopped, minced, diced, sliced, grated, crushed, peeled
+    final prepWords = [
+      'chopped',
+      'minced',
+      'diced',
+      'sliced',
+      'grated',
+      'crushed',
+      'peeled',
+      'finely'
+    ];
+
+    for (final word in prepWords) {
+      // Case insensitive check for "word replacement"
+      final pattern = RegExp(r'\b' + word + r'\s+' + RegExp.escape(replacement),
+          caseSensitive: false);
+      newText = newText.replaceAllMapped(pattern, (match) => replacement);
+    }
+
+    return newText;
+  }
+
   @override
   Widget build(BuildContext context) {
     debugPrint("Trace: RecipeDetailScreen build started");
@@ -157,12 +276,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       }
     });
 
-    // Determine which recipe to show
     final recipe = _showOriginal ? _originalRecipe : _currentRecipe;
-
     final ingredients = (recipe['ingredients'] as List?) ?? [];
     final instructions = (recipe['instructions'] as List?) ?? [];
-    final equipment = (recipe['equipment'] as List?) ?? [];
 
     // Parse Macros - Improved Regex to capture first number
     double _extractNumber(dynamic value) {
@@ -226,9 +342,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     onPressed: () => Navigator.pop(context),
                   ),
                 ),
-                actions: [
-                  _buildAppBarActions(recipe, context),
-                ],
+                actions: [], // Actions moved to Body
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,
@@ -244,7 +358,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                   base64Decode(imageUrl!.split(',').last),
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
-                                      color: Colors.grey[900], // Fallback color
+                                      color: Colors.grey[900],
                                       child: const Center(
                                           child: Icon(Icons.broken_image,
                                               color: Colors.white54))),
@@ -256,30 +370,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             return Image.network(
                               imageUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                  decoration: const BoxDecoration(
-                                      gradient: LinearGradient(
-                                          colors: [
-                                        Color(0xFF2C3E50),
-                                        Color(0xFF4CA1AF)
-                                      ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight)),
-                                  child: Center(
-                                    child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                              Icons.broken_image_outlined,
-                                              color: Colors.white54,
-                                              size: 48),
-                                          const SizedBox(height: 16),
-                                          const Text("Image unavailable",
-                                              style: TextStyle(
-                                                  color: Colors.white54,
-                                                  fontSize: 12))
-                                        ]),
-                                  )),
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: AppColors.surfaceDark,
+                                  alignment: Alignment.center,
+                                  child: const Icon(Icons.broken_image_rounded,
+                                      color: Colors.white10, size: 64),
+                                );
+                              },
                             );
                           }),
                         )
@@ -396,251 +494,125 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Title
-                      Text(
-                        recipe['title'] ?? 'Recipe Details',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Version Switcher & Servings Row
-                      // Version Switcher & Servings (Vertical to prevent overflow)
-                      Column(
+                      // Title & Notes
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_isEdited) ...[
-                            _buildVersionSwitcher(),
-                            const SizedBox(height: 12),
-                          ],
-                          Container(
-                            width: double.infinity, // Full width
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(12),
+                          Expanded(
+                            child: Text(
+                              recipe['title'] ?? 'Recipe Details',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                height: 1.2,
+                                fontFamily:
+                                    'Plus Jakarta Sans', // Ensure premium font usage if available
+                              ),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.remove,
-                                          color: Colors.white60, size: 20),
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                      onPressed: () =>
-                                          _updateServings(_currentServings - 1),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12),
-                                      child: Text(
-                                        "$_currentServings Servings",
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.add,
-                                          color: AppColors.zestyLime, size: 20),
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                      onPressed: () =>
-                                          _updateServings(_currentServings + 1),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                          ),
+                          // Private/Public Badge? (Optional, based on ReciMe image)
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // VERSION SWITCHER (Original / My Version)
+                      if (_isEdited) ...[
+                        _buildPremiumVersionSwitcher(),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // ACTION ROW (Bookmark, Calendar, Shop, Share)
+                      _buildReciMeActionRow(recipe),
+
+                      const SizedBox(height: 32),
+
+                      // NUTRITION RING
+                      _buildNutritionSection(calories, protein, carbs, fat,
+                          recipe['time'] ?? 'N/A'),
+
+                      const SizedBox(height: 32),
+
+                      // Ingredients Header (Serves) - Convert Removed
+                      Row(
+                        children: [
+                          const Text(
+                            "INGREDIENTS",
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              letterSpacing: 1.2,
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Serves Stepper
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () =>
+                                      _updateServings(_currentServings - 1),
+                                  icon: const Icon(Icons.remove_circle_outline,
+                                      color: AppColors.zestyLime, size: 22),
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(8),
+                                ),
+                                SizedBox(
+                                  width: 100,
+                                  child: Text(
+                                    "$_currentServings serves",
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () =>
+                                      _updateServings(_currentServings + 1),
+                                  icon: const Icon(Icons.add_circle_outline,
+                                      color: AppColors.zestyLime, size: 22),
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(8),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
 
                       const SizedBox(height: 32),
 
-                      // Macros & Time Circle
-                      Center(
-                        child: IntrinsicHeight(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              if (calories > 0)
-                                GestureDetector(
-                                  onTap: () {
-                                    showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                                backgroundColor: AppColors
-                                                    .deepCharcoal,
-                                                title: const Text(
-                                                    "Nutrition Facts",
-                                                    style:
-                                                        TextStyle(
-                                                            color:
-                                                                AppColors
-                                                                    .zestyLime)),
-                                                content:
-                                                    Column(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                      _buildMacroRow(
-                                                          "Calories",
-                                                          "${calories.round()}",
-                                                          Colors.white),
-                                                      const SizedBox(height: 8),
-                                                      _buildMacroRow(
-                                                          "Protein",
-                                                          "${protein.round()}g",
-                                                          AppColors.zestyLime),
-                                                      _buildMacroRow(
-                                                          "Carbs",
-                                                          "${carbs.round()}g",
-                                                          AppColors
-                                                              .electricBlue),
-                                                      _buildMacroRow(
-                                                          "Fat",
-                                                          "${fat.round()}g",
-                                                          const Color(
-                                                              0xFFFFC107)),
-                                                    ]),
-                                                actions: [
-                                                  TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                              context),
-                                                      child:
-                                                          const Text("Close"))
-                                                ]));
-                                  },
-                                  child: Tooltip(
-                                    message: "Tap for details",
-                                    child: NutritionCircle(
-                                      calories: calories,
-                                      protein: protein,
-                                      carbs: carbs,
-                                      fat: fat,
-                                    ),
-                                  ),
-                                ),
-                              if (calories > 0)
-                                const SizedBox(width: 24), // Reduced spacing
-                              Flexible(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.timer_outlined,
-                                        color: AppColors.zestyLime, size: 32),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      recipe['time'] ?? 'N/A',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                      ),
-                                      textAlign:
-                                          TextAlign.center, // Center aligned
-                                    ),
-                                    const Text(
-                                      "Prep Time",
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 48),
-
-                      // Equipment
-                      if (equipment.isNotEmpty) ...[
-                        Text(
-                          AppLocalizations.of(context)!.recipeEquipment,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: equipment
-                              .map((e) => Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white10,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: Colors.white10),
-                                    ),
-                                    child: Text(e.toString(),
-                                        style: const TextStyle(
-                                            color: Colors.white70)),
-                                  ))
-                              .toList(),
-                        ),
-                        const SizedBox(height: 32),
-                      ],
-
-                      // INGREDIENTS
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.recipeIngredients,
-                            style: const TextStyle(
-                                color: AppColors.zestyLime,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () => _addMissingIngredientsToCart(
-                                ingredients, context),
-                            style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                    color: AppColors.zestyLime),
-                                foregroundColor: AppColors.zestyLime,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20)),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8)),
-                            icon: const Icon(Icons.add_shopping_cart, size: 16),
-                            label: const Text("Add Missing",
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      _buildIngredientsList(),
+                      // Ingredients List
+                      _buildIngredientsList(ingredients),
 
                       const SizedBox(height: 40),
 
-                      // INSTRUCTIONS
-                      Text(
-                        AppLocalizations.of(context)!.recipeInstructions,
-                        style: const TextStyle(
-                            color: AppColors.zestyLime,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold),
+                      // INSTRUCTIONS HEADER
+                      const Text(
+                        "INSTRUCTIONS",
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                       const SizedBox(height: 16),
 
@@ -660,44 +632,67 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                           },
                         ),
 
-                      const SizedBox(height: 60),
-
-                      // Start Cooking Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.zestyLime,
-                            foregroundColor: AppColors.deepCharcoal,
-                            padding: const EdgeInsets.all(16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
-                          ),
-                          onPressed: () {
-                            // Navigate to Cooking Mode
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CookingModeScreen(
-                                  recipe: recipe,
-                                  servings: _currentServings,
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.restaurant_menu),
-                          label: Text(
-                              AppLocalizations.of(context)!.recipeStartCooking,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16)),
-                        ),
-                      ),
-                      const SizedBox(height: 100),
+                      const SizedBox(height: 100), // Bottom padding
                     ],
                   ),
                 ),
               ),
             ],
+          ),
+
+          // Start Cooking Button (Floating Sticky)
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 32,
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.zestyLime.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  )
+                ],
+              ),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.zestyLime,
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28)),
+                  padding: EdgeInsets.zero,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CookingModeScreen(
+                        recipe: recipe,
+                        servings: _currentServings,
+                      ),
+                    ),
+                  );
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.play_arrow_rounded, size: 28),
+                    SizedBox(width: 8),
+                    Text(
+                      "Start Cooking",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
 
           // Confetti
@@ -717,368 +712,402 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           ),
         ],
       ),
+      // FAB Assistant for chatting
       floatingActionButton: recipe['is_locked'] == true
           ? null
-          : FloatingActionButton.extended(
-              onPressed: () {
-                final isConnected =
-                    ref.read(offlineManagerProvider).hasConnection;
-                if (!isConnected) {
-                  NanoToast.showInfo(
-                      context, "No connection. Please check your internet.");
-                  return;
-                }
-                _showConsultChefDialog();
-              },
-              backgroundColor: AppColors.zestyLime,
-              icon: const Icon(Icons.chat_bubble_outline,
-                  color: AppColors.deepCharcoal),
-              label: const Text('Assistant',
-                  style: TextStyle(
-                      color: AppColors.deepCharcoal,
-                      fontWeight: FontWeight.bold)),
+          : Padding(
+              padding:
+                  const EdgeInsets.only(bottom: 70.0), // Above start cooking
+              child: FloatingActionButton.extended(
+                onPressed: () {
+                  final isConnected =
+                      ref.read(offlineManagerProvider).hasConnection;
+                  if (!isConnected) {
+                    NanoToast.showInfo(
+                        context, "No connection. Please check your internet.");
+                    return;
+                  }
+                  _showConsultChefDialog();
+                },
+                backgroundColor: AppColors.surfaceDark,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+                icon: const Icon(Icons.chat_bubble_outline,
+                    color: AppColors.zestyLime, size: 20),
+                label: const Text("Assistant",
+                    style: TextStyle(
+                        color: AppColors.zestyLime,
+                        fontWeight: FontWeight.bold)),
+              ),
             ),
     );
   }
 
-  // --- Helpers ---
+  // -- NEW BUILDERS --
 
-  Widget _buildVersionSwitcher() {
+  // 1. Premium Version Switcher
+  Widget _buildPremiumVersionSwitcher() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      width: double.infinity,
+      height: 44,
       decoration: BoxDecoration(
-          color: Colors.white10,
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: Colors.white24)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Stack(
         children: [
-          Text("Original",
-              style: TextStyle(
-                  color: _showOriginal ? Colors.white : Colors.white54,
-                  fontSize: 12,
-                  fontWeight:
-                      _showOriginal ? FontWeight.bold : FontWeight.normal)),
-          Transform.scale(
-            scale: 0.8,
-            child: Switch(
-              value: !_showOriginal,
-              onChanged: (value) => setState(() => _showOriginal = !value),
-              activeColor: AppColors.zestyLime,
-              activeTrackColor: AppColors.zestyLime.withOpacity(0.2),
-              inactiveThumbColor: Colors.white,
-              inactiveTrackColor: Colors.white10,
+          // Background Animation
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            alignment:
+                _showOriginal ? Alignment.centerLeft : Alignment.centerRight,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.45, // roughly half
+              margin: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: AppColors.zestyLime,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                      color: AppColors.zestyLime.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2))
+                ],
+              ),
             ),
           ),
-          Text("My Version",
-              style: TextStyle(
-                  color: !_showOriginal ? AppColors.zestyLime : Colors.white54,
-                  fontSize: 12,
-                  fontWeight:
-                      !_showOriginal ? FontWeight.bold : FontWeight.normal)),
+
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _showOriginal = true),
+                  behavior: HitTestBehavior.translucent,
+                  child: Center(
+                    child: Text("Original",
+                        style: TextStyle(
+                            color:
+                                _showOriginal ? Colors.black : Colors.white60,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _showOriginal = false),
+                  behavior: HitTestBehavior.translucent,
+                  child: Center(
+                    child: Text("My Version",
+                        style: TextStyle(
+                            color:
+                                !_showOriginal ? Colors.black : Colors.white60,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAppBarActions(
-      Map<String, dynamic> recipe, BuildContext context) {
-    if (widget.isSharedPreview) {
-      return Padding(
-        padding: const EdgeInsets.only(right: 16),
-        child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.zestyLime,
-              foregroundColor: AppColors.deepCharcoal,
-            ),
-            icon: const Icon(Icons.download, size: 18),
-            label: const Text("Save"),
-            onPressed: () async {
-              final recipeToSave = Map<String, dynamic>.from(_currentRecipe);
-              recipeToSave.remove('id');
-              // Save as 'link' type so it appears in Links tab, but keep recipe data
-              recipeToSave['type'] = 'link';
-
-              try {
-                await ref
-                    .read(vaultControllerProvider.notifier)
-                    .saveRecipe(recipeToSave);
-                if (mounted) {
-                  _confettiController.play();
-                  NanoToast.showSuccess(context,
-                      AppLocalizations.of(context)!.recipeSavedToVault);
-                }
-              } catch (e) {
-                if (mounted) NanoToast.showError(context, e.toString());
-              }
-            }),
-      );
-    }
-
-    if (recipe['is_locked'] == true) return const SizedBox.shrink();
-
+  // 2. ReciMe Style Action Row (With Real Logic)
+  Widget _buildReciMeActionRow(Map<String, dynamic> recipe) {
+    // We need to watch state to know if saved/shared
     return Consumer(builder: (context, ref, _) {
       final vaultState = ref.watch(vaultControllerProvider);
       final savedRecipes = vaultState.valueOrNull ?? [];
       final savedItem = savedRecipes.firstWhere(
-          (r) => r['recipe_id'] == _currentRecipe['id'],
-          orElse: () => {});
+        (r) => r['recipe_id'] == _currentRecipe['id'],
+        orElse: () => {},
+      );
       final isSaved = savedItem.isNotEmpty && savedItem['recipe_id'] != null;
       final isShared = isSaved && savedItem['is_shared'] == true;
 
       return Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Share Button
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: const BoxDecoration(
-                color: Colors.black26, shape: BoxShape.circle),
-            child: IconButton(
-              icon: Icon(isShared ? Icons.share : Icons.share_outlined,
-                  color: isShared ? AppColors.zestyLime : Colors.white),
-              onPressed: () async {
-                showModalBottomSheet(
-                    context: context,
-                    backgroundColor: AppColors.deepCharcoal,
-                    shape: const RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(20))),
-                    builder: (modalContext) => SafeArea(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                leading: const Icon(Icons.people,
-                                    color: AppColors.zestyLime),
-                                title: const Text("Share with Household",
-                                    style: TextStyle(color: Colors.white)),
-                                subtitle: Text(
-                                    isShared
-                                        ? "Already shared with your household"
-                                        : "Make visible to family members",
-                                    style:
-                                        const TextStyle(color: Colors.white54)),
-                                onTap: () async {
-                                  Navigator.pop(modalContext);
-                                  final householdState = await ref
-                                      .read(householdControllerProvider.future);
-                                  if (householdState == null) {
-                                    NanoToast.showInfo(
-                                        context,
-                                        AppLocalizations.of(context)!
-                                            .shareJoinHouseholdError);
-                                    return;
-                                  }
-                                  if (isSaved) {
-                                    await ref
-                                        .read(vaultControllerProvider.notifier)
-                                        .shareRecipe(savedItem['recipe_id']);
-                                  } else {
-                                    await ref
-                                        .read(vaultControllerProvider.notifier)
-                                        .saveToHousehold(_currentRecipe);
-                                  }
-                                  if (mounted)
-                                    NanoToast.showSuccess(context, "Shared!");
-                                },
-                              ),
-                            ],
-                          ),
-                        ));
-              },
-            ),
-          ),
+          // SAVE / BOOKMARK
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              _buildCircularAction(
+                icon: isSaved ? Icons.bookmark : Icons.bookmark_border,
+                label: isSaved ? "Saved" : "Save",
+                isActive: isSaved,
+                onTap: () async {
+                  if (isSaved) {
+                    // Confirm Delete
+                    final shouldDelete = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                              backgroundColor: AppColors.deepCharcoal,
+                              title: const Text("Remove from Vault?",
+                                  style: TextStyle(color: Colors.white)),
+                              content: const Text(
+                                  "This will remove this recipe from your saved collection.",
+                                  style: TextStyle(color: Colors.white70)),
+                              actions: [
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text("Cancel")),
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text("Remove",
+                                        style: TextStyle(color: Colors.red))),
+                              ],
+                            ));
+                    if (shouldDelete == true) {
+                      await ref
+                          .read(vaultControllerProvider.notifier)
+                          .deleteRecipe(savedItem['recipe_id']);
+                    }
+                  } else {
+                    // Save
+                    // Ensure we save a clean copy but with edited flag if needed
+                    final recipeToSave = _deepCopy(_currentRecipe);
+                    if (_isEdited) {
+                      recipeToSave['original_version'] =
+                          _deepCopy(_originalRecipe);
+                    }
 
-          // Save Button
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: const BoxDecoration(
-                color: Colors.black26, shape: BoxShape.circle),
-            child: IconButton(
-              icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border,
-                  color: AppColors.zestyLime),
-              onPressed: () async {
-                if (isSaved) {
-                  // Delete logic
-                  final shouldDelete = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                            backgroundColor: AppColors.deepCharcoal,
-                            title: Text(
-                                AppLocalizations.of(context)!.vaultDeleteTitle,
-                                style: const TextStyle(color: Colors.white)),
-                            content: Text(
-                                AppLocalizations.of(context)!
-                                    .vaultDeleteContent,
-                                style: const TextStyle(color: Colors.white70)),
-                            actions: [
-                              TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text("Cancel")),
-                              TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text("Delete",
-                                      style: TextStyle(color: Colors.red))),
-                            ],
-                          ));
-                  if (shouldDelete == true) {
                     await ref
                         .read(vaultControllerProvider.notifier)
-                        .deleteRecipe(savedItem['recipe_id']);
-                    if (mounted)
-                      NanoToast.showInfo(context, "Recipe removed from Vault");
+                        .saveRecipe(recipeToSave);
+                    if (mounted) {
+                      _confettiController.play();
+                      NanoToast.showSuccess(context, "Saved to Vault!");
+                    }
                   }
-                } else {
-                  // Save logic
-                  final title = _currentRecipe['title'];
-                  final existingId = await ref
-                      .read(vaultControllerProvider.notifier)
-                      .checkForDuplicate(title);
-                  if (existingId != null &&
-                      existingId != _currentRecipe['id']) {
-                    // Conflict... skipping complex dialog for now to avoid breaking imports if dialog is missing?
-                    // Actually I should try to preserve it.
-                    // Assuming ConflictResolutionDialog is in context.
-                  }
+                },
+              ),
+              // Confetti Blast from Button
+              ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: const [
+                  AppColors.zestyLime,
+                  Colors.white,
+                  Colors.yellow,
+                  Colors.green
+                ],
+                numberOfParticles: 20,
+              ),
+            ],
+          ),
 
-                  final recipeToSave =
-                      Map<String, dynamic>.from(_currentRecipe);
-                  if (_isEdited)
-                    recipeToSave['original_version'] = _originalRecipe;
+          // PLAN (Placeholder)
+          _buildCircularAction(
+            icon: Icons.calendar_today_outlined,
+            label: "Plan",
+            onTap: () =>
+                NanoToast.showInfo(context, "Meal Planning coming soon!"),
+          ),
 
-                  await ref
-                      .read(vaultControllerProvider.notifier)
-                      .saveRecipe(recipeToSave);
-                  if (mounted) {
-                    _confettiController.play();
-                    NanoToast.showSuccess(
-                        context, AppLocalizations.of(context)!.recipeSaved);
-                  }
-                }
-              },
-            ),
-          )
+          // SHOP
+          _buildCircularAction(
+            icon: Icons.shopping_basket_outlined,
+            label: "Shop",
+            onTap: () {
+              _addMissingIngredientsToCart(
+                  _currentRecipe['ingredients'] ?? [], context);
+            },
+          ),
+
+          // SHARE
+          _buildCircularAction(
+            icon: isShared ? Icons.share : Icons.share_outlined,
+            label: "Share",
+            isActive: isShared,
+            onTap: () {
+              showModalBottomSheet(
+                  context: context,
+                  backgroundColor: AppColors.deepCharcoal,
+                  shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(20))),
+                  builder: (modalContext) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.people,
+                                  color: AppColors.zestyLime),
+                              title: const Text("Share with Household",
+                                  style: TextStyle(color: Colors.white)),
+                              subtitle: Text(
+                                  isShared
+                                      ? "Already shared with your household"
+                                      : "Make visible to family members",
+                                  style:
+                                      const TextStyle(color: Colors.white54)),
+                              onTap: () async {
+                                Navigator.pop(modalContext);
+                                final householdState = await ref
+                                    .read(householdControllerProvider.future);
+                                if (householdState == null) {
+                                  NanoToast.showInfo(context,
+                                      "Please join a household first.");
+                                  return;
+                                }
+                                if (isSaved) {
+                                  await ref
+                                      .read(vaultControllerProvider.notifier)
+                                      .shareRecipe(savedItem['recipe_id']);
+                                } else {
+                                  await ref
+                                      .read(vaultControllerProvider.notifier)
+                                      .saveToHousehold(_currentRecipe);
+                                }
+                                if (mounted)
+                                  NanoToast.showSuccess(
+                                      context, "Shared with Household!");
+                              },
+                            ),
+                            ListTile(
+                              leading:
+                                  const Icon(Icons.link, color: Colors.white),
+                              title: const Text("Share Link",
+                                  style: TextStyle(color: Colors.white)),
+                              onTap: () {
+                                Navigator.pop(modalContext);
+                                Share.share(
+                                    "Check out this recipe: ${_currentRecipe['title']} on ChefMind!");
+                              },
+                            )
+                          ],
+                        ),
+                      ));
+            },
+          ),
         ],
       );
     });
   }
 
-  Widget _buildIngredientsList() {
-    debugPrint("Trace: _buildIngredientsList started");
-    List<dynamic> ingredients = List.from(_currentRecipe['ingredients'] ?? []);
+  // Reuse existing helpers but commented out old AppBarActions to avoid duplication if kept in file
+  // (We are replacing the definition so it's fine)
 
-    // Helper to extract section from name: "Flour (for batter)" -> Section: "For Batter", Item: "Flour"
-    Map<String, List<dynamic>> sections = {};
-    List<dynamic> mainSection = [];
-
-    for (var item in ingredients) {
-      String name = '';
-      if (item is Map)
-        name = item['name'] ?? '';
-      else
-        name = item.toString();
-
-      // Check for (for ...) pattern
-      final regex = RegExp(r'\((for\s+.*?)\)', caseSensitive: false);
-      final match = regex.firstMatch(name);
-
-      if (match != null) {
-        String sectionName = match.group(1)!;
-        debugPrint("Grouping Debug: Found section '$sectionName' in '$name'");
-
-        // Clean the name for display within the group
-        String displayName = name.replaceAll(match.group(0)!, '').trim();
-
-        // Capitalize section
-        sectionName = sectionName.replaceAll('for ', '').trim();
-        if (sectionName.isNotEmpty) {
-          sectionName = sectionName[0].toUpperCase() + sectionName.substring(1);
-        } else {
-          sectionName = "General";
-        }
-
-        if (!sections.containsKey(sectionName)) {
-          sections[sectionName] = [];
-        }
-
-        // Create a display item with the CLEANED name
-        final displayItem = (item is Map)
-            ? Map<String, dynamic>.from(item)
-            : {'name': displayName, 'amount': ''};
-        displayItem['name'] = displayName;
-
-        sections[sectionName]!.add(displayItem);
-      } else {
-        debugPrint("Grouping Debug: No section found in '$name'");
-        mainSection.add(item);
-      }
-    }
-
-    debugPrint(
-        "Grouping Debug: Found ${sections.length} sections and ${mainSection.length} main items");
-
+  Widget _buildCircularAction(
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap,
+      bool isActive = false}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (mainSection.isNotEmpty) ...[
-          if (sections.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8, top: 0),
-              child: Text("Main Ingredients",
-                  style: TextStyle(
-                      color: AppColors.zestyLime,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16)),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isActive
+                  ? AppColors.zestyLime
+                  : Colors.white.withOpacity(0.08),
+              border: Border.all(
+                  color: isActive ? AppColors.zestyLime : Colors.white12),
             ),
-          ...mainSection.map((item) => _buildIngredientItem(item)).toList(),
-          SizedBox(height: 16),
-        ],
-        ...sections.entries.map((entry) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8, top: 8),
-                child: Text(entry.key,
-                    style: TextStyle(
-                        color: AppColors.zestyLime,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16)),
-              ),
-              ...entry.value.map((item) => _buildIngredientItem(item)).toList(),
-              SizedBox(height: 16),
-            ],
-          );
-        }).toList(),
+            child: Icon(icon,
+                color: isActive ? Colors.black : Colors.white, size: 22),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 12)),
       ],
     );
   }
 
-  Widget _buildIngredientItem(dynamic item) {
-    final mapItem = item is Map
-        ? item
-        : {'name': item.toString(), 'amount': '', 'is_missing': false};
-
-    return RecipeIngredientItem(
-      name: mapItem['name'].toString(),
-      amount: ScalingHelper.scaleAmount(
-          mapItem['amount'].toString(), _currentServings / _baseServings),
-      isMissing: mapItem['is_missing'] == true,
-      onAddToCart: () {
-        ref.read(shoppingControllerProvider.notifier).addItem(
-              mapItem['name'].toString(),
-              amount: mapItem['amount']?.toString() ?? '1',
-              category: 'Recipe Addon',
-            );
-        NanoToast.showInfo(
-            context,
-            AppLocalizations.of(context)!
-                .recipeAddedToCartItem(mapItem['name']));
-      },
+  // 3. Nutrition Section
+  Widget _buildNutritionSection(
+      double calories, double protein, double carbs, double fat, String time) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          // Ring Chart
+          SizedBox(
+            width: 100,
+            height: 100,
+            child: NutritionCircle(
+              calories: calories,
+              protein: protein,
+              carbs: carbs,
+              fat: fat,
+            ),
+          ),
+          const SizedBox(width: 20),
+          // Legend
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildNutrientLegend(
+                    "Protein", "${protein.round()}g", AppColors.zestyLime),
+                const SizedBox(height: 8),
+                _buildNutrientLegend(
+                    "Carbs", "${carbs.round()}g", AppColors.electricBlue),
+                const SizedBox(height: 8),
+                _buildNutrientLegend(
+                    "Fats", "${fat.round()}g", const Color(0xFFFFC107)),
+                const Divider(color: Colors.white10, height: 24),
+                Row(
+                  children: [
+                    const Icon(Icons.timer_outlined,
+                        color: Colors.white54, size: 16),
+                    const SizedBox(width: 6),
+                    Text(time,
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
+                  ],
+                )
+              ],
+            ),
+          )
+        ],
+      ),
     );
   }
+
+  Widget _buildNutrientLegend(String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        const Spacer(),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 13)),
+      ],
+    );
+  }
+
+  // Replacing _buildAppBarActions purely to clean up file, though it's not used in AppBar anymore.
+  // Actually, I can just not include it here, but I must provide valid replacement for the range.
+  // I will just stub it out or remove it.
 
   Widget _buildLockedInstructionsPlaceholder() {
     return GestureDetector(
@@ -1136,6 +1165,216 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildIngredientsList(List<dynamic> ingredients) {
+    // List<dynamic> ingredients = List.from(_currentRecipe['ingredients'] ?? []); -- REMOVED: Uses argument now
+
+    // Helper to extract section from name: "Flour (for batter)" -> Section: "For Batter", Item: "Flour"
+    Map<String, List<dynamic>> sections = {};
+    List<dynamic> mainSection = [];
+
+    for (var item in ingredients) {
+      String name = '';
+      if (item is Map)
+        name = item['name'] ?? '';
+      else
+        name = item.toString();
+
+      // Check for (for ...) pattern
+      final regex = RegExp(r'\((for\s+.*?)\)', caseSensitive: false);
+      final match = regex.firstMatch(name);
+
+      if (match != null) {
+        String sectionName = match.group(1)!;
+
+        // Clean the name for display within the group
+        String displayName = name.replaceAll(match.group(0)!, '').trim();
+
+        // Capitalize section
+        sectionName = sectionName.replaceAll('for ', '').trim();
+        if (sectionName.isNotEmpty) {
+          sectionName = sectionName[0].toUpperCase() + sectionName.substring(1);
+        } else {
+          sectionName = "General";
+        }
+
+        if (!sections.containsKey(sectionName)) {
+          sections[sectionName] = [];
+        }
+
+        // Create a display item with the CLEANED name
+        final displayItem = (item is Map)
+            ? Map<String, dynamic>.from(item)
+            : {'name': displayName, 'amount': ''};
+        displayItem['name'] = displayName;
+
+        sections[sectionName]!.add(displayItem);
+      } else {
+        mainSection.add(item);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (mainSection.isNotEmpty) ...[
+          if (sections.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8, top: 0),
+              child: Text("Main Ingredients",
+                  style: TextStyle(
+                      color: AppColors.zestyLime,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
+            ),
+          ...mainSection.map((item) => _buildIngredientItem(item)).toList(),
+          SizedBox(height: 16),
+        ],
+        ...sections.entries.map((entry) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8, top: 8),
+                child: Text(entry.key,
+                    style: TextStyle(
+                        color: AppColors.zestyLime,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
+              ),
+              ...entry.value.map((item) => _buildIngredientItem(item)).toList(),
+              SizedBox(height: 16),
+            ],
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildIngredientItem(dynamic item) {
+    final mapItem = item is Map
+        ? item
+        : {'name': item.toString(), 'amount': '', 'is_missing': false};
+
+    final name = mapItem['name'].toString();
+    final amount = ScalingHelper.scaleAmount(
+        mapItem['amount'].toString(),
+        (mapItem['amount'] == null || mapItem['amount'].toString().isEmpty)
+            ? 1.0
+            : (_currentServings / _baseServings));
+
+    final isChecked = _checkedIngredients.contains(name);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isChecked) {
+            _checkedIngredients.remove(name);
+          } else {
+            _checkedIngredients.add(name);
+          }
+        });
+      },
+      child: AnimatedContainer(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: isChecked
+              ? AppColors.zestyLime.withOpacity(0.05)
+              : Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: isChecked
+                  ? AppColors.zestyLime.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            // Checkbox (Custom Circle)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isChecked ? AppColors.zestyLime : Colors.transparent,
+                border: Border.all(
+                    color: isChecked ? AppColors.zestyLime : Colors.white24,
+                    width: 2),
+              ),
+              alignment: Alignment.center,
+              child: isChecked
+                  ? const Icon(Icons.check, size: 16, color: Colors.black)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+
+            // Emoji Container
+            // Emoji Container
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
+              child: EmojiHelper.getEmoji(name) != null
+                  ? Text(
+                      EmojiHelper.getEmoji(name)!,
+                      style: const TextStyle(fontSize: 20),
+                    )
+                  : Icon(Icons.restaurant_menu_rounded,
+                      color: Colors.white.withOpacity(0.5), size: 18),
+            ),
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                        color: isChecked ? Colors.white54 : Colors.white,
+                        fontWeight:
+                            isChecked ? FontWeight.normal : FontWeight.w600,
+                        fontSize: 15,
+                        decoration:
+                            isChecked ? TextDecoration.lineThrough : null,
+                        decorationColor: Colors.white24),
+                  ),
+                  if (amount.isNotEmpty && amount != 'null')
+                    Text(
+                      amount, // E.g "2 cups"
+                      style: TextStyle(
+                        color: isChecked ? Colors.white24 : Colors.white54,
+                        fontSize: 13,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Add to cart button (only if not checked)
+            if (!isChecked)
+              IconButton(
+                icon: const Icon(Icons.add_shopping_cart,
+                    size: 20, color: AppColors.zestyLime),
+                onPressed: () {
+                  ref.read(shoppingControllerProvider.notifier).addItem(
+                        name,
+                        amount: amount.isEmpty ? '1' : amount,
+                        category: 'Recipe Addon',
+                      );
+                  NanoToast.showInfo(context, "Added to list");
+                },
+              )
+          ],
+        ),
       ),
     );
   }
@@ -1313,6 +1552,186 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
+  void _showAnswerDialog(
+      String question, String displayText, Map<String, dynamic>? modification) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+        context: context,
+        builder: (context) {
+          String actionText = '';
+          if (modification != null) {
+            final type = modification['type'];
+            final target = modification['target_ingredient'];
+            final replacement = modification['replacement_ingredient'];
+
+            if (type == 'replace') {
+              String replacementText = replacement.toString();
+              if (replacement is Map) {
+                replacementText =
+                    "${replacement['amount']} ${replacement['name']}";
+              }
+              actionText = l10n.chefSwapInstruction(target, replacementText);
+            } else if (type == 'remove') {
+              actionText = l10n.chefRemoveInstruction(target);
+            }
+          }
+
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.all(20),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  )
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.zestyLime.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.restaurant_menu,
+                            color: AppColors.zestyLime, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(l10n.chefSays,
+                          style: const TextStyle(
+                              color: AppColors.zestyLime,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Question
+                  Text('Q: "$question"',
+                      style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic)),
+                  const SizedBox(height: 12),
+
+                  // Answer
+                  Text(displayText,
+                      style: const TextStyle(
+                          color: Colors.white, height: 1.5, fontSize: 16)),
+
+                  if (modification != null) ...[
+                    const SizedBox(height: 24),
+                    // Modification Card
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.zestyLime,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.auto_fix_high,
+                                  color: Colors.black, size: 18),
+                              const SizedBox(width: 8),
+                              Text(l10n.chefSuggestedChange,
+                                  style: const TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(actionText,
+                              style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16)),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 32),
+
+                  // Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            foregroundColor: Colors.white70,
+                          ),
+                          child: Text(l10n.shoppingClearDialogCancel),
+                        ),
+                      ),
+                      if (modification != null) ...[
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _applyModification(modification);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.zestyLime,
+                              foregroundColor: Colors.black,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: Text(l10n.chefApplyChange,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.1),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text("Done",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ]
+                    ],
+                  )
+                ],
+              ),
+            ),
+          );
+        });
+  }
+
   void _showConsultChefDialog() {
     final l10n = AppLocalizations.of(context)!;
     final questionController = TextEditingController();
@@ -1411,7 +1830,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       final result = await ref
                           .read(recipeControllerProvider.notifier)
                           .consultChef(question, _currentRecipe)
-                          .timeout(const Duration(seconds: 60));
+                          .timeout(const Duration(seconds: 15));
 
                       // Close thinking dialog
                       if (mounted) navigator.pop();
@@ -1431,12 +1850,17 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             question, displayText, modificationData);
                       }
                     } catch (e) {
-                      // Close thinking dialog on error
+                      // Close thinking dialog shortly on error
                       if (mounted) navigator.pop();
 
                       String errorMessage = e.toString();
-                      if (e is TimeoutException) {
-                        errorMessage = l10n.chefTimeout;
+                      if (e is TimeoutException ||
+                          NetworkErrorView.isNetworkError(e)) {
+                        errorMessage =
+                            "No connection. Please check your internet.";
+                      } else {
+                        errorMessage =
+                            errorMessage.replaceAll('Exception: ', '');
                       }
 
                       NanoToast.showError(context, errorMessage);
@@ -1450,94 +1874,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ),
       ),
     );
-  }
-
-  void _showAnswerDialog(
-      String question, String displayText, Map<String, dynamic>? modification) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-        context: context,
-        builder: (context) {
-          String actionText = '';
-          if (modification != null) {
-            final type = modification['type'];
-            final target = modification['target_ingredient'];
-            final replacement = modification['replacement_ingredient'];
-
-            if (type == 'replace') {
-              String replacementText = replacement.toString();
-              if (replacement is Map) {
-                replacementText =
-                    "${replacement['amount']} ${replacement['name']}";
-              }
-              actionText = l10n.chefSwapInstruction(target, replacementText);
-            } else if (type == 'remove') {
-              actionText = l10n.chefRemoveInstruction(target);
-            }
-          }
-
-          return AlertDialog(
-            backgroundColor: const Color(0xFF252525),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text(l10n.chefSays,
-                style: const TextStyle(color: AppColors.zestyLime)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Q: "$question"',
-                    style: const TextStyle(
-                        color: Colors.white54, fontStyle: FontStyle.italic)),
-                const SizedBox(height: 12),
-                Text(displayText, style: const TextStyle(color: Colors.white)),
-                if (modification != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                        color: AppColors.zestyLime.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.zestyLime)),
-                    child: Column(
-                      children: [
-                        Text(l10n.chefSuggestedChange,
-                            style: const TextStyle(
-                                color: AppColors.zestyLime,
-                                fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Text(actionText,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center),
-                      ],
-                    ),
-                  )
-                ]
-              ],
-            ),
-            actions: [
-              if (modification != null)
-                TextButton(
-                  onPressed: () {
-                    _applyModification(modification);
-                    Navigator.pop(context);
-                  },
-                  child: Text(l10n.chefApplyChange,
-                      style: const TextStyle(
-                          color: AppColors.zestyLime,
-                          fontWeight: FontWeight.bold)),
-                ),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                    l10n.shoppingClearDialogCancel, // Using existing "Cancel" or similar "Close" if available? "shoppingClearDialogCancel" is "Cancel".
-                    style: const TextStyle(color: Colors.white54)),
-              )
-            ],
-          );
-        });
   }
 
   void _applyModification(Map<String, dynamic> modification) {
@@ -1596,7 +1932,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           }
         }
       } else {
-        newIngredients.add(item);
+        // Paranoid: Copy the item even if unchanged to break reference with _originalRecipe
+        if (item is Map) {
+          newIngredients.add(Map<String, dynamic>.from(item));
+        } else {
+          newIngredients.add(item);
+        }
       }
     }
 
@@ -1612,16 +1953,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             ? replacement['name'].toString()
             : replacement.toString();
 
-        // Try to match target in instructions case-insensitive
-        final regex = RegExp(RegExp.escape(target), caseSensitive: false);
-
         List<dynamic> newInstructions = [];
         for (var step in currentInstructions) {
           String stepText = step.toString();
           if (stepText.toLowerCase().contains(target)) {
-            // Replace all occurrences
+            // Replace all occurrences with cleaning
             String newText =
-                stepText.replaceAllMapped(regex, (match) => replacementName);
+                _cleanInstructionText(stepText, target, replacementName);
             newInstructions.add(newText);
             instructionsChanged = true;
           } else {

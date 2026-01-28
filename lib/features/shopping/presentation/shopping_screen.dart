@@ -463,10 +463,12 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                   ),
                   alignment: Alignment.center,
                   padding: const EdgeInsets.all(4),
-                  child: Text(
-                    EmojiHelper.getEmoji(item['item_name'] ?? ''),
-                    style: const TextStyle(fontSize: 24),
-                  ),
+                  child: EmojiHelper.getEmoji(item['item_name'] ?? '') != null
+                      ? Text(
+                          EmojiHelper.getEmoji(item['item_name'] ?? '')!,
+                          style: const TextStyle(fontSize: 24),
+                        )
+                      : const SizedBox(),
                 ),
                 const SizedBox(width: 12),
 

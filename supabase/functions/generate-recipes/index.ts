@@ -165,14 +165,25 @@ serve(async (req) => {
         // Typos handling
         if (cleanMealType.toLowerCase() === 'launch') cleanMealType = 'Lunch';
 
-        promptText += `\nTarget Meal Type: ${cleanMealType}`;
-        
-        // Strict Negative Constraints
-        const lowerType = cleanMealType.toLowerCase();
-        if (lowerType === 'lunch' || lowerType === 'dinner' || lowerType === 'main meal') {
-             promptText += `\nCRITICAL: User specifically requested ${cleanMealType}. DO NOT PROVIDE DESSERTS, smoothies, or sweet snacks. Provide savory main courses only.`;
-        } else if (lowerType === 'dessert') {
-             promptText += `\nCRITICAL: User specifically requested Dessert. DO NOT PROVIDE SAVORY DISHES.`;
+        // Detect "Surprise Me" (in various languages if possible, but mainly English/fallback)
+        const isSurprise = cleanMealType.toLowerCase().includes('surprise') || 
+                          cleanMealType.toLowerCase().includes('sorpre') || 
+                          cleanMealType.toLowerCase().includes('surpre');
+
+        if (isSurprise) {
+            promptText += `\nTarget Meal Type: CHEF'S CHOICE (Surprise the user).`;
+            promptText += `\nCRITICAL: Create 3 distinct, high-quality recipes (e.g. One Breakfast, One Main Course, One Dessert OR 3 Unique Dinner ideas).`;
+            promptText += `\nIMPORTANT: Ensure the recipes are COHESIVE and TASTY. Do NOT generate weird combinations just to be unique (e.g. avoid 'Chicken with Chocolate' unless it's a known authentic dish like Mole).`;
+        } else {
+            promptText += `\nTarget Meal Type: ${cleanMealType}`;
+            
+            // Strict Negative Constraints
+            const lowerType = cleanMealType.toLowerCase();
+            if (lowerType === 'lunch' || lowerType === 'dinner' || lowerType === 'main meal') {
+                promptText += `\nCRITICAL: User specifically requested ${cleanMealType}. DO NOT PROVIDE DESSERTS, smoothies, or sweet snacks. Provide savory main courses only.`;
+            } else if (lowerType === 'dessert') {
+                promptText += `\nCRITICAL: User specifically requested Dessert. DO NOT PROVIDE SAVORY DISHES.`;
+            }
         }
     }
     if (filters && filters.length > 0) {
@@ -285,9 +296,9 @@ serve(async (req) => {
             if (pexelsApiKey) {
                  console.log(`Fetching images for ${parsed.recipes.length} recipes from Pexels...`);
                  const recipesWithImages = await Promise.all(parsed.recipes.map(async (r: any) => {
-                     // Optimize Search: Use first 4 words + "food" to avoid over-specific failures
-                     const shortTitle = r.title.split(' ').slice(0, 4).join(' ');
-                     const imageUrl = await fetchPexelsImage(`${shortTitle} food`, pexelsApiKey);
+                     // Optimize Search: Use full title for better relevance
+                     const pexelsQuery = r.title;
+                     const imageUrl = await fetchPexelsImage(`${pexelsQuery} food`, pexelsApiKey);
                      return {
                          ...r,
                          thumbnail: imageUrl,
@@ -329,7 +340,8 @@ serve(async (req) => {
 async function fetchPexelsImage(query: string, apiKey: string): Promise<string | null> {
     try {
         console.log(`Searching Pexels for: ${query}`);
-        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+        // per_page=5 and pick random to avoid duplicates/always showing same result for similar queries
+        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=landscape`;
         
         const res = await fetch(url, {
             headers: {
@@ -343,11 +355,14 @@ async function fetchPexelsImage(query: string, apiKey: string): Promise<string |
         }
         
         const data = await res.json();
-        const firstPhoto = data.photos?.[0];
+        const photos = data.photos || [];
         
-        if (firstPhoto) {
-            // detailed: firstPhoto.src.medium or large
-            return firstPhoto.src.large2x || firstPhoto.src.large || firstPhoto.src.medium;
+        if (photos.length > 0) {
+            // Pick random one
+            const randomIndex = Math.floor(Math.random() * photos.length);
+            const photo = photos[randomIndex];
+            // detailed: photo.src.medium or large
+            return photo.src.large2x || photo.src.large || photo.src.medium;
         }
         return null;
     } catch (e) {
