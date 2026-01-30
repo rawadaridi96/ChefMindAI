@@ -33,6 +33,7 @@ import '../../../../core/utils/emoji_helper.dart';
 import '../../pantry/presentation/pantry_controller.dart';
 
 import 'widgets/recipe_instruction_step.dart';
+import '../../../../core/utils/string_matching_helper.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> recipe;
@@ -118,29 +119,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
     final Set<String> newChecks = {};
 
+    // Get Pantry Names
+    final pantryNames = pantryItems.map((e) => e['name'].toString()).toList();
+
     for (var item in recipeIngredients) {
       String name = '';
       if (item is Map) {
-        name = item['name'].toString().toLowerCase();
+        name = item['name'].toString();
       } else {
-        name = item.toString().toLowerCase();
+        name = item.toString();
       }
 
-      // Fuzzy Match: Check if any pantry item name is contained in the ingredient name OR vice versa
-      // E.g. Pantry has "Salt", Ingredient is "1 tsp Salt" -> Match
-      // E.g. Pantry has "Olive Oil", Ingredient is "Olive Oil" -> Match
-
-      bool exists = pantryItems.any((pItem) {
-        final pName = (pItem['name'] as String).toLowerCase();
-        return name.contains(pName) || pName.contains(name);
-      });
-
-      if (exists) {
-        if (item is Map) {
-          newChecks.add(item['name'].toString());
-        } else {
-          newChecks.add(item.toString());
-        }
+      // Use Shared Helper
+      if (StringMatchingHelper.hasMatch(name, pantryNames)) {
+        newChecks.add(name);
       }
     }
 

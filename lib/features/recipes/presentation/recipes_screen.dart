@@ -214,13 +214,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
               ctaLabel = AppLocalizations.of(context)!.premiumUpgradeToSous;
               break;
             case PremiumLimitType.dailyRecipeLimit:
-              // Extract limit from original message if needed, or pass it via exception?
-              // The exception message was constructed with $limit.
-              // Ideally we pass limit in exception payload. For now, let's parse or use a generic one?
-              // Or better, let's regex the number?
-              // "You've reached your daily limit of 5 recipes."
-              final limitMatch = RegExp(r'(\d+)').firstMatch(e.message);
-              final limit = limitMatch?.group(1) ?? '5';
+              final limit = e.limit?.toString() ?? '5';
               message =
                   AppLocalizations.of(context)!.premiumDailyRecipeLimit(limit);
               break;

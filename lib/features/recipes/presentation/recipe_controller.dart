@@ -3,6 +3,8 @@ import '../../recipes/data/recipe_repository.dart';
 import '../../auth/data/auth_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../subscription/presentation/subscription_controller.dart';
+import '../../pantry/presentation/pantry_controller.dart';
+import '../../../../core/utils/string_matching_helper.dart';
 import '../../../core/exceptions/premium_limit_exception.dart';
 
 part 'recipe_controller.g.dart';
@@ -93,18 +95,16 @@ class RecipeController extends _$RecipeController {
           await prefs.setInt('daily_gen_count', 0);
         }
 
-        final limit = (currentTier == SubscriptionTier.sousChef ||
-                currentTier == SubscriptionTier.executiveChef)
-            ? 2147483647
-            : ref
-                .read(subscriptionControllerProvider.notifier)
-                .dailyRecipeGenerationLimit;
+        final limit = ref
+            .read(subscriptionControllerProvider.notifier)
+            .dailyRecipeGenerationLimit;
 
         if (dailyCount >= limit) {
           throw PremiumLimitReachedException(
             "You've reached your daily limit of $limit recipes.",
             "Daily Recipe Limit",
             PremiumLimitType.dailyRecipeLimit,
+            limit: limit,
           );
         }
       }
@@ -121,20 +121,42 @@ class RecipeController extends _$RecipeController {
         effectiveFilters.add("Skill Level: $skillLevel");
       }
 
-      final recipes = await ref.read(recipeRepositoryProvider).generateRecipes(
-            mode: mode,
-            query: query,
-            filters: effectiveFilters,
-            mealType: mealType,
-            allergies: finalAllergies,
-            mood: mood,
-            isExecutive: currentTier == SubscriptionTier.executiveChef,
-          );
+      final generatedRecipes =
+          await ref.read(recipeRepositoryProvider).generateRecipes(
+                mode: mode,
+                query: query,
+                filters: effectiveFilters,
+                mealType: mealType,
+                allergies: finalAllergies,
+                mood: mood,
+                isExecutive: currentTier == SubscriptionTier.executiveChef,
+              );
+
+      // Post-Processing: Re-calculate 'is_missing' using local fuzzy logic
+      // This ensures consistency between Card View (count) and Detail View (checks)
+      final pantryState = ref.read(pantryControllerProvider);
+      final pantryItems = pantryState.valueOrNull ?? [];
+      final pantryNames = pantryItems.map((e) => e['name'].toString()).toList();
+
+      final processedRecipes = generatedRecipes.map((recipe) {
+        final ingredients = List.from(recipe['ingredients'] ?? []);
+        final updatedIngredients = ingredients.map((ing) {
+          if (ing is Map) {
+            String name = ing['name'].toString();
+            bool hasMatch = StringMatchingHelper.hasMatch(name, pantryNames);
+            return {...ing, 'is_missing': !hasMatch};
+          }
+          return ing;
+        }).toList();
+        return {...recipe, 'ingredients': updatedIngredients};
+      }).toList();
 
       if (isGuest) {
         if (guestGenCount >= 1) {
           // Lock the recipes
-          return recipes.map((r) => {...r, 'is_locked': true}).toList();
+          return processedRecipes
+              .map((r) => {...r, 'is_locked': true})
+              .toList();
         }
         await prefs.setInt('guest_gen_count', guestGenCount + 1);
       } else {
@@ -142,7 +164,7 @@ class RecipeController extends _$RecipeController {
         await prefs.setInt('daily_gen_count', dailyCount + 1);
       }
 
-      return recipes;
+      return processedRecipes;
     });
   }
 

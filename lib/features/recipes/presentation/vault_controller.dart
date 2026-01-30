@@ -42,12 +42,8 @@ class VaultController extends _$VaultController {
   }
 
   Future<void> saveRecipe(Map<String, dynamic> recipe) async {
-    final textTier = await ref.read(subscriptionControllerProvider.future);
-
-    final limit = (textTier == SubscriptionTier.sousChef ||
-            textTier == SubscriptionTier.executiveChef)
-        ? 2147483647
-        : ref.read(subscriptionControllerProvider.notifier).vaultSaveLimit;
+    final limit =
+        ref.read(subscriptionControllerProvider.notifier).vaultSaveLimit;
     final currentCount = state.value?.length ?? 0;
 
     if (currentCount >= limit) {
@@ -55,6 +51,7 @@ class VaultController extends _$VaultController {
         "Vault is full ($limit items).",
         "Vault Limit Reached",
         PremiumLimitType.vaultFull,
+        limit: limit,
       );
     }
 
@@ -70,12 +67,8 @@ class VaultController extends _$VaultController {
   }
 
   Future<void> saveLink(String url, {String? title, String? thumbnail}) async {
-    final textTier = await ref.read(subscriptionControllerProvider.future);
-
-    final limit = (textTier == SubscriptionTier.sousChef ||
-            textTier == SubscriptionTier.executiveChef)
-        ? 2147483647
-        : ref.read(subscriptionControllerProvider.notifier).vaultSaveLimit;
+    final limit =
+        ref.read(subscriptionControllerProvider.notifier).vaultSaveLimit;
     final currentCount = state.value?.length ?? 0;
 
     if (currentCount >= limit) {
@@ -83,6 +76,7 @@ class VaultController extends _$VaultController {
         "Vault is full ($limit items).",
         "Vault Limit Reached",
         PremiumLimitType.vaultFull,
+        limit: limit,
       );
     }
 

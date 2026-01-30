@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/liquid_mesh_background.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'subscription_controller.dart';
-// import 'currency_controller.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
+import '../../../core/config/store_config.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -20,6 +22,29 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _isYearly = false;
+  Offerings? _offerings;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOfferings();
+  }
+
+  Future<void> _fetchOfferings() async {
+    try {
+      final offerings = await ref
+          .read(subscriptionControllerProvider.notifier)
+          .fetchOfferings();
+      if (mounted) {
+        setState(() {
+          _offerings = offerings;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching offerings: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final subscriptionState = ref.watch(subscriptionControllerProvider);
@@ -169,7 +194,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(width: 48),
+          TextButton(
+            onPressed: _restorePurchases,
+            child: const Text("Restore",
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
         ],
       ),
     );
@@ -475,17 +504,103 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   Future<void> _handlePayment(
       BuildContext context, SubscriptionTier tier) async {
+    if (tier == SubscriptionTier.homeCook) {
+      // Downgrades are handled by App Store management
+      NanoToast.showInfo(context, "Manage downgrades in your Store settings.");
+      return;
+    }
+
+    if (_offerings == null) {
+      NanoToast.showError(
+          context, "Store not configured. Please try again later.");
+      return;
+    }
+
+    // Logic: Find package based on selected Tier and Interval (_isYearly)
+    // We expect Offerings named 'sous_chef' and 'executive_chef' in RevenueCat
+    // OR we use the 'current' offering and look for packages.
+    // Let's assume the standard Setup: Offering 'default' -> Packages 'sous_monthly', 'sous_yearly' etc.
+    // OR separate offerings per tier?
+    // BEST PRACTICE: Use 'current' offering, allowing remote config change.
+    // We need to match Entitlement to Package? No, Package -> Entitlement.
+    // We will look for packages in 'current' offering with identifier containing key words?
+    // Fragile.
+    // Better: Look for offering with ID == entitlementID?
+    // Let's assume standard Offering 'default'.
+    final offering = _offerings?.current;
+    if (offering == null) {
+      NanoToast.showError(context, "No offers available.");
+      return;
+    }
+
+    // Look for specific package based on tier & interval
+    // We assume the packages in the Offering are keyed/identified clearly.
+    // Helper to find package:
+    Package? package;
+    final targetEntitlement = tier == SubscriptionTier.executiveChef
+        ? StoreConfig.entitlementExecutiveChef
+        : StoreConfig.entitlementSousChef;
+
+    // RevenueCat doesn't link Package -> Entitlement directly in SDK object easily without metadata.
+    // Fallback: Check package identifier or product identifier.
+    // convention: "$entitlement_$interval" e.g. "sous_chef_monthly"
+    final interval = _isYearly ? "yearly" : "monthly";
+    final targetId = "${targetEntitlement}_$interval";
+
+    // Try to find a package where the identifier contains our target keywords
     try {
-      // Directly upgrade usage for now (as per user request to restore functionality)
-      await ref.read(subscriptionControllerProvider.notifier).upgrade(tier);
+      package = offering.availablePackages.firstWhere(
+        (p) =>
+            p.storeProduct.identifier.contains(targetId) || // Store ID
+            p.identifier.contains(targetId), // RC Package ID
+      );
+    } catch (_) {
+      // Not found
+    }
+
+    if (package == null) {
+      // Fallback for demo/dev if strict ID parsing fails
+      // Just grab first monthly/yearly package? No that's dangerous.
+      NanoToast.showError(context, "Product not found: $targetId");
+      return;
+    }
+
+    try {
+      await ref
+          .read(subscriptionControllerProvider.notifier)
+          .purchasePackage(package);
       if (context.mounted) {
         NanoToast.showSuccess(
             context, AppLocalizations.of(context)!.subscriptionPlanUpdated);
       }
+    } on PlatformException catch (e) {
+      if (context.mounted) {
+        final errorCode = PurchasesErrorHelper.getErrorCode(e);
+        if (errorCode == PurchasesErrorCode.purchaseCancelledError) {
+          // User cancelled, do nothing or show info
+          // NanoToast.showInfo(context, "Purchase cancelled");
+        } else {
+          NanoToast.showError(context, "Purchase failed: ${e.message}");
+        }
+      }
     } catch (e) {
       if (context.mounted) {
-        NanoToast.showError(context,
-            AppLocalizations.of(context)!.subscriptionPlanUpdateFailed);
+        NanoToast.showError(context, "An unexpected error occurred.");
+      }
+    }
+  }
+
+  Future<void> _restorePurchases() async {
+    try {
+      await ref
+          .read(subscriptionControllerProvider.notifier)
+          .restorePurchases();
+      if (mounted) {
+        NanoToast.showSuccess(context, "Purchases restored!");
+      }
+    } catch (e) {
+      if (mounted) {
+        NanoToast.showError(context, "Restore failed.");
       }
     }
   }

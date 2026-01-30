@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 // import '../../../../core/widgets/glass_container.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/presentation/auth_controller.dart';
 import '../../auth/data/auth_repository.dart';
@@ -20,6 +21,7 @@ import '../../auth/presentation/dietary_preferences_screen.dart';
 import 'chef_labs_screen.dart';
 import 'household_screen.dart';
 import '../../guide/presentation/master_guide_screen.dart';
+import '../../subscription/presentation/subscription_details_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -29,7 +31,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _notificationsEnabled = true;
+  bool _notificationsEnabled = false; // Start false, verify in init
   bool _biometricEnabled = false;
   final LocalAuthentication auth = LocalAuthentication();
 
@@ -37,6 +39,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     _loadPreferences();
+    _checkNotificationPermission();
   }
 
   Future<void> _loadPreferences() async {
@@ -51,6 +54,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _biometricEnabled = isEnrolled;
         });
       }
+    }
+  }
+    }
+  }
+
+  Future<void> _checkNotificationPermission() async {
+    final status = await Permission.notification.status;
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = status.isGranted;
+      });
     }
   }
 
@@ -488,13 +502,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               AppColors.zestyLime.withOpacity(0.2),
                           inactiveThumbColor: Colors.white54,
                           inactiveTrackColor: Colors.white10,
-                          onChanged: (val) {
-                            setState(() => _notificationsEnabled = val);
-                            NanoToast.showInfo(
-                                context,
-                                val
-                                    ? "Notifications Enabled"
-                                    : "Notifications Disabled");
+                          onChanged: (val) async {
+                            if (val) {
+                              // Request Permission
+                              final status =
+                                  await Permission.notification.request();
+                              if (status.isGranted) {
+                                setState(() => _notificationsEnabled = true);
+                                if (context.mounted) {
+                                  NanoToast.showSuccess(
+                                      context, "Notifications Enabled");
+                                }
+                              } else if (status.isPermanentlyDenied) {
+                                if (context.mounted) {
+                                  NanoToast.showError(context,
+                                      "Permission denied. Enable in Settings.");
+                                  openAppSettings();
+                                }
+                              } else {
+                                if (context.mounted) {
+                                  NanoToast.showInfo(context,
+                                      "Notifications permission required.");
+                                }
+                              }
+                            } else {
+                              setState(() => _notificationsEnabled = false);
+                              NanoToast.showInfo(
+                                  context, "Notifications Disabled");
+                            }
                           },
                         ),
                       ),
@@ -536,9 +571,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         trailing: const Icon(Icons.arrow_forward_ios,
                             color: Colors.white54, size: 16),
                         onTap: () async {
-                          // Disconnected for now
-                          NanoToast.showInfo(
-                              context, "Subscription management coming soon!");
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SubscriptionDetailsScreen(),
+                            ),
+                          );
                         },
                       ),
 

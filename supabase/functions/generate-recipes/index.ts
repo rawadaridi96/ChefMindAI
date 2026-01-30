@@ -223,6 +223,7 @@ serve(async (req) => {
           "time": "15 mins",
           "calories": "350 kcal",
           "macros": { "protein": "25g", "carbs": "10g", "fat": "15g" },
+          "image_keywords": "Simple, high-level keywords for searching stock photos (e.g. 'Pancakes', 'Chicken Curry'). Avoid adjectives.",
           "image_prompt": "Detailed AI image prompt",
            "ingredients": [
             { "name": "Ingredient Name", "amount": "quantity", "is_missing": true }
@@ -296,14 +297,42 @@ serve(async (req) => {
             if (pexelsApiKey) {
                  console.log(`Fetching images for ${parsed.recipes.length} recipes from Pexels...`);
                  const recipesWithImages = await Promise.all(parsed.recipes.map(async (r: any) => {
-                     // Optimize Search: Use full title for better relevance
-                     const pexelsQuery = r.title;
-                     const imageUrl = await fetchPexelsImage(`${pexelsQuery} food`, pexelsApiKey);
+                     // Optimize Search: Clean the title and focus on key descriptive words
+                     // Remove qualitative adjectives that might confuse search engine if too specific
+                     // e.g. "Delicious Fluffy Vanilla Pancakes" -> "Vanilla Pancakes"
+                     
+                     // Strategy: 
+                     // 1. Use the full title first, as it's usually the most descriptive (e.g. "Chicken Alfredo").
+                     // 2. Append 'food' to context.
+                     
+                     let pexelsQuery = r.title;
+                     
+                     // Heuristic: If title is very long, maybe just use the first few words? 
+                     // Or trust Pexels semantic search.
+                     // Actually, "Chocolate Peanut Butter Protein Pancakes" (from user screenshot) failing to "cupcakes" is weird.
+                     // It likely matched "Chocolate Peanut Butter" broad term.
+                     
+                     // Let's explicitly look for the END of the title which usually holds the noun (Pancakes, Chicken, Salad)
+                     // But English isn't always like that.
+                     // Better approach: Ask LLM to provide a "search_term" specifically for Pexels in the JSON.
+                     // But to avoid changing the prompt structure too slightly, let's just stick to Title + "Dish"
+                     // Or just strict Title.
+                     
+                     // Optimize Search: Use LLM provided keywords if available, otherwise fallback to title
+                     if (r.image_keywords) {
+                        pexelsQuery = r.image_keywords;
+                     }
+                     
+                     // "food" or "dish" suffix helps ground it in culinary results
+                     // Use "food photography" to get high quality results
+                     const imageUrl = await fetchPexelsImage(`${pexelsQuery}`, pexelsApiKey);
+                     
                      return {
                          ...r,
                          thumbnail: imageUrl,
                          image: imageUrl, 
-                         image_prompt: undefined // Clean up
+                         image_prompt: undefined, // Clean up
+                         image_keywords: undefined
                      };
                  }));
                  parsed.recipes = recipesWithImages;
