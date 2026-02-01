@@ -47,31 +47,68 @@ class SubscriptionRepository {
 
   void _listenToPurchaseUpdates() {
     Purchases.addCustomerInfoUpdateListener((customerInfo) async {
-      final tier = _parseEntitlements(customerInfo);
-      await _updateLocalState(tier);
+      // Instead of manual parsing, run the full resolution logic.
+      // This ensures we check Supabase before accepting a 'Home Cook' status from RC.
+      await getSubscriptionTier();
     });
   }
 
   Future<SubscriptionTier> getSubscriptionTier() async {
     // 1. Try Local Cache First
     final cachedTier = await _secureStorage.getSubscriptionTier();
+    SubscriptionTier currentTier =
+        cachedTier != null ? _parseTier(cachedTier) : SubscriptionTier.homeCook;
 
     try {
       // 2. Fetch fresh from RevenueCat
       final customerInfo = await Purchases.getCustomerInfo();
-      final tier = _parseEntitlements(customerInfo);
 
-      // 3. Update Cache & Backend
-      if (tier != _parseTier(cachedTier)) {
-        await _updateLocalState(tier);
+      // Check Active Entitlements
+      final rcTier = _parseEntitlements(customerInfo);
+
+      // 3. Logic: If RC has an active paid tier, it is the authority.
+      if (rcTier != SubscriptionTier.homeCook) {
+        if (rcTier != _parseTier(cachedTier)) {
+          await _updateLocalState(rcTier); // Sync Upgrade to Supabase
+        }
+        return rcTier;
       }
-      return tier;
-    } catch (e) {
-      // 4. Fallback to cache
-      if (cachedTier != null) {
-        return _parseTier(cachedTier);
+
+      // 4. RC says "Home Cook".
+      // Do NOT assume expiry/downgrade yet. Check Supabase first.
+
+      final user = _client.auth.currentUser;
+      if (user != null) {
+        try {
+          final response = await _client
+              .from('profiles')
+              .select('subscription_tier')
+              .eq('id', user.id)
+              .single();
+
+          final sbTierStr = response['subscription_tier'] as String?;
+          final sbTier = _parseTier(sbTierStr);
+
+          // If Supabase has a valid paid tier, honor it (Cross-device / Web sync)
+          if (sbTier != SubscriptionTier.homeCook) {
+            // Update local cache to match Supabase, but DO NOT call _updateLocalState
+            // because that would blindly trigger an RPC call. Just cache it.
+            await _secureStorage.saveSubscriptionTier(_tierToString(sbTier));
+            return sbTier;
+          }
+        } catch (_) {}
+      }
+
+      // 5. If both RC and Supabase say Home Cook (or SB failed), then it's Home Cook.
+      if (currentTier != SubscriptionTier.homeCook) {
+        // Only update local cache, DO NOT sync "Home Cook" to Supabase.
+        // Let backend webhooks handle downgrades to be safe.
+        await _secureStorage.saveSubscriptionTier('home_cook');
       }
       return SubscriptionTier.homeCook;
+    } catch (e) {
+      // 6. Fallback to cache on error (e.g. no internet)
+      return currentTier;
     }
   }
 
@@ -94,18 +131,17 @@ class SubscriptionRepository {
       if (errorCode != PurchasesErrorCode.purchaseCancelledError) {
         rethrow;
       }
-      // If cancelled, return current tier (or throw cancelled exception if preferred, but usually we just ignore)
-      // Actually, better to rethrow strictly so UI knows it failed/cancelled.
-      // Rethrowing allows the controller to handle the error state or cancellation.
       rethrow;
     }
   }
 
   Future<void> restorePurchases() async {
     try {
-      final customerInfo = await Purchases.restorePurchases();
-      final tier = _parseEntitlements(customerInfo);
-      await _updateLocalState(tier);
+      // Just fetch the latest info from Apple
+      await Purchases.restorePurchases();
+      // Use the smart logic to determine the actual tier
+      // This prevents overwriting Supabase with "Home Cook" on a fresh device
+      await getSubscriptionTier();
     } catch (e) {
       rethrow;
     }
@@ -116,7 +152,9 @@ class SubscriptionRepository {
 
     // Sync to Supabase (Optional backup, mainly for web dashboard if any)
     final user = _client.auth.currentUser;
-    if (user != null) {
+    // CRITICAL: Do NOT auto-downgrade Supabase to "Home Cook".
+    // Only push Paid Upgrades. Let backend webhooks handle expiry/downgrades.
+    if (user != null && tier != SubscriptionTier.homeCook) {
       try {
         await _client.rpc('upgrade_user_subscription', params: {
           'new_tier': _tierToString(tier),

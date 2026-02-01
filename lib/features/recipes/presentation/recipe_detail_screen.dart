@@ -32,6 +32,9 @@ import 'widgets/nutrition_circle.dart';
 import '../../../../core/utils/emoji_helper.dart';
 import '../../pantry/presentation/pantry_controller.dart';
 
+import 'package:intl/intl.dart';
+import '../../meal_plan/presentation/meal_plan_provider.dart';
+import '../../meal_plan/presentation/meal_plan_controller.dart';
 import 'widgets/recipe_instruction_step.dart';
 import '../../../../core/utils/string_matching_helper.dart';
 
@@ -839,20 +842,27 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         context: context,
                         builder: (context) => AlertDialog(
                               backgroundColor: AppColors.deepCharcoal,
-                              title: const Text("Remove from Vault?",
-                                  style: TextStyle(color: Colors.white)),
-                              content: const Text(
-                                  "This will remove this recipe from your saved collection.",
-                                  style: TextStyle(color: Colors.white70)),
+                              title: Text(
+                                  AppLocalizations.of(context)!
+                                      .dialogRemoveFromVaultTitle,
+                                  style: const TextStyle(color: Colors.white)),
+                              content: Text(
+                                  AppLocalizations.of(context)!
+                                      .dialogRemoveFromVaultMessage,
+                                  style:
+                                      const TextStyle(color: Colors.white70)),
                               actions: [
                                 TextButton(
                                     onPressed: () =>
                                         Navigator.pop(context, false),
-                                    child: const Text("Cancel")),
+                                    child: Text(AppLocalizations.of(context)!
+                                        .actionCancel)),
                                 TextButton(
                                     onPressed: () =>
                                         Navigator.pop(context, true),
-                                    child: const Text("Remove",
+                                    child: Text(
+                                        AppLocalizations.of(context)!
+                                            .actionRemove,
                                         style: TextStyle(color: Colors.red))),
                               ],
                             ));
@@ -875,7 +885,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         .saveRecipe(recipeToSave);
                     if (mounted) {
                       _confettiController.play();
-                      NanoToast.showSuccess(context, "Saved to Vault!");
+                      NanoToast.showSuccess(context,
+                          AppLocalizations.of(context)!.toastRecipeSaved);
                     }
                   }
                 },
@@ -896,13 +907,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             ],
           ),
 
-          // PLAN (Placeholder)
-          _buildCircularAction(
-            icon: Icons.calendar_today_outlined,
-            label: "Plan",
-            onTap: () =>
-                NanoToast.showInfo(context, "Meal Planning coming soon!"),
-          ),
+          // PLAN (Conditional on Feature Flag)
+          if (ref.watch(mealPlanEnabledProvider))
+            _buildCircularAction(
+              icon: Icons.calendar_today_outlined,
+              label: "Plan",
+              onTap: () => _showMealPlanningDialog(),
+            ),
 
           // SHOP
           _buildCircularAction(
@@ -933,12 +944,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             ListTile(
                               leading: const Icon(Icons.people,
                                   color: AppColors.zestyLime),
-                              title: const Text("Share with Household",
-                                  style: TextStyle(color: Colors.white)),
+                              title: Text(
+                                  AppLocalizations.of(context)!
+                                      .shareWithHousehold,
+                                  style: const TextStyle(color: Colors.white)),
                               subtitle: Text(
                                   isShared
-                                      ? "Already shared with your household"
-                                      : "Make visible to family members",
+                                      ? AppLocalizations.of(context)!
+                                          .shareAlreadyShared
+                                      : AppLocalizations.of(context)!
+                                          .shareMakeVisible,
                                   style:
                                       const TextStyle(color: Colors.white54)),
                               onTap: () async {
@@ -946,8 +961,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                 final householdState = await ref
                                     .read(householdControllerProvider.future);
                                 if (householdState == null) {
-                                  NanoToast.showInfo(context,
-                                      "Please join a household first.");
+                                  NanoToast.showInfo(
+                                      context,
+                                      AppLocalizations.of(context)!
+                                          .toastJoinHouseholdFirst);
                                   return;
                                 }
                                 if (isSaved) {
@@ -961,18 +978,21 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                 }
                                 if (mounted)
                                   NanoToast.showSuccess(
-                                      context, "Shared with Household!");
+                                      context,
+                                      AppLocalizations.of(context)!
+                                          .toastSharedWithHousehold);
                               },
                             ),
                             ListTile(
                               leading:
                                   const Icon(Icons.link, color: Colors.white),
-                              title: const Text("Share Link",
-                                  style: TextStyle(color: Colors.white)),
+                              title: Text(
+                                  AppLocalizations.of(context)!.shareLink,
+                                  style: const TextStyle(color: Colors.white)),
                               onTap: () {
                                 Navigator.pop(modalContext);
-                                Share.share(
-                                    "Check out this recipe: ${_currentRecipe['title']} on ChefMind!");
+                                Share.share(AppLocalizations.of(context)!
+                                    .shareMessage(_currentRecipe['title']));
                               },
                             )
                           ],
@@ -983,6 +1003,172 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ],
       );
     });
+  }
+
+  void _showMealPlanningDialog() {
+    DateTime selectedDate = DateTime.now();
+    String selectedType = 'Breakfast';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.deepCharcoal,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.addToMealPlanTitle,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Date Picker Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(AppLocalizations.of(context)!.labelDate,
+                        style: TextStyle(color: Colors.white70)),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now()
+                              .subtract(const Duration(days: 365)),
+                          lastDate:
+                              DateTime.now().add(const Duration(days: 365)),
+                          builder: (context, child) {
+                            return Theme(
+                              data: ThemeData.dark().copyWith(
+                                colorScheme: const ColorScheme.dark(
+                                  primary: AppColors.zestyLime,
+                                  onPrimary: Colors.black,
+                                  surface: AppColors.surfaceDark,
+                                  onSurface: Colors.white,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setModalState(() => selectedDate = picked);
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_month,
+                          color: AppColors.zestyLime, size: 20),
+                      label: Text(
+                        DateFormat('EEE, MMM d').format(selectedDate),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Meal Type Selector
+                Text(AppLocalizations.of(context)!.labelMealType,
+                    style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  children:
+                      ['Breakfast', 'Lunch', 'Dinner', 'Snacks'].map((type) {
+                    final isSelected = selectedType == type;
+                    String label;
+                    switch (type) {
+                      case 'Breakfast':
+                        label = AppLocalizations.of(context)!.mealTypeBreakfast;
+                        break;
+                      case 'Lunch':
+                        label = AppLocalizations.of(context)!.mealTypeLunch;
+                        break;
+                      case 'Dinner':
+                        label = AppLocalizations.of(context)!.mealTypeDinner;
+                        break;
+                      case 'Snacks':
+                        label = AppLocalizations.of(context)!.mealTypeSnacks;
+                        break;
+                      default:
+                        label = type;
+                    }
+
+                    return ChoiceChip(
+                      label: Text(label),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) setModalState(() => selectedType = type);
+                      },
+                      selectedColor: AppColors.zestyLime,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.black : Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      backgroundColor: Colors.white10,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppColors.zestyLime
+                              : Colors.transparent,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 32),
+                // Confirm Button
+                ElevatedButton(
+                  onPressed: () {
+                    // Add Logic
+                    ref.read(mealPlanControllerProvider.notifier).addMealPlan(
+                          date: selectedDate,
+                          mealType: selectedType,
+                          recipeId: _currentRecipe['id'] ??
+                              _currentRecipe['recipe_id'], // Handle both
+                          recipeTitle: _currentRecipe['title'],
+                          // No custom description needed for linked recipe
+                        );
+                    Navigator.pop(context);
+                    NanoToast.showSuccess(context,
+                        AppLocalizations.of(context)!.toastAddedToMealPlan);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.zestyLime,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    AppLocalizations.of(context)!.actionAddToPlan,
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   // Reuse existing helpers but commented out old AppBarActions to avoid duplication if kept in file
@@ -1216,8 +1402,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           if (sections.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 8, top: 0),
-              child: Text("Main Ingredients",
-                  style: TextStyle(
+              child: Text(AppLocalizations.of(context)!.sectionMainIngredients,
+                  style: const TextStyle(
                       color: AppColors.zestyLime,
                       fontWeight: FontWeight.bold,
                       fontSize: 16)),
@@ -1362,7 +1548,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         amount: amount.isEmpty ? '1' : amount,
                         category: 'Recipe Addon',
                       );
-                  NanoToast.showInfo(context, "Added to list");
+                  NanoToast.showInfo(
+                      context, AppLocalizations.of(context)!.toastAddedToList);
                 },
               )
           ],
@@ -1424,10 +1611,18 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       if (item is Map && item['is_missing'] == true) {
         final rawName = item['name'].toString();
         final coreName = RetailUnitHelper.extractCoreIngredientName(rawName);
-        ref.read(shoppingControllerProvider.notifier).addItem(
+        final category = item['category']?.toString() ?? 'Recipe Import';
+
+        // Get the raw amount and scale it based on current servings
+        final rawAmount = item['amount']?.toString() ?? '';
+        final scaleFactor =
+            (rawAmount.isEmpty) ? 1.0 : (_currentServings / _baseServings);
+        final scaledAmount = ScalingHelper.scaleAmount(rawAmount, scaleFactor);
+
+        await ref.read(shoppingControllerProvider.notifier).addItem(
               coreName,
-              amount: '',
-              category: 'Recipe Import',
+              amount: scaledAmount,
+              category: category,
               recipeSource: _currentRecipe['title'],
               householdIdOverride:
                   useHousehold ? household!['id'] as String : null,
@@ -2045,15 +2240,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: AppColors.deepCharcoal,
-          title: const Text("Save Recipe First",
-              style: TextStyle(color: Colors.white)),
-          content: const Text(
-              "To add a photo, this recipe must be saved to your Vault.",
-              style: TextStyle(color: Colors.white70)),
+          title: Text(AppLocalizations.of(context)!.dialogSaveRecipeFirstTitle,
+              style: const TextStyle(color: Colors.white)),
+          content: Text(
+              AppLocalizations.of(context)!.dialogSaveRecipeFirstMessage,
+              style: const TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
+              child: Text(AppLocalizations.of(context)!.actionCancel),
             ),
             ElevatedButton(
               onPressed: () {
@@ -2063,7 +2258,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.zestyLime,
                   foregroundColor: AppColors.deepCharcoal),
-              child: const Text("Save to Vault"),
+              child: Text(AppLocalizations.of(context)!.actionSaveToVault),
             ),
           ],
         ),
@@ -2080,7 +2275,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
     // 3. Upload
     if (!mounted) return;
-    NanoToast.showInfo(context, "Uploading photo...");
+    NanoToast.showInfo(
+        context, AppLocalizations.of(context)!.toastUploadingPhoto);
 
     try {
       final bytes = await image.readAsBytes();
@@ -2112,13 +2308,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             _currentRecipe['image'] = imageUrl;
             _currentRecipe['thumbnail'] = imageUrl;
           });
-          NanoToast.showSuccess(context, "Photo added successfully!");
+          NanoToast.showSuccess(
+              context, AppLocalizations.of(context)!.toastPhotoAdded);
         }
       } else {
         throw Exception("Could not find recipe ID to update.");
       }
     } catch (e) {
-      if (mounted) NanoToast.showError(context, "Upload failed: $e");
+      if (mounted)
+        NanoToast.showError(context,
+            AppLocalizations.of(context)!.toastUploadFailed(e.toString()));
     }
   }
 

@@ -1,0 +1,64 @@
+Avocado
+Bacon
+Basil
+Beef
+Bell Pepper
+Black Pepper
+Bread
+Broccoli
+Butter
+Canned Beans
+Carrot
+Cheese
+Chicken
+Chili Flakes
+Chocolate
+Cinnamon
+Coconut Milk
+Cream
+Cucumber
+Cumin
+Curry Powder
+Eggs
+Flour
+Garlic
+Ginger
+Ground Beef
+Honey
+Lamb
+Lemon
+Lettuce
+Lime
+Milk
+Mozzarella
+Mushroom
+Noodles
+Oats
+Olive Oil
+Onion
+Oregano
+Paprika
+Parmesan
+Pasta
+Peanut Butter
+Pork
+Potato
+Quinoa
+Rice
+Rosemary
+Salmon
+Salt
+Shrimp
+Sour Cream
+Soy Sauce
+Spinach
+Sugar
+Thyme
+Tofu
+Tomato
+Tomato Sauce
+Tortillas
+Turmeric
+Vinegar
+Yogurt
+Zucchini

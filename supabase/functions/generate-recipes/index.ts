@@ -206,9 +206,13 @@ serve(async (req) => {
     // --- COMMON CONTEXT & FORMAT ---
     promptText += `\n\nUser's Pantry List: [${pantryString}]`
     promptText += `\n\nCRITICAL OUTPUT RULES:
-    1. **STRICT RECIPES ONLY:** If the user's request is NOT related to cooking, food, or recipes (e.g., "write an essay", "math homework", "code"), you must REFUSE to generate the requested content. Instead, return a single recipe titled "Chef's Limitation" with the description "I am a Chef AI. I can only help you cook! Please ask me for a recipe." and empty ingredients/instructions.
+    1. **STRICTLY EDIBLE FOOD ONLY:** You are a CHEF. Do NOT generate beauty products (face masks, scrubs), cleaning solutions, or inedible mixtures. If the user asks for "Face Mask", generate a "Edible Food Mask" (joke) or a recipe that uses those ingredients for EATING (e.g. Honey & Oat Cookies) and explicitly state it is for eating. If the request is non-culinary, return "Chef's Limitation".
     2. Return strictly valid JSON.
-    3. For every ingredient, check if it exists (or is a close match) in the Pantry List. Set "is_missing" to true if NOT in pantry.
+    3. **SMART PANTRY MATCHING:** Check each ingredient against the User's Pantry List. Use common sense!
+       - If pantry has "Chocolate", then "Chocolate Bar", "Chocolate Chips", or "Dark Chocolate" are MATCHES (is_missing: false).
+       - If pantry has "Lemon", then "Lemon Juice" or "Lemon Zest" are MATCHES.
+       - If pantry has "Minced Meat", then "Ground Beef" is a MATCH.
+       - Only set "is_missing" to true if the user truly lacks the core ingredient.
     4. Include detailed step-by-step instructions.
     5. List required kitchen equipment.
     6. Provide a macro breakdown (protein, carbs, fat).
@@ -226,7 +230,12 @@ serve(async (req) => {
           "image_keywords": "Simple, high-level keywords for searching stock photos (e.g. 'Pancakes', 'Chicken Curry'). Avoid adjectives.",
           "image_prompt": "Detailed AI image prompt",
            "ingredients": [
-            { "name": "Ingredient Name", "amount": "quantity", "is_missing": true }
+            { 
+              "name": "Ingredient Name", 
+              "amount": "quantity", 
+              "is_missing": true,
+              "category": "Produce" // or "Dairy", "Meat", "Bakery", "Frozen", "Pantry", "Beverages", "Other"
+            }
           ],
           "instructions": [
             "Step 1...",
@@ -236,6 +245,9 @@ serve(async (req) => {
         }
       ]
     }
+    
+    CRITICAL: Valid Categories are: "Produce", "Meat", "Dairy", "Bakery", "Frozen", "Pantry", "Beverages", "Household", "Other". Auto-categorize ingredients intelligently.
+    
     Do not add markdown.`
 
     // Using configured model version
@@ -321,11 +333,11 @@ serve(async (req) => {
                      // Optimize Search: Use LLM provided keywords if available, otherwise fallback to title
                      if (r.image_keywords) {
                         pexelsQuery = r.image_keywords;
-                     }
+                     } // else uses title
                      
                      // "food" or "dish" suffix helps ground it in culinary results
                      // Use "food photography" to get high quality results
-                     const imageUrl = await fetchPexelsImage(`${pexelsQuery}`, pexelsApiKey);
+                     const imageUrl = await fetchPexelsImage(`${pexelsQuery} dish`, pexelsApiKey);
                      
                      return {
                          ...r,

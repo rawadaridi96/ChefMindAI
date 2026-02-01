@@ -214,7 +214,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
               ctaLabel = AppLocalizations.of(context)!.premiumUpgradeToSous;
               break;
             case PremiumLimitType.dailyRecipeLimit:
-              final limit = e.limit?.toString() ?? '5';
+              final int limit = e.limit ?? 5;
               message =
                   AppLocalizations.of(context)!.premiumDailyRecipeLimit(limit);
               break;

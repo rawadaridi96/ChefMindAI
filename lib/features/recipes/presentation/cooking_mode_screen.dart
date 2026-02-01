@@ -1,4 +1,5 @@
-import 'dart:async';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import 'package:chefmind_ai/core/theme/app_colors.dart';
 import 'package:chefmind_ai/core/widgets/glass_container.dart';
 import 'package:chefmind_ai/core/widgets/nano_toast.dart';
@@ -110,8 +111,10 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
           pauseFor: const Duration(seconds: 3),
         );
       } else {
-        if (mounted)
-          NanoToast.showInfo(context, "Speech recognition not available");
+        if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          NanoToast.showInfo(context, l10n.toastSpeechUnavailable);
+        }
       }
     } else {
       setState(() => _isListening = false);
@@ -151,7 +154,8 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
       _speakCurrentStep();
     } else {
       // Done?
-      NanoToast.showSuccess(context, "Recipe Completed! Bon Appétit!");
+      final l10n = AppLocalizations.of(context)!;
+      NanoToast.showSuccess(context, l10n.toastCookingCompleted);
     }
   }
 

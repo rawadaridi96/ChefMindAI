@@ -14,11 +14,16 @@ class MasterGuideScreen extends StatefulWidget {
 class _MasterGuideScreenState extends State<MasterGuideScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late List<GuideModule> _modules;
 
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Get modules to determine length.
+    // Note: Re-initializing controller on every dependency change might be overkill
+    // but ensures language changes don't break if length varies (unlikely here).
+    _modules = GuideData.getModules(context);
+    _tabController = TabController(length: _modules.length, vsync: this);
   }
 
   @override
@@ -27,18 +32,11 @@ class _MasterGuideScreenState extends State<MasterGuideScreen>
     super.dispose();
   }
 
-  void _handleDismiss() {
-    if (_tabController.index < 3) {
-      _tabController.animateTo(_tabController.index + 1);
-    } else {
-      Navigator.of(context).pop();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final modules = GuideData.getModules(context);
+    // Refresh modules in build to get latest localized strings
+    _modules = GuideData.getModules(context);
 
     return Scaffold(
       backgroundColor: AppColors.deepCharcoal,
@@ -57,36 +55,20 @@ class _MasterGuideScreenState extends State<MasterGuideScreen>
           labelColor: AppColors.zestyLime,
           unselectedLabelColor: AppColors.electricWhite.withOpacity(0.5),
           isScrollable: true,
-          tabs: [
-            Tab(text: l10n.guideQuickStart),
-            Tab(text: l10n.guideVault),
-            Tab(text: l10n.guidePantryCart),
-            Tab(text: l10n.guideFamilySync),
-          ],
+          tabs: _modules.map((m) => Tab(text: m.title)).toList(),
         ),
       ),
       body: Container(
         decoration: const BoxDecoration(),
         child: TabBarView(
           controller: _tabController,
-          children: [
-            GuideModuleContent(
-              module: modules[0],
-              onDismiss: _handleDismiss,
-            ),
-            GuideModuleContent(
-              module: modules[1],
-              onDismiss: _handleDismiss,
-            ),
-            GuideModuleContent(
-              module: modules[2],
-              onDismiss: _handleDismiss,
-            ),
-            GuideModuleContent(
-              module: modules[3],
-              onDismiss: _handleDismiss,
-            ),
-          ],
+          children: _modules
+              .map(
+                (module) => GuideModuleContent(
+                  module: module,
+                ),
+              )
+              .toList(),
         ),
       ),
     );

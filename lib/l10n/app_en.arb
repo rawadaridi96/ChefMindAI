@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
   "appTitle": "ChefMind AI",
-  "navHome": "Home",
+  "navChef": "Chef",
   "navPantry": "Pantry",
   "navRecipes": "Recipes",
   "navCart": "Cart",
@@ -125,6 +125,38 @@
   "guideRealtimeShopDesc": "Toggle \"Family Sync\" on the Cart to shop together in real-time.",
   "guideShareRecipes": "Share Recipes",
   "guideShareRecipesDesc": "\"Publish\" a recipe to the Shared Vault so everyone can see it.",
+  "guideSubscriptionPlans": "Subscription Plans",
+  "guideSubscriptionPlansDesc": "Choose the right plan for you",
+  "guideHomeCookTier": "Home Cook (Free)",
+  "guideHomeCookTierDesc": "Get started with 5 saved recipes, basic AI generation, and pantry tracking.",
+  "guideSousChefTier": "Sous Chef",
+  "guideSousChefTierDesc": "Unlimited saves, AI dietary intelligence, recipe scaling, and cooking mode.",
+  "guideExecutiveChefTier": "Executive Chef",
+  "guideExecutiveChefTierDesc": "Everything in Sous Chef plus Family Sync, Chef Labs, and priority support.",
+  "guideRecipeScaling": "Recipe Scaling",
+  "guideRecipeScalingDesc": "Adjust servings with smart scaling",
+  "guideScalingHow": "How to Scale",
+  "guideScalingHowDesc": "Tap the servings counter on any recipe to increase or decrease portions.",
+  "guideScalingMacros": "Smart Macros",
+  "guideScalingMacrosDesc": "Ingredient quantities and nutritional values update automatically as you scale.",
+  "guideCookingMode": "Cooking Mode",
+  "guideCookingModeDesc": "Hands-free step-by-step cooking",
+  "guideCookingStart": "Start Cooking",
+  "guideCookingStartDesc": "Tap 'Start Cooking' on any recipe to enter full-screen cooking mode.",
+  "guideCookingVoice": "Voice Instructions",
+  "guideCookingVoiceDesc": "Tap the speaker icon to hear each step read aloud while you cook.",
+  "guideCookingTimer": "Built-in Timers",
+  "guideCookingTimerDesc": "Steps with times have integrated timers. Tap to start the countdown.",
+  "guideChefAssistant": "Chef Assistant",
+  "guideChefAssistantDesc": "AI help while cooking",
+  "guideAssistantAsk": "Ask Questions",
+  "guideAssistantAskDesc": "Tap the chat button to ask about techniques, temperatures, or timing.",
+  "guideAssistantSubs": "Ingredient Swaps",
+  "guideAssistantSubsDesc": "Don't have an ingredient? Ask for substitutions and get instant alternatives.",
+  "guideAssistantTechniques": "Cooking Techniques",
+  "guideAssistantTechniquesDesc": "Get detailed explanations of cooking terms and methods.",
+  "settingsInstructionManual": "Instruction Manual",
+  "settingsShowTutorial": "Show Tutorial Again",
   "guideNext": "Next",
   "settingsExperimentalFeatures": "Experimental Features",
   "settingsSousChefPlus": "Sous Chef+",
@@ -301,7 +333,7 @@
   "settingsEnterPassword": "Enter your password to continue",
   "settingsShowDetails": "Show details",
   "settingsSignupToSave": "Sign up to save your settings",
-  "settingsNotifications": "Notifications",
+  "settingsNotifications": "Push Notifications",
   "settingsSubscriptionBilling": "Subscription & Billing",
   "settingsUserDetailsUsername": "Username",
   "settingsUserDetailsEmail": "Email",
@@ -314,7 +346,7 @@
   "settingsLeaveBlank": "Leave blank to keep current",
   "settingsReEnterPassword": "Re-enter new password",
   "settingsNewPassword": "New Password",
-  "settingsSecurity": "Security",
+
   "settingsNameEmpty": "Name cannot be empty",
   "settingsProfileUpdated": "Profile updated successfully",
   "settingsProfilePicUpdated": "Profile picture updated",
@@ -509,8 +541,6 @@
   "errorTimeout": "Request timed out",
   "errorServerError": "Server error. Please try again later.",
   "generalSave": "Save",
-  "generalCancel": "Cancel",
-  "generalDelete": "Delete",
   "generalEdit": "Edit",
   "generalDone": "Done",
   "generalClose": "Close",
@@ -518,22 +548,12 @@
   "generalYes": "Yes",
   "generalNo": "No",
   "generalOk": "OK",
-  "generalLoading": "Loading...",
   "generalSearch": "Search",
   "generalRefresh": "Refresh",
   "generalShare": "Share",
   "generalCopy": "Copy",
   "generalCopied": "Copied!",
-  "dietaryVegetarian": "Vegetarian",
-  "dietaryVegan": "Vegan",
-  "dietaryGlutenFree": "Gluten-Free",
-  "dietaryDairyFree": "Dairy-Free",
-  "dietaryNutFree": "Nut-Free",
-  "dietaryHalal": "Halal",
-  "dietaryKosher": "Kosher",
-  "dietaryKeto": "Keto",
-  "dietaryPaleo": "Paleo",
-  "dietaryLowCarb": "Low Carb",
+
   "dietaryLowFat": "Low Fat",
   "dietaryHighProtein": "High Protein",
   "unitGrams": "g",
@@ -559,7 +579,6 @@
   "premiumLimitReached": "Limit Reached",
   "premiumNotNow": "Not now",
   "premiumUpgradeToSous": "Upgrade to Sous Chef",
-  "premiumUpgradeToSous": "Upgrade to Sous Chef",
   "premiumUpgradeToExecutive": "Upgrade to Executive Chef",
   "premiumUpgradeToSousOrExecutive": "Upgrade to Sous or Executive Chef",
   "premiumVaultFull": "Vault is full. Upgrade to save more!",
@@ -568,6 +587,13 @@
   "premiumADISous": "Advanced Dietary Intelligence requires a Sous Chef plan.",
   "premiumFeatureADI": "Advanced Dietary Intelligence",
   "premiumDailyRecipeLimit": "You've reached your daily limit of {limit} recipes.",
+  "@premiumDailyRecipeLimit": {
+    "placeholders": {
+        "limit": {
+            "type": "int"
+        }
+    }
+  },
   "premiumLinkScraper": "Link Scraper is a Sous Chef feature.",
   "recipeLocked": "Recipe Locked",
   "recipeUnlock": "Unlock Full Recipe",
@@ -595,6 +621,13 @@
   "recipeInstructions": "Instructions",
   "recipeAddMissingToCart": "Add Missing to Cart",
   "recipeAddedToCartCount": "Added {count} items to Cart!",
+  "@recipeAddedToCartCount": {
+    "placeholders": {
+        "count": {
+            "type": "int"
+        }
+    }
+  },
   "recipeReadyForCheckout": "Ready for checkout.",
   "recipeNoMissingIngredients": "No missing ingredients to add.",
   "recipeAddedToCartItem": "Added {item} to cart!",
@@ -732,6 +765,255 @@
       "target": {
         "type": "String"
       }
+    }
+  },
+
+  "onboardingStepModeTitle": "Choose Your Mode",
+  "onboardingStepModeDesc": "Toggle between 'Discover' mode (type any craving) or 'My Pantry' mode (use what you have) to generate recipes.",
+  "onboardingStepPromptTitle": "Enter Your Craving",
+  "onboardingStepPromptDesc": "Type what you're in the mood for, or describe the dish you want. Be as creative as you like!",
+  "onboardingStepGenerateTitle": "Generate Your Recipe",
+  "onboardingStepGenerateDesc": "Tap the Generate button and our AI chef will create a personalized recipe just for you.",
+  "onboardingStepDietaryTitle": "Set Dietary Preferences",
+  "onboardingStepDietaryDesc": "Enable dietary filters to automatically apply your saved preferences to every recipe.",
+  "onboardingStepPantryTitle": "Switch to My Pantry",
+  "onboardingStepPantryDesc": "Let's explore Pantry mode! Tap here to generate recipes using ingredients from your pantry.",
+  "onboardingStepPantryFilterTitle": "Refine with Filters",
+  "onboardingStepPantryFilterDesc": "Set cuisine, cooking time, skill level, and dietary labels to personalize your recipe suggestions.",
+  "onboardingStepPantrySelectorTitle": "Pick Meal Type & Vibe",
+  "onboardingStepPantrySelectorDesc": "Choose breakfast, main meal, dessert, or snack. Set a vibe like Comfort, Date Night, or Quick & Easy.",
+  "onboardingStepPantryGenerateTitle": "Generate from Pantry",
+  "onboardingStepPantryGenerateDesc": "Tap here to create recipes using what you already have! Our AI will match your ingredients to perfect dishes.",
+  "onboardingStepNavTitle": "Explore the App",
+  "onboardingStepNavDesc": "Use the bottom navigation to access Pantry, Recipes, Cart, and more. The Chef button brings you back here!",
+  "onboardingSkip": "Skip",
+  "onboardingNext": "Next",
+  "onboardingDone": "Done",
+  "onboardingDontShowAgain": "Don't show again",
+  "settingsShowTutorial": "Show Tutorial Again",
+
+  "settingsInstructionManual": "Instruction Manual",
+  "guideSubscriptionPlans": "Subscription Plans",
+  "guideSubscriptionPlansDesc": "Understanding Your Tier",
+  "guideHomeCookTier": "Home Cook (Free)",
+  "guideHomeCookTierDesc": "Generate up to 5 recipes per day. Limited vault storage. Perfect for casual cooks.",
+  "guideSousChefTier": "Sous Chef",
+  "guideSousChefTierDesc": "Unlimited recipes, unlimited vault, dietary profiles, and enhanced generation.",
+
+  "guideDiscoverTitle": "Discover & Create",
+  "guideDiscoverDesc": "Craft recipes from scratch or using your pantry.",
+  "guidePromptStep": "Enter Prompt",
+  "guidePromptDesc": "Type a craving or use a 'Recent Chip' to save time.",
+  "guideFiltersStep": "Chef Filters",
+  "guideFiltersDesc": "Customize with Diet, Vibe, and more.",
+  "guideSwitchModeStep": "Switch Mode",
+  "guideSwitchModeDesc": "Toggle to 'My Pantry' to use your inventory.",
+  "guidePantryLogicStep": "Pantry Logic",
+  "guidePantryLogicDesc": "Filter ingredients and select meal types.",
+  "guideUnifiedGenerate": "Generate Magic",
+  "guideUnifiedGenerateDesc": "Tap the Magic Wand to craft your meal.",
+  "guideStockUpStep": "Stock Up",
+  "guideStockUpDesc": "Add items manually or use the Scanner.",
+  "guideSmartMgmtStep": "Smart Management",
+  "guideSmartMgmtDesc": "Track freshness and quantities.",
+  "guideShopListStep": "Shopping List",
+  "guideShopListDesc": "Auto-syncs with your meal plans.",
+  "guidePantrySwitch": "Switch Mode",
+  "guidePantrySwitchDesc": "Tap 'My Pantry' to toggle the generator mode.",
+  "guidePantryRefine": "Refine Results",
+  "guidePantryRefineDesc": "Use filters to set specific items or vibes to include.",
+  "guidePantryGenerate": "Generate Magic",
+  "guidePantryGenerateDesc": "Create recipes that use your existing ingredients to save time and money.",
+
+  "guideImportStep": "Importing",
+  "guideImportStepDesc": "Paste links or share directly from social media.",
+
+  "guideVaultLinks": "Links Mode",
+  "guideVaultLinksDesc": "Switch the toggle to view your bookmarked recipe links.",
+  
+  "guidePantryScanner": "Vision Scanner",
+  "guidePantryScannerDesc": "Use the Camera to auto-scan ingredients into your pantry.",
+
+  "guideOfflineTitle": "Offline Access",
+  "guideOfflineDesc": "Cook without connection.",
+  "guideOfflineVault": "The Vault",
+  "guideOfflineVaultDesc": "Access all your saved recipes anytime, anywhere.",
+  "guideOfflinePantry": "Pantry & Cart",
+  "guideOfflinePantryDesc": "Manage your inventory and shopping list even when offline.",
+  "guideOfflineSync": "Sync Later",
+  "guideCookingTools": "Cooking Tools",
+  "guideCookingToolsDesc": "Scaling, Cooking Mode & Chef Assistant.",
+  "guideOfflineSyncDesc": "Changes sync automatically when you reconnect to the internet.",
+  "guideExecutiveChefTier": "Executive Chef",
+  "guideExecutiveChefTierDesc": "Everything in Sous Chef plus family sync, shared vaults, and premium support.",
+
+  "guideRecipeScaling": "Recipe Scaling",
+  "guideRecipeScalingDesc": "Adjust Servings",
+  "guideScalingHow": "Change Servings",
+  "guideScalingHowDesc": "Use the serving selector on any recipe to scale ingredients up or down automatically.",
+  "guideScalingMacros": "Auto-Updated Macros",
+  "guideScalingMacrosDesc": "Nutritional information updates automatically when you change the serving size.",
+
+  "guideCookingMode": "Cooking Mode",
+  "guideCookingModeDesc": "Step-by-Step Cooking",
+  "guideCookingStart": "Start Cooking",
+  "guideCookingStartDesc": "Tap 'Start Cooking' on any recipe to enter hands-free cooking mode.",
+  "guideCookingVoice": "Voice Instructions",
+  "guideCookingVoiceDesc": "Each step is read aloud. Say 'Next' or tap to move to the next instruction.",
+  "guideCookingTimer": "Built-in Timers",
+  "guideCookingTimerDesc": "Timers are embedded in steps. Tap to start and get notified when done.",
+
+  "guideChefAssistant": "Chef Assistant",
+  "guideChefAssistantDesc": "AI Help in Recipes",
+  "guideAssistantAsk": "Ask the Chef",
+  "guideAssistantAskDesc": "Have a question about a recipe? Tap 'Ask Chef' to get real-time AI assistance.",
+  "guideAssistantSubs": "Ingredient Substitutions",
+  "guideAssistantSubsDesc": "Ask for alternatives like 'Can I use almond milk instead?' and get instant answers.",
+  "guideAssistantTechniques": "Cooking Techniques",
+  "guideAssistantTechniquesDesc": "Unsure about a method? Ask the Chef to explain any technique in the recipe.",
+  
+  "toastErrorGeneric": "Error: {error}",
+  "@toastErrorGeneric": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastRunningBackground": "Running in background...",
+  "toastLinkSaved": "Link Saved to Vault! 📂",
+  "toastRecipeSaved": "Recipe saved to your Vault! 📥",
+  "toastRecipeNotFound": "Recipe not found or access denied.",
+  "toastLinkInvalid": "Link expired or invalid.",
+  "toastSaveFailed": "Failed to save recipe: {error}",
+  "@toastSaveFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastLoadFailed": "Failed to load recipe: {error}",
+  "@toastLoadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastScanFailed": "Scan failed: {error}",
+  "@toastScanFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToPantry": "Added {item} to Pantry!",
+  "@toastAddedToPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAlreadyInPantry": "{item} is already in your pantry.",
+  "@toastAlreadyInPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToMealPlan": "Added to Meal Plan!",
+  "toastRemovedFromPlan": "Removed from plan",
+  "toastCookingCompleted": "Recipe Completed! Bon Appétit!",
+  "toastSpeechUnavailable": "Speech recognition not available",
+  
+  "toastPurchasesRestored": "Purchases restored!",
+  "toastRestoreFailed": "Restore failed.",
+  "toastNoOffers": "No offers available.",
+  "toastPurchaseFailed": "Purchase failed: {error}",
+  "@toastPurchaseFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastManageDowngrades": "Manage downgrades in your Store settings.",
+  
+  "mealPlanEmpty": "No meals planned",
+  "mealPlanNoRecipes": "No saved recipes found.\nGo to Recipes to save some!",
+  "mealPlanAddTo": "Add to {type}",
+  "@mealPlanAddTo": {
+    "placeholders": {
+        "type": {
+            "type": "String"
+        }
+    }
+  },
+  "mealTypeBreakfast": "Breakfast",
+  "mealTypeLunch": "Lunch",
+  "mealTypeDinner": "Dinner",
+  "mealTypeSnacks": "Snacks",
+  
+  "premiumVaultFullTitle": "Vault Limit Reached",
+  "premiumVaultFullMessage": "Vault is full ({limit} items).",
+  "@premiumVaultFullMessage": {
+    "placeholders": {
+        "limit": {
+            "type": "int"
+        }
+    }
+  },
+  "premiumShareLimitTitle": "Daily Share Limit",
+  "premiumShareLimitMessage": "Daily share limit reached. Upgrade for unlimited sharing!",
+  
+  "toastStoreNotConfigured": "Store not configured. Please try again later.",
+  "toastProductNotFound": "Product not found: {id}",
+  "@toastProductNotFound": {
+    "placeholders": {
+        "id": {
+            "type": "String"
+        }
+    }
+  },
+  "toastErrorUnexpected": "An unexpected error occurred.",
+  
+  "dialogRemoveFromVaultTitle": "Remove from Vault?",
+  "dialogRemoveFromVaultMessage": "This will remove this recipe from your saved collection.",
+  "actionCancel": "Cancel",
+  "actionRemove": "Remove",
+  "shareMakeVisible": "Make visible to family members",
+  "toastJoinHouseholdFirst": "Please join a household first.",
+  "toastSharedWithHousehold": "Shared with Household!",
+  "shareLink": "Share Link",
+  "shareMessage": "Check out this recipe: {title} on ChefMind!",
+  "@shareMessage": {
+    "placeholders": {
+        "title": {
+            "type": "String"
+        }
+    }
+  },
+  "addToMealPlanTitle": "Add to Meal Plan",
+  "labelDate": "Date:",
+  "labelMealType": "Meal Type:",
+  "actionAddToPlan": "Add to Plan",
+  "sectionMainIngredients": "Main Ingredients",
+  "toastAddedToList": "Added to list",
+  "dialogSaveRecipeFirstTitle": "Save Recipe First",
+  "dialogSaveRecipeFirstMessage": "To add a photo, this recipe must be saved to your Vault.",
+  "actionSaveToVault": "Save to Vault",
+  "toastUploadingPhoto": "Uploading photo...",
+  "toastPhotoAdded": "Photo added successfully!",
+  "toastUploadFailed": "Upload failed: {error}",
+  "@toastUploadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
     }
   }
 }

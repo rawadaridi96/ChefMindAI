@@ -77,6 +77,8 @@ dependencies:
   http: ^1.2.2
   rename: ^3.1.0
   purchases_flutter: ^8.11.0
+  flutter_svg: ^2.0.10+1
+  cached_network_image: ^3.4.0
 
 dependency_overrides:
   js: ^0.7.1
@@ -142,6 +144,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
+    - assets/icons/ingredients/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

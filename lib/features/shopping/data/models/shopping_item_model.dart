@@ -31,6 +31,9 @@ class ShoppingItemModel extends HiveObject {
   @HiveField(8)
   final String? imageUrl;
 
+  @HiveField(9, defaultValue: 'Uncategorized')
+  final String category;
+
   ShoppingItemModel({
     required this.id,
     required this.userId,
@@ -41,6 +44,7 @@ class ShoppingItemModel extends HiveObject {
     this.householdId,
     required this.createdAt,
     this.imageUrl,
+    this.category = 'Uncategorized',
   });
 
   factory ShoppingItemModel.fromJson(Map<String, dynamic> json) {
@@ -54,6 +58,7 @@ class ShoppingItemModel extends HiveObject {
       householdId: json['household_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       imageUrl: json['image_url'] as String?,
+      category: json['category'] as String? ?? 'Uncategorized',
     );
   }
 
@@ -68,6 +73,7 @@ class ShoppingItemModel extends HiveObject {
       'household_id': householdId,
       'created_at': createdAt.toIso8601String(),
       'image_url': imageUrl,
+      'category': category,
     };
   }
 }

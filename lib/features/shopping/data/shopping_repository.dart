@@ -141,6 +141,7 @@ class ShoppingRepository {
               isBought: old.isBought,
               recipeSource: old.recipeSource,
               householdId: old.householdId,
+              category: old.category,
               createdAt: old.createdAt,
             ))
         .toList();
@@ -161,8 +162,98 @@ class ShoppingRepository {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return '';
 
-    // Optimistic Hive
     final box = Hive.box<ShoppingItemModel>('shopping_items');
+    final normalizedName = name.trim().toLowerCase();
+
+    // 1. Check for existing item
+    ShoppingItemModel? existingItem;
+    try {
+      existingItem = box.values.firstWhere((item) {
+        final itemHousehold = item.householdId;
+        // Check filtering context (Household vs Personal)
+        final sameHousehold = (householdId == null && itemHousehold == null) ||
+            (householdId == itemHousehold);
+        return sameHousehold &&
+            (item.itemName.trim().toLowerCase() == normalizedName);
+      });
+    } catch (_) {}
+
+    // 2. MERGE if exists
+    if (existingItem != null) {
+      debugPrint("DEBUG Repo addItem: Found existing item to merge: $name");
+
+      // Merge Source
+      String newSource = existingItem.recipeSource ?? '';
+      if (recipeSource != null && recipeSource.isNotEmpty) {
+        if (newSource.isEmpty) {
+          newSource = recipeSource;
+        } else if (!newSource.contains(recipeSource)) {
+          // Avoid duplicate source names
+          newSource = "$newSource, $recipeSource";
+        }
+      }
+
+      // Preserve existing category unless current is generated/weak
+      String newCategory = existingItem.category;
+      if (newCategory == 'Recipe Import' || newCategory == 'Uncategorized') {
+        if (category != 'Recipe Import' && category != 'Uncategorized') {
+          newCategory = category;
+        }
+      }
+
+      // Perform Update (Local)
+      final newItem = ShoppingItemModel(
+        id: existingItem.id,
+        userId: existingItem.userId,
+        itemName: existingItem.itemName,
+        amount: existingItem.amount, // Keep existing amount setup
+        isBought: false, // Reset to unbought since we need it again
+        householdId: existingItem.householdId,
+        recipeSource: newSource,
+        category: newCategory,
+        createdAt: DateTime.now(), // Move to top?
+        imageUrl: existingItem.imageUrl ?? imageUrl,
+      );
+
+      if (existingItem.key != null) {
+        await box.put(existingItem.key, newItem);
+      }
+
+      // Perform Update (Remote)
+      // We need to update: is_bought, recipe_source, (maybe category?), created_at (to bump to top)
+
+      // Determine ID format
+      dynamic idForUpdate = existingItem.id;
+      if (int.tryParse(existingItem.id.toString()) != null) {
+        idForUpdate = int.parse(existingItem.id.toString());
+      }
+
+      final updates = {
+        'is_bought': false,
+        'recipe_source': newSource,
+        'category': newCategory,
+        // 'created_at': DateTime.now().toIso8601String(), // Optional: bump to top
+      };
+
+      if (!_offlineManager.hasConnection) {
+        await _syncQueueService.queueOperation(
+            'shopping_cart', 'update', {'id': idForUpdate, ...updates});
+      } else {
+        try {
+          await _client
+              .from('shopping_cart')
+              .update(updates)
+              .eq('id', idForUpdate);
+        } catch (_) {
+          await _syncQueueService.queueOperation(
+              'shopping_cart', 'update', {'id': idForUpdate, ...updates});
+        }
+      }
+
+      return existingItem.id;
+    }
+
+    // 3. CREATE NEW if not exists
     final tempId = "temp_${DateTime.now().millisecondsSinceEpoch}";
     final model = ShoppingItemModel(
       id: tempId,
@@ -172,10 +263,11 @@ class ShoppingRepository {
       isBought: false,
       householdId: householdId,
       recipeSource: recipeSource,
+      category: category,
       createdAt: DateTime.now(),
       imageUrl: imageUrl,
     );
-    box.add(model);
+    await box.add(model);
 
     final data = {
       // 'id': ... OMIT ID, let Postgres generate BigInt
@@ -217,6 +309,8 @@ class ShoppingRepository {
           isBought: false,
           householdId: householdId,
           recipeSource: recipeSource,
+
+          category: category,
           createdAt: DateTime.now(), // or response['created_at']
           imageUrl: imageUrl,
         );
@@ -245,6 +339,7 @@ class ShoppingRepository {
         isBought: item.isBought,
         recipeSource: item.recipeSource,
         householdId: item.householdId,
+        category: item.category,
         createdAt: item.createdAt,
         imageUrl: imageUrl,
       );
@@ -289,6 +384,7 @@ class ShoppingRepository {
           isBought: item.isBought,
           recipeSource: item.recipeSource,
           householdId: item.householdId,
+          category: item.category,
           createdAt: item.createdAt);
       // Replace in box?
       // box.put(item.key, newItem); // .key is available on HiveObject
@@ -332,6 +428,7 @@ class ShoppingRepository {
           isBought: item.isBought,
           recipeSource: newSource ?? item.recipeSource,
           householdId: item.householdId,
+          category: item.category,
           createdAt: item.createdAt);
       if (item.key != null) await box.put(item.key, newItem);
     } catch (e) {
@@ -374,6 +471,7 @@ class ShoppingRepository {
           isBought: isBought,
           recipeSource: item.recipeSource,
           householdId: item.householdId,
+          category: item.category,
           createdAt: item.createdAt);
       if (item.key != null) await box.put(item.key, newItem);
     } catch (_) {}

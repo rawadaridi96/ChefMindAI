@@ -111,6 +111,10 @@ class RecipeController extends _$RecipeController {
 
       // Pack new parameters into filters
       final List<String> effectiveFilters = [...(filters ?? [])];
+      // Safety Filter
+      effectiveFilters.add(
+          "Strictly edible food recipes only. No beauty products (face masks, etc).");
+
       if (cuisine != null && cuisine.isNotEmpty) {
         effectiveFilters.add("Cuisine: $cuisine");
       }

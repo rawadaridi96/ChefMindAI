@@ -23,6 +23,10 @@ import 'widgets/pulse_microphone_button.dart';
 import '../recipes/presentation/widgets/pantry_generator_widget.dart';
 import 'presentation/history_controller.dart';
 import 'dart:ui'; // For ImageFilter
+import '../meal_plan/presentation/meal_plan_provider.dart';
+import '../meal_plan/presentation/meal_plan_screen.dart';
+import '../../core/services/onboarding_service.dart';
+import '../../core/widgets/onboarding_overlay.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -32,14 +36,31 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _currentIndex = 0;
+  int _currentIndex = 2; // Default to Chef (center)
   final TextEditingController _searchController = TextEditingController();
+
+  // Onboarding state
+  bool _showOnboarding = false;
+  bool _onboardingChecked = false;
+
+  // GlobalKeys for onboarding targets
+  final GlobalKey _modeToggleKey = GlobalKey();
+  final GlobalKey _myPantryTabKey = GlobalKey(); // My Pantry side of toggle
+  final GlobalKey _promptInputKey = GlobalKey();
+  final GlobalKey _generateButtonKey = GlobalKey();
+  final GlobalKey _dietaryToggleKey = GlobalKey();
+  final GlobalKey _bottomNavKey = GlobalKey();
+
+  // Pantry mode onboarding keys
+  final GlobalKey _pantryFilterKey = GlobalKey();
+  final GlobalKey _pantrySelectorKey = GlobalKey();
+  final GlobalKey _pantryGenerateKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     // Check for post-login message (e.g. "Welcome back")
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final msg = ref.read(postLoginMessageProvider);
       if (msg != null && mounted) {
         String message = '';
@@ -72,6 +93,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final subState = ref.read(subscriptionControllerProvider);
       if (subState.valueOrNull == SubscriptionTier.executiveChef) {
         setState(() => _applyDietaryProfile = true);
+      }
+
+      // Check if onboarding should be shown
+      if (!_onboardingChecked) {
+        _onboardingChecked = true;
+        final onboardingService = ref.read(onboardingServiceProvider);
+        final shouldShow = await onboardingService.shouldShowOnboarding();
+        if (shouldShow && mounted) {
+          // Small delay to ensure UI is fully built
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            setState(() => _showOnboarding = true);
+          }
+        }
       }
     });
   }
@@ -108,77 +143,389 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             message = next.key;
         }
         NanoToast.showSuccess(context, message);
+        // Clear it so it doesn't show again on hot reload or re-mount
         ref.read(postLoginMessageProvider.notifier).state = null;
       }
     });
 
-    return Scaffold(
-      body: Stack(
+    final mealPlanEnabled = ref.watch(mealPlanEnabledProvider);
+
+    // Screens ordered: Pantry, Recipes, Chef (center), (MealPlan optional), Cart
+    // For index mapping: without meal plan: 0=Pantry, 1=Recipes, 2=Chef, 3=Cart
+    // With meal plan: 0=Pantry, 1=MealPlan, 2=Chef, 3=Recipes, 4=Cart
+    final List<Widget> screens = mealPlanEnabled
+        ? [
+            const PantryScreen(),
+            const MealPlanScreen(),
+            _buildHomeDashboard(ref), // Chef in center
+            const RecipesScreen(),
+            const ShoppingScreen(),
+          ]
+        : [
+            const PantryScreen(),
+            const RecipesScreen(),
+            _buildHomeDashboard(ref), // Chef in center
+            const ShoppingScreen(),
+          ];
+
+    // Calculate center index
+    final int centerIndex = mealPlanEnabled ? 2 : 2;
+
+    // Safety check for index
+    if (_currentIndex >= screens.length) {
+      _currentIndex = centerIndex; // Default to Chef
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+
+    // Define onboarding steps
+    final onboardingSteps = [
+      // Step 1: Explain the mode toggle with both options
+      OnboardingStep(
+        title: l10n.onboardingStepModeTitle,
+        description: l10n.onboardingStepModeDesc,
+        targetKey: _modeToggleKey,
+        position: TooltipPosition.bottom,
+      ),
+      // Step 2: Prompt input (for Discover mode)
+      OnboardingStep(
+        title: l10n.onboardingStepPromptTitle,
+        description: l10n.onboardingStepPromptDesc,
+        targetKey: _promptInputKey,
+        position: TooltipPosition.bottom,
+      ),
+      // Step 3: Dietary toggle
+      OnboardingStep(
+        title: l10n.onboardingStepDietaryTitle,
+        description: l10n.onboardingStepDietaryDesc,
+        targetKey: _dietaryToggleKey,
+        position: TooltipPosition.bottom,
+      ),
+      // Step 4: Generate button (Discover)
+      OnboardingStep(
+        title: l10n.onboardingStepGenerateTitle,
+        description: l10n.onboardingStepGenerateDesc,
+        targetKey: _generateButtonKey,
+        position: TooltipPosition.top,
+      ),
+      // Step 5: Interactive step - Tap My Pantry to switch modes
+      OnboardingStep(
+        title: l10n.onboardingStepPantryTitle,
+        description: l10n.onboardingStepPantryDesc,
+        targetKey: _myPantryTabKey,
+        position:
+            TooltipPosition.bottom, // Position below with gap to avoid masking
+        requiresAction: true,
+        actionLabel: 'Tap My Pantry',
+        onAction: () => setState(() => _isPantryMode = true),
+      ),
+      // Step 6: Pantry mode - Filter button
+      OnboardingStep(
+        title: l10n.onboardingStepPantryFilterTitle,
+        description: l10n.onboardingStepPantryFilterDesc,
+        targetKey: _pantryFilterKey,
+        position: TooltipPosition.bottom,
+      ),
+      // Step 7: Pantry mode - Selectors (Meal Type, Vibe)
+      OnboardingStep(
+        title: l10n.onboardingStepPantrySelectorTitle,
+        description: l10n.onboardingStepPantrySelectorDesc,
+        targetKey: _pantrySelectorKey,
+        position: TooltipPosition.bottom,
+      ),
+      // Step 8: Pantry mode - Generate button
+      OnboardingStep(
+        title: l10n.onboardingStepPantryGenerateTitle,
+        description: l10n.onboardingStepPantryGenerateDesc,
+        targetKey: _pantryGenerateKey,
+        position: TooltipPosition.top,
+      ),
+      // Step 9: Bottom navigation
+      OnboardingStep(
+        title: l10n.onboardingStepNavTitle,
+        description: l10n.onboardingStepNavDesc,
+        targetKey: _bottomNavKey,
+        position: TooltipPosition.top,
+      ),
+    ];
+
+    return Stack(
+      children: [
+        Scaffold(
+          body: Stack(
+            children: [
+              // Global Background
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.deepCharcoal, Color(0xFF202020)],
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: screens,
+                ),
+              ),
+            ],
+          ),
+          extendBody: true,
+          bottomNavigationBar: Container(
+            key: _bottomNavKey,
+            child: _buildCurvedBottomNav(mealPlanEnabled, centerIndex),
+          ),
+          floatingActionButton: _currentIndex == centerIndex
+              ? FloatingActionButton(
+                  backgroundColor: AppColors.zestyLime,
+                  heroTag: 'home_scan_fab',
+                  child: const Icon(Icons.camera_alt,
+                      color: AppColors.deepCharcoal),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ScannerScreen()),
+                    );
+                  },
+                )
+              : null,
+        ),
+        // Onboarding overlay
+        if (_showOnboarding)
+          OnboardingOverlay(
+            steps: onboardingSteps,
+            onComplete: () async {
+              final onboardingService = ref.read(onboardingServiceProvider);
+              await onboardingService.completeOnboarding();
+              if (mounted) setState(() => _showOnboarding = false);
+            },
+            onSkip: () async {
+              final onboardingService = ref.read(onboardingServiceProvider);
+              await onboardingService.completeOnboarding();
+              if (mounted) setState(() => _showOnboarding = false);
+            },
+            onDontShowAgainChanged: (value) async {
+              final onboardingService = ref.read(onboardingServiceProvider);
+              await onboardingService.setDontShowAgain(value);
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCurvedBottomNav(bool mealPlanEnabled, int centerIndex) {
+    // Nav items config: icon, label, index
+    final List<_NavItemData> navItemsConfig = mealPlanEnabled
+        ? [
+            _NavItemData(
+                Icons.kitchen, AppLocalizations.of(context)!.navPantry, 0),
+            _NavItemData(Icons.calendar_month, "Meal Plan", 1),
+            _NavItemData(Icons.restaurant_menu,
+                AppLocalizations.of(context)!.navChef, 2), // Chef in center
+            _NavItemData(
+                Icons.menu_book, AppLocalizations.of(context)!.navRecipes, 3),
+            _NavItemData(
+                Icons.shopping_cart, AppLocalizations.of(context)!.navCart, 4),
+          ]
+        : [
+            _NavItemData(
+                Icons.kitchen, AppLocalizations.of(context)!.navPantry, 0),
+            _NavItemData(
+                Icons.menu_book, AppLocalizations.of(context)!.navRecipes, 1),
+            _NavItemData(Icons.restaurant_menu,
+                AppLocalizations.of(context)!.navChef, 2), // Chef in center
+            _NavItemData(
+                Icons.shopping_cart, AppLocalizations.of(context)!.navCart, 3),
+          ];
+
+    // Build left and right nav items separately
+    final leftItems =
+        navItemsConfig.where((item) => item.index < centerIndex).toList();
+    final rightItems =
+        navItemsConfig.where((item) => item.index > centerIndex).toList();
+
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
         children: [
-          // Global Background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.deepCharcoal, Color(0xFF202020)],
+          // Main rounded bar
+          Positioned(
+            bottom: 8,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 70,
+              decoration: BoxDecoration(
+                color: AppColors.deepCharcoal,
+                borderRadius: BorderRadius.circular(35),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black38,
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Left nav items
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: leftItems.map((item) {
+                        final isSelected = _currentIndex == item.index;
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _currentIndex = item.index),
+                            behavior: HitTestBehavior.opaque,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  item.icon,
+                                  color: isSelected
+                                      ? AppColors.zestyLime
+                                      : Colors.white54,
+                                  size: 24,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? AppColors.zestyLime
+                                        : Colors.white54,
+                                    fontSize: 10,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                // Selection indicator dot
+                                if (isSelected)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 4),
+                                    width: 4,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.zestyLime,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  // Space for center button
+                  const SizedBox(width: 70),
+                  // Right nav items
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: rightItems.map((item) {
+                        final isSelected = _currentIndex == item.index;
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _currentIndex = item.index),
+                            behavior: HitTestBehavior.opaque,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  item.icon,
+                                  color: isSelected
+                                      ? AppColors.zestyLime
+                                      : Colors.white54,
+                                  size: 24,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? AppColors.zestyLime
+                                        : Colors.white54,
+                                    fontSize: 10,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                // Selection indicator dot
+                                if (isSelected)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 4),
+                                    width: 4,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.zestyLime,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          SafeArea(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: [
-                _buildHomeDashboard(ref),
-                const PantryScreen(),
-                const RecipesScreen(),
-                const ShoppingScreen(), // Shopping Tab
-              ],
+          // Center floating button (Chef)
+          Positioned(
+            bottom: 30,
+            child: GestureDetector(
+              onTap: () => setState(() => _currentIndex = centerIndex),
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentIndex == centerIndex
+                      ? AppColors.zestyLime
+                      : AppColors.deepCharcoal,
+                  border: Border.all(
+                    color: _currentIndex == centerIndex
+                        ? AppColors.zestyLime
+                        : Colors.white30,
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _currentIndex == centerIndex
+                          ? AppColors.zestyLime.withOpacity(0.4)
+                          : Colors.black45,
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.restaurant_menu,
+                  color: _currentIndex == centerIndex
+                      ? AppColors.deepCharcoal
+                      : Colors.white54,
+                  size: 28,
+                ),
+              ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.white12, width: 0.5)),
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: AppColors.deepCharcoal,
-          selectedItemColor: AppColors.zestyLime,
-          unselectedItemColor: Colors.white54,
-          currentIndex: _currentIndex,
-          type: BottomNavigationBarType.fixed, // Needed for 4 items
-          onTap: (index) => setState(() => _currentIndex = index),
-          items: [
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.home),
-                label: AppLocalizations.of(context)!.navHome),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.kitchen),
-                label: AppLocalizations.of(context)!.navPantry),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.menu_book),
-                label: AppLocalizations.of(context)!.navRecipes),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.shopping_cart),
-                label: AppLocalizations.of(context)!.navCart),
-          ],
-        ),
-      ),
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton(
-              backgroundColor: AppColors.zestyLime,
-              heroTag: 'home_scan_fab',
-              child:
-                  const Icon(Icons.camera_alt, color: AppColors.deepCharcoal),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ScannerScreen()),
-                );
-              },
-            )
-          : null,
     );
   }
 
@@ -326,6 +673,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: GestureDetector(
                     onTap: () => setState(() => _isPantryMode = true),
                     child: Container(
+                      key: _myPantryTabKey,
                       decoration: BoxDecoration(
                         color: _isPantryMode
                             ? AppColors.zestyLime
@@ -357,8 +705,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 setState(() => _applyDietaryProfile = val),
             onGenerate: () {
               // Switch to Recipes tab after generation starts
-              setState(() => _currentIndex = 2);
+              final mealPlanEnabled = ref.read(mealPlanEnabledProvider);
+              setState(
+                  () => _currentIndex = mealPlanEnabled ? 3 : 1); // Recipes tab
             },
+            filterButtonKey: _pantryFilterKey,
+            selectorGroupKey: _pantrySelectorKey,
+            pantryGenerateKey: _pantryGenerateKey,
           ),
         ],
       );
@@ -368,6 +721,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       children: [
         // Smart Toggle
         Container(
+          key: _modeToggleKey,
           height: 40,
           decoration: BoxDecoration(
             color: Colors.white10,
@@ -403,6 +757,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: GestureDetector(
                   onTap: () => setState(() => _isPantryMode = true),
                   child: Container(
+                    key: _myPantryTabKey,
                     decoration: BoxDecoration(
                       color: _isPantryMode
                           ? AppColors.zestyLime
@@ -514,6 +869,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
+                  key: _promptInputKey,
                   controller: _searchController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
@@ -551,6 +907,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         Padding(
           padding: const EdgeInsets.only(top: 16.0),
           child: GestureDetector(
+            key: _generateButtonKey,
             onTap: () => _performSearch(ref, _searchController.text),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 18),
@@ -616,7 +973,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.read(historyControllerProvider.notifier).addPrompt(query);
 
     // Switch to Recipes tab
-    setState(() => _currentIndex = 2);
+    final mealPlanEnabled = ref.read(mealPlanEnabledProvider);
+    setState(() => _currentIndex = mealPlanEnabled ? 3 : 1); // Recipes tab
   }
 
   Widget _buildSkillBadges() {
@@ -977,70 +1335,135 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       final isEnabled = hasPreferences && isPremium;
 
-      return Opacity(
-        opacity: isEnabled ? 1.0 : 0.5,
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: () {
-                if (!isPremium) {
-                  PremiumPaywall.show(context,
-                      featureName:
-                          AppLocalizations.of(context)!.premiumFeatureADI,
-                      message: AppLocalizations.of(context)!.premiumADISous,
-                      ctaLabel:
-                          AppLocalizations.of(context)!.premiumUpgradeToSous);
-                  return;
-                }
-                if (!hasPreferences) {
-                  NanoToast.showInfo(
-                      context, "Set your profile in Settings first 🧑‍🍳");
-                  return;
-                }
-                setState(() => _applyDietaryProfile = !_applyDietaryProfile);
-              },
-              child: Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.homeDietaryProfile,
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
-                  ),
-                  if (!isPremium) ...[
-                    const SizedBox(width: 4),
-                    const Icon(Icons.lock_outline,
-                        color: AppColors.zestyLime, size: 12),
-                  ]
-                ],
+      return Container(
+        key: _dietaryToggleKey,
+        child: Opacity(
+          opacity: isEnabled ? 1.0 : 0.5,
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  if (!isPremium) {
+                    PremiumPaywall.show(context,
+                        featureName:
+                            AppLocalizations.of(context)!.premiumFeatureADI,
+                        message: AppLocalizations.of(context)!.premiumADISous,
+                        ctaLabel:
+                            AppLocalizations.of(context)!.premiumUpgradeToSous);
+                    return;
+                  }
+                  if (!hasPreferences) {
+                    NanoToast.showInfo(
+                        context, "Set your profile in Settings first 🧑‍🍳");
+                    return;
+                  }
+                  setState(() => _applyDietaryProfile = !_applyDietaryProfile);
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.homeDietaryProfile,
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 13),
+                    ),
+                    if (!isPremium) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.lock_outline,
+                          color: AppColors.zestyLime, size: 12),
+                    ]
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Switch.adaptive(
-              value: isEnabled && _applyDietaryProfile,
-              activeColor: AppColors.zestyLime,
-              activeTrackColor: AppColors.zestyLime.withOpacity(0.3),
-              inactiveThumbColor: Colors.white54,
-              inactiveTrackColor: Colors.white10,
-              onChanged: (val) {
-                if (!isPremium) {
-                  PremiumPaywall.show(context,
-                      featureName:
-                          AppLocalizations.of(context)!.premiumFeatureADI,
-                      message: AppLocalizations.of(context)!.premiumADISous,
-                      ctaLabel:
-                          AppLocalizations.of(context)!.premiumUpgradeToSous);
-                  return;
-                }
-                if (!hasPreferences) {
-                  NanoToast.showInfo(
-                      context, "Set your profile in Settings first 🧑‍🍳");
-                  return;
-                }
-                setState(() => _applyDietaryProfile = val);
-              },
-            ),
-          ],
+              const SizedBox(width: 8),
+              Switch.adaptive(
+                value: isEnabled && _applyDietaryProfile,
+                activeColor: AppColors.zestyLime,
+                activeTrackColor: AppColors.zestyLime.withOpacity(0.3),
+                inactiveThumbColor: Colors.white54,
+                inactiveTrackColor: Colors.white10,
+                onChanged: (val) {
+                  if (!isPremium) {
+                    PremiumPaywall.show(context,
+                        featureName:
+                            AppLocalizations.of(context)!.premiumFeatureADI,
+                        message: AppLocalizations.of(context)!.premiumADISous,
+                        ctaLabel:
+                            AppLocalizations.of(context)!.premiumUpgradeToSous);
+                    return;
+                  }
+                  if (!hasPreferences) {
+                    NanoToast.showInfo(
+                        context, "Set your profile in Settings first 🧑‍🍳");
+                    return;
+                  }
+                  setState(() => _applyDietaryProfile = val);
+                },
+              ),
+            ],
+          ),
         ),
       );
     });
   }
+}
+
+/// Helper class for navigation item data
+class _NavItemData {
+  final IconData icon;
+  final String label;
+  final int index;
+
+  _NavItemData(this.icon, this.label, this.index);
+}
+
+/// Custom clipper for the curved bottom navigation bar with valley/notch in center
+class _CurvedNavClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    final double notchRadius = 38.0;
+    final double notchDepth = 18.0;
+    final double centerX = size.width / 2;
+
+    // Start from top-left
+    path.moveTo(0, notchDepth);
+
+    // Draw left side going to center notch
+    path.lineTo(centerX - notchRadius - 20, notchDepth);
+
+    // Draw the curved notch (valley) using a quadratic bezier
+    path.quadraticBezierTo(
+      centerX - notchRadius, notchDepth, // control point
+      centerX - notchRadius + 5, 0, // end of first curve
+    );
+
+    // Draw the bottom of the notch
+    path.quadraticBezierTo(
+      centerX, -notchDepth, // control point at center (dipping down)
+      centerX + notchRadius - 5, 0, // end of valley bottom
+    );
+
+    // Draw right side of notch
+    path.quadraticBezierTo(
+      centerX + notchRadius, notchDepth, // control point
+      centerX + notchRadius + 20, notchDepth, // end of curve
+    );
+
+    // Continue to right edge
+    path.lineTo(size.width, notchDepth);
+
+    // Draw right side down
+    path.lineTo(size.width, size.height);
+
+    // Draw bottom
+    path.lineTo(0, size.height);
+
+    // Close the path
+    path.close();
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

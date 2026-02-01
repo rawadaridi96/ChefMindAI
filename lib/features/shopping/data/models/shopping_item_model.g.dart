@@ -26,13 +26,14 @@ class ShoppingItemModelAdapter extends TypeAdapter<ShoppingItemModel> {
       householdId: fields[6] as String?,
       createdAt: fields[7] as DateTime,
       imageUrl: fields[8] as String?,
+      category: fields[9] == null ? 'Uncategorized' : fields[9] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ShoppingItemModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +51,9 @@ class ShoppingItemModelAdapter extends TypeAdapter<ShoppingItemModel> {
       ..writeByte(7)
       ..write(obj.createdAt)
       ..writeByte(8)
-      ..write(obj.imageUrl);
+      ..write(obj.imageUrl)
+      ..writeByte(9)
+      ..write(obj.category);
   }
 
   @override

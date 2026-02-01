@@ -1,7 +1,7 @@
 {
   "@@locale": "pt",
   "appTitle": "ChefMind AI",
-  "navHome": "Início",
+  "navChef": "Chef",
   "navPantry": "Despensa",
   "navRecipes": "Receitas",
   "navCart": "Carrinho",

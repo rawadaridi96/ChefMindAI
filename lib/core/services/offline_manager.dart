@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/pantry/data/models/pantry_item_model.dart';
 import '../../features/shopping/data/models/shopping_item_model.dart';
 import '../../features/recipes/data/models/saved_recipe_model.dart';
+import '../../features/meal_plan/data/models/meal_plan_model.dart';
 import 'sync_queue_service.dart';
 
 part 'offline_manager.g.dart';
@@ -36,6 +37,7 @@ class OfflineManager {
     Hive.registerAdapter(PantryItemModelAdapter());
     Hive.registerAdapter(ShoppingItemModelAdapter());
     Hive.registerAdapter(SavedRecipeModelAdapter());
+    Hive.registerAdapter(MealPlanModelAdapter());
 
     // Initialize Sync Queue
     await _syncQueueService.init();
@@ -44,6 +46,7 @@ class OfflineManager {
     await Hive.openBox<PantryItemModel>('pantry_items');
     await Hive.openBox<ShoppingItemModel>('shopping_items');
     await Hive.openBox<SavedRecipeModel>('saved_recipes');
+    await Hive.openBox<MealPlanModel>('meal_plan_box');
     await Hive.openBox('app_prefs');
 
     // Check initial connection

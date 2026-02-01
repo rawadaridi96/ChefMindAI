@@ -22,6 +22,7 @@ import 'chef_labs_screen.dart';
 import 'household_screen.dart';
 import '../../guide/presentation/master_guide_screen.dart';
 import '../../subscription/presentation/subscription_details_screen.dart';
+import '../../../core/services/onboarding_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -54,8 +55,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _biometricEnabled = isEnrolled;
         });
       }
-    }
-  }
     }
   }
 
@@ -490,11 +489,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       // Notifications (Simulated "Change PIN" style)
                       _SettingsTile(
                         icon: Icons.notifications_outlined,
-                        title: AppLocalizations.of(context)!
-                                .settingsTitle
-                                .contains('إ')
-                            ? 'الإشعارات'
-                            : "Push Notifications",
+                        title:
+                            AppLocalizations.of(context)!.settingsNotifications,
                         trailing: Switch(
                           value: _notificationsEnabled,
                           activeColor: AppColors.zestyLime,
@@ -716,8 +712,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(height: 8),
                       _SettingsTile(
                         icon: Icons.menu_book_rounded,
-                        title:
-                            AppLocalizations.of(context)!.settingsMasterGuide,
+                        title: AppLocalizations.of(context)!
+                            .settingsInstructionManual,
                         trailing: const Icon(Icons.arrow_forward_ios,
                             color: Colors.white54, size: 16),
                         onTap: () {
@@ -727,6 +723,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               builder: (_) => const MasterGuideScreen(),
                             ),
                           );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      _SettingsTile(
+                        icon: Icons.school_outlined,
+                        title:
+                            AppLocalizations.of(context)!.settingsShowTutorial,
+                        trailing: const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white54, size: 16),
+                        onTap: () async {
+                          final onboardingService =
+                              ref.read(onboardingServiceProvider);
+                          await onboardingService.resetOnboarding();
+                          if (context.mounted) {
+                            NanoToast.showSuccess(context,
+                                "Tutorial will show on next home screen visit");
+                            Navigator.pop(context); // Return to home
+                          }
                         },
                       ),
                       const SizedBox(height: 24),

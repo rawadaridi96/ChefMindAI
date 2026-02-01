@@ -9,6 +9,7 @@ import 'package:chefmind_ai/features/recipes/presentation/recipe_detail_screen.d
 import 'package:chefmind_ai/features/recipes/presentation/vault_controller.dart';
 import 'package:chefmind_ai/core/exceptions/premium_limit_exception.dart';
 import 'package:chefmind_ai/core/widgets/premium_paywall.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class DeepLinkService {
   static final DeepLinkService _instance = DeepLinkService._internal();
@@ -100,13 +101,15 @@ class DeepLinkService {
             ),
           );
         } else {
-          NanoToast.showError(context, "Recipe not found or access denied.");
+          final l10n = AppLocalizations.of(context)!;
+          NanoToast.showError(context, l10n.toastRecipeNotFound);
         }
       }
     } catch (e) {
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context)!;
         Navigator.pop(context);
-        NanoToast.showError(context, "Failed to load recipe: $e");
+        NanoToast.showError(context, l10n.toastLoadFailed(e.toString()));
       }
     }
   }
@@ -130,6 +133,7 @@ class DeepLinkService {
 
       if (context.mounted) {
         // Do not pop yet, we try to save immediately
+        final l10n = AppLocalizations.of(context)!;
 
         if (recipe != null) {
           try {
@@ -140,7 +144,7 @@ class DeepLinkService {
 
             if (context.mounted) {
               Navigator.pop(context); // Close loading
-              NanoToast.showSuccess(context, "Recipe saved to your Vault! 📥");
+              NanoToast.showSuccess(context, l10n.toastRecipeSaved);
 
               Navigator.push(
                 context,
@@ -155,13 +159,26 @@ class DeepLinkService {
           } on PremiumLimitReachedException catch (e) {
             if (context.mounted) {
               Navigator.pop(context); // Close loading
+
+              final l10n = AppLocalizations.of(context)!;
+              String message = e.message;
+              String title = e.featureName;
+
+              if (e.type == PremiumLimitType.vaultFull) {
+                title = l10n.premiumVaultFullTitle;
+                message = l10n.premiumVaultFullMessage(e.limit ?? 0);
+              } else if (e.type == PremiumLimitType.dailyShareLimit) {
+                title = l10n.premiumShareLimitTitle;
+                message = l10n.premiumShareLimitMessage;
+              }
+
               PremiumPaywall.show(context,
-                  message: e.message, featureName: e.featureName);
+                  message: message, featureName: title);
             }
           } catch (e) {
             if (context.mounted) {
               Navigator.pop(context); // Close loading
-              NanoToast.showError(context, "Failed to save recipe: $e");
+              NanoToast.showError(context, l10n.toastSaveFailed(e.toString()));
               // Option: Show it in preview mode if save failed?
               // For now, just error is safer/simpler as per request "automatically save".
               // If save fails due to other reasons (network?), maybe preview is nice,
@@ -170,13 +187,14 @@ class DeepLinkService {
           }
         } else {
           Navigator.pop(context); // Close loading
-          NanoToast.showError(context, "Link expired or invalid.");
+          NanoToast.showError(context, l10n.toastLinkInvalid);
         }
       }
     } catch (e) {
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context)!;
         Navigator.pop(context);
-        NanoToast.showError(context, "Failed to load recipe: $e");
+        NanoToast.showError(context, l10n.toastLoadFailed(e.toString()));
       }
     }
   }

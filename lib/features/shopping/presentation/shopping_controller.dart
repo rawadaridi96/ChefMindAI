@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/shopping_repository.dart';
 import '../data/retail_unit_helper.dart';
+import '../data/unit_normalizer.dart';
 import '../../../../core/services/offline_manager.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../settings/presentation/household_controller.dart';
@@ -44,12 +45,15 @@ class ShoppingController extends _$ShoppingController {
 
   Future<void> addItem(String name,
       {String amount = '1',
-      String category = 'General',
+      String category = 'Other',
       String? recipeSource,
       String? householdIdOverride,
       bool forcePrivate = false}) async {
     final repo = ref.read(shoppingRepositoryProvider);
     final isSyncEnabled = ref.read(shoppingSyncEnabledProvider);
+
+    // Normalize empty amount to '1' to ensure we always have a valid quantity
+    final effectiveAmount = amount.trim().isEmpty ? '1' : amount;
 
     String? householdId;
 
@@ -85,43 +89,45 @@ class ShoppingController extends _$ShoppingController {
 
     if (existingItem.isNotEmpty) {
       String currentAmountStr = existingItem['amount'] ?? '1';
-      double currentVal = _parseAmount(currentAmountStr);
-      double incomingVal = _parseAmount(amount);
+      // Ensure current amount is valid
+      if (currentAmountStr.trim().isEmpty) currentAmountStr = '1';
 
-      if (currentVal > 0 && incomingVal > 0) {
-        double total = currentVal + incomingVal;
-        String newAmount =
-            total % 1 == 0 ? total.toInt().toString() : total.toString();
-        String finalAmount = RetailUnitHelper.toRetailUnit(name, newAmount);
+      // Use UnitNormalizer for smart aggregation (e.g., 500ml + 1L = 1.5L)
+      String combinedAmount =
+          UnitNormalizer.aggregateAmounts([currentAmountStr, effectiveAmount]);
 
-        String? currentSource = existingItem['recipe_source'];
-        String? finalSource = currentSource;
+      // If aggregation produced a result, use it; otherwise fallback to retail unit
+      String finalAmount = combinedAmount.isNotEmpty
+          ? combinedAmount
+          : RetailUnitHelper.toRetailUnit(name, effectiveAmount);
 
-        if (recipeSource != null) {
-          if (currentSource == null || currentSource.isEmpty) {
-            finalSource = recipeSource;
-          } else {
-            List<String> sources =
-                currentSource.split(',').map((s) => s.trim()).toList();
-            if (!sources.contains(recipeSource)) {
-              sources.add(recipeSource);
-              finalSource = sources.join(', ');
-            }
+      // Final fallback: ensure we always have a valid amount
+      if (finalAmount.trim().isEmpty) finalAmount = '1';
+
+      String? currentSource = existingItem['recipe_source'];
+      String? finalSource = currentSource;
+
+      if (recipeSource != null) {
+        if (currentSource == null || currentSource.isEmpty) {
+          finalSource = recipeSource;
+        } else {
+          List<String> sources =
+              currentSource.split(',').map((s) => s.trim()).toList();
+          if (!sources.contains(recipeSource)) {
+            sources.add(recipeSource);
+            finalSource = sources.join(', ');
           }
         }
-
-        await _performOfflineSafe(() => repo.updateAmountAndSource(
-            existingItem['id'], finalAmount,
-            newSource: finalSource));
-      } else {
-        // Fallback add (should rare)
-        await _performOfflineSafe(() => repo.addItem(
-            name, RetailUnitHelper.toRetailUnit(name, amount), category,
-            recipeSource: recipeSource, householdId: householdId));
       }
+
+      await _performOfflineSafe(() => repo.updateAmountAndSource(
+          existingItem['id'], finalAmount,
+          newSource: finalSource));
     } else {
-      String finalAmount = RetailUnitHelper.toRetailUnit(name, amount);
-      String id = '';
+      String finalAmount = RetailUnitHelper.toRetailUnit(name, effectiveAmount);
+      // Final fallback: ensure we always have a valid amount
+      if (finalAmount.trim().isEmpty) finalAmount = '1';
+
       await _performOfflineSafe(() async {
         await repo.addItem(name, finalAmount, category,
             recipeSource: recipeSource, householdId: householdId);
@@ -134,27 +140,61 @@ class ShoppingController extends _$ShoppingController {
 
   Future<void> updateQuantity(
       dynamic id, String currentAmount, int change) async {
-    double val = 0;
-    if (currentAmount.trim().isEmpty) {
-      val = 0;
-    } else {
-      val = _parseAmount(currentAmount);
-      if (val <= 0) val = 1;
+    // Parse the amount using regex to separate number from unit
+    // Handles cases like: "2 g", "500 ml", "1.5 kg", "3"
+    final trimmed = currentAmount.trim();
+
+    if (trimmed.isEmpty) {
+      // If empty, start with change value (minimum 1)
+      final newVal = change > 0 ? change : 1;
+      await _performOfflineSafe(() => ref
+          .read(shoppingRepositoryProvider)
+          .updateAmount(id, newVal.toString()));
+      return;
     }
 
-    double newVal = val + change;
+    // Extract numeric part and unit using regex
+    // Matches: "2 g", "500ml", "1.5 kg", "2", etc.
+    final regex = RegExp(r'^([\d.\/]+)\s*(.*)$');
+    final match = regex.firstMatch(trimmed);
+
+    if (match == null) {
+      // Couldn't parse - treat as count of 1
+      final newVal = 1 + change;
+      if (newVal <= 0) {
+        await _performOfflineSafe(
+            () => ref.read(shoppingRepositoryProvider).updateAmount(id, ''));
+      } else {
+        await _performOfflineSafe(() => ref
+            .read(shoppingRepositoryProvider)
+            .updateAmount(id, newVal.toString()));
+      }
+      return;
+    }
+
+    final numberPart = match.group(1)!;
+    final unitPart = match.group(2)?.trim() ?? '';
+
+    // Parse the number (handles fractions like "1/2")
+    double currentValue = _parseAmount(numberPart);
+    if (currentValue <= 0) currentValue = 1;
+
+    // Calculate new value
+    double newVal = currentValue + change;
+
     String newAmountStr;
     if (newVal <= 0) {
       newAmountStr = '';
     } else {
-      newAmountStr =
+      // Format the number (remove .0 for whole numbers)
+      String numStr =
           newVal % 1 == 0 ? newVal.toInt().toString() : newVal.toString();
-      if (currentAmount.trim().isNotEmpty) {
-        List<String> parts = currentAmount.split(' ');
-        if (parts.length > 1) {
-          String suffix = parts.sublist(1).join(' ');
-          newAmountStr = "$newAmountStr $suffix";
-        }
+
+      // Preserve the original unit if present
+      if (unitPart.isNotEmpty) {
+        newAmountStr = "$numStr $unitPart";
+      } else {
+        newAmountStr = numStr;
       }
     }
 

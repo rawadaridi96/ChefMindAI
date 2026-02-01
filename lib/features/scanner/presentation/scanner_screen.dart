@@ -82,7 +82,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       setState(() => _capturedImage = file); // Freeze UI
       _processImage(file);
     } catch (e) {
-      NanoToast.showError(context, 'Error: $e');
+      NanoToast.showError(context,
+          AppLocalizations.of(context)!.toastErrorGeneric(e.toString()));
     }
   }
 
@@ -131,7 +132,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         _showReviewSheet(next.value!);
       } else if (next.hasError && !next.isLoading) {
         // Handle Error
-        NanoToast.showError(context, "Scan failed: ${next.error}");
+        NanoToast.showError(
+            context,
+            AppLocalizations.of(context)!
+                .toastScanFailed(next.error.toString()));
         // Reset state so user can try again
         ref.read(scannerControllerProvider.notifier).reset();
         setState(() => _capturedImage = null); // Unfreeze UI

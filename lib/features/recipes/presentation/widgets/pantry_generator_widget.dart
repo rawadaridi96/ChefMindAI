@@ -16,11 +16,19 @@ class PantryGeneratorWidget extends ConsumerStatefulWidget {
   final bool applyDietaryProfile;
   final ValueChanged<bool> onDietaryChanged;
 
+  /// Optional GlobalKeys for onboarding targets
+  final GlobalKey? filterButtonKey;
+  final GlobalKey? selectorGroupKey;
+  final GlobalKey? pantryGenerateKey;
+
   const PantryGeneratorWidget({
     super.key,
     required this.onGenerate,
     required this.applyDietaryProfile,
     required this.onDietaryChanged,
+    this.filterButtonKey,
+    this.selectorGroupKey,
+    this.pantryGenerateKey,
   });
 
   @override
@@ -163,6 +171,7 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
             GestureDetector(
               onTap: _showFilterSheet,
               child: Container(
+                key: widget.filterButtonKey,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
@@ -246,6 +255,7 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
 
         // 2. Selector Group (Glassy Look)
         Container(
+          key: widget.selectorGroupKey,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
@@ -318,6 +328,7 @@ class _PantryGeneratorWidgetState extends ConsumerState<PantryGeneratorWidget> {
             widget.onGenerate();
           },
           child: Container(
+            key: widget.pantryGenerateKey,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(

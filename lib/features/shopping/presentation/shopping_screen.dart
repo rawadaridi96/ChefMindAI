@@ -12,6 +12,8 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../../settings/presentation/household_controller.dart';
 
+import 'widgets/ingredient_picker_modal.dart';
+
 class ShoppingScreen extends ConsumerStatefulWidget {
   const ShoppingScreen({super.key});
 
@@ -20,18 +22,45 @@ class ShoppingScreen extends ConsumerStatefulWidget {
 }
 
 class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
-  void _openManualEntry() {
+  /// Opens the visual ingredient picker modal
+  void _openIngredientPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => IngredientPickerModal(
+        onIngredientSelected: (ingredient) {
+          // Open manual entry with selected ingredient name and category pre-filled
+          // Categories now match directly between ingredient list and cart
+          _openManualEntry(
+            initialName: ingredient.name,
+            initialCategory: ingredient.category,
+          );
+        },
+        onCustomItemTap: () {
+          // Open manual entry with empty name
+          _openManualEntry();
+        },
+      ),
+    );
+  }
+
+  /// Opens the manual entry modal (name, qty, unit, category)
+  void _openManualEntry({String? initialName, String? initialCategory}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _ManualEntryModal(
-        onAdd: (name, qty, unit) async {
+        initialName: initialName,
+        initialCategory: initialCategory,
+        onAdd: (name, qty, unit, category) async {
           final fullAmount = qty != null && qty.isNotEmpty ? "$qty $unit" : "1";
 
           await ref.read(shoppingControllerProvider.notifier).addItem(
                 name,
                 amount: fullAmount,
+                category: category,
               );
 
           if (ctx.mounted) {
@@ -71,7 +100,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         leading: IconButton(
           icon: Icon(isSyncEnabled ? Icons.diversity_3 : Icons.person,
               color: isSyncEnabled ? AppColors.zestyLime : Colors.white54),
-          tooltip: "Family Sync", // "Toggle Family Sync" behavior
+          tooltip: "Family Sync",
           onPressed: () {
             // 1. Check Household
             final householdState = ref.read(householdControllerProvider);
@@ -101,7 +130,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                   data: (members) {
                     if (members.isEmpty) return const SizedBox.shrink();
 
-                    // Take max 3 or 4 to avoid overflow
                     final displayMembers = members.take(4).toList();
                     final double overlap = 12.0;
 
@@ -130,8 +158,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: AppColors
-                                        .deepCharcoal, // Gap color matching bg
+                                    color: AppColors.deepCharcoal,
                                     width: 2,
                                   ),
                                   color: AppColors.surfaceDark,
@@ -243,7 +270,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _openManualEntry,
+        onPressed: _openIngredientPicker,
         backgroundColor: AppColors.zestyLime,
         child: const Icon(Icons.add, color: AppColors.deepCharcoal),
       ),
@@ -303,6 +330,39 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                                   style: TextStyle(color: Colors.white54)));
                         }
 
+                        // Group Active Items
+                        final groupedActive =
+                            <String, List<Map<String, dynamic>>>{};
+                        for (var item in active) {
+                          final cat = item['category'] as String? ?? 'Other';
+                          if (!groupedActive.containsKey(cat)) {
+                            groupedActive[cat] = [];
+                          }
+                          groupedActive[cat]!.add(item);
+                        }
+
+                        final categoryOrder = [
+                          'Produce',
+                          'Meat & Seafood',
+                          'Dairy & Eggs',
+                          'Pantry',
+                          'Herbs & Spices',
+                          'Frozen',
+                          'Bakery',
+                          'Beverages',
+                          'Other',
+                          'Uncategorized'
+                        ];
+
+                        final sortedKeys = groupedActive.keys.toList()
+                          ..sort((a, b) {
+                            int indexA = categoryOrder.indexOf(a);
+                            int indexB = categoryOrder.indexOf(b);
+                            if (indexA == -1) indexA = 999;
+                            if (indexB == -1) indexB = 999;
+                            return indexA.compareTo(indexB);
+                          });
+
                         return ListView(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           children: [
@@ -316,8 +376,27 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                                         color: AppColors.zestyLime,
                                         fontWeight: FontWeight.bold)),
                               ),
-                              ...active
-                                  .map((item) => _buildCartItem(item, false)),
+                              ...sortedKeys.map((cat) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          top: 12, bottom: 8),
+                                      child: Text(
+                                        cat,
+                                        style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            letterSpacing: 0.5),
+                                      ),
+                                    ),
+                                    ...groupedActive[cat]!.map(
+                                        (item) => _buildCartItem(item, false)),
+                                  ],
+                                );
+                              }),
                             ],
                             if (bought.isNotEmpty) ...[
                               const Padding(
@@ -697,10 +776,15 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
 }
 
 class _ManualEntryModal extends StatefulWidget {
-  final Function(String name, String? qty, String unit) onAdd;
+  final Function(String name, String? qty, String unit, String category) onAdd;
   final String? initialName;
+  final String? initialCategory;
 
-  const _ManualEntryModal({required this.onAdd, this.initialName});
+  const _ManualEntryModal({
+    required this.onAdd,
+    this.initialName,
+    this.initialCategory,
+  });
 
   @override
   State<_ManualEntryModal> createState() => _ManualEntryModalState();
@@ -709,12 +793,29 @@ class _ManualEntryModal extends StatefulWidget {
 class _ManualEntryModalState extends State<_ManualEntryModal> {
   late TextEditingController _nameCtrl;
   final _qtyCtrl = TextEditingController();
+
+  final List<String> _categories = const [
+    'Produce',
+    'Meat & Seafood',
+    'Dairy & Eggs',
+    'Pantry',
+    'Herbs & Spices',
+    'Frozen',
+    'Bakery',
+    'Beverages',
+    'Other',
+    'Uncategorized'
+  ];
+
   String _selectedUnit = 'pcs';
+  late String _selectedCategory;
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.initialName);
+    // Use initial category if provided, otherwise default to 'Other'
+    _selectedCategory = widget.initialCategory ?? 'Other';
   }
 
   final List<String> _units = [
@@ -747,7 +848,7 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
   void _submit() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
-    widget.onAdd(name, _qtyCtrl.text.trim(), _selectedUnit);
+    widget.onAdd(name, _qtyCtrl.text.trim(), _selectedUnit, _selectedCategory);
   }
 
   @override
@@ -784,6 +885,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                       fontSize: 18,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
+
+              // Name Input
               TextField(
                 controller: _nameCtrl,
                 textCapitalization: TextCapitalization.sentences,
@@ -801,6 +904,37 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                 autofocus: true,
               ),
               const SizedBox(height: 16),
+
+              // Category Dropdown
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                dropdownColor: AppColors.surfaceDark,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Category",
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.08),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                items: _categories
+                    .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c,
+                              style: const TextStyle(color: Colors.white)),
+                        ))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedCategory = val);
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Quantity & Unit
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -846,7 +980,9 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                             items: _units
                                 .map((u) => DropdownMenuItem(
                                       value: u,
-                                      child: Text(u),
+                                      child: Text(u,
+                                          style: const TextStyle(
+                                              color: Colors.white)),
                                     ))
                                 .toList(),
                             onChanged: (val) {
@@ -861,6 +997,8 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Add Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

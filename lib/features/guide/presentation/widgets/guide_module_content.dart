@@ -5,12 +5,10 @@ import '../../domain/guide_data.dart';
 
 class GuideModuleContent extends StatelessWidget {
   final GuideModule module;
-  final VoidCallback onDismiss;
 
   const GuideModuleContent({
     super.key,
     required this.module,
-    required this.onDismiss,
   });
 
   @override
@@ -28,21 +26,6 @@ class GuideModuleContent extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         ...module.steps.map((step) => _buildStepCard(context, step)),
-        const SizedBox(height: 32),
-        ElevatedButton(
-          onPressed: onDismiss,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.zestyLime,
-            foregroundColor: AppColors.deepCharcoal,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: const Text('Dismiss',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        const SizedBox(height: 32), // Bottom padding
       ],
     );
   }

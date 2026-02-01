@@ -9,12 +9,14 @@ class PremiumPaywall extends StatelessWidget {
   final String message;
   final String featureName;
   final String? ctaLabel;
+  final bool isDialog;
 
   const PremiumPaywall({
     super.key,
     required this.message,
     required this.featureName,
     this.ctaLabel,
+    this.isDialog = true,
   });
 
   static Future<void> show(BuildContext context,
@@ -143,14 +145,15 @@ class PremiumPaywall extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   // Close Button
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(AppLocalizations.of(context)!.premiumNotNow,
-                        style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                  ),
+                  if (isDialog)
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(AppLocalizations.of(context)!.premiumNotNow,
+                          style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600)),
+                    ),
                 ],
               ),
             ),

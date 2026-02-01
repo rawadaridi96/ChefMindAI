@@ -357,23 +357,30 @@ class _SaveLinkDialogState extends ConsumerState<_SaveLinkDialog> {
           title: title.isNotEmpty ? title : null, thumbnail: widget.thumbnail);
 
       if (mounted) {
-        if (mounted) {
-          Navigator.pop(context); // Close dialog
-          NanoToast.showSuccess(context, "Link Saved to Vault! 📂");
-        }
+        final l10n = AppLocalizations.of(context)!;
+        Navigator.pop(context); // Close dialog
+        NanoToast.showSuccess(context, l10n.toastLinkSaved);
       }
     } on PremiumLimitReachedException catch (e) {
       if (mounted) {
         Navigator.pop(context); // Close dialog
-        PremiumPaywall.show(context,
-            message: e.message, featureName: e.featureName);
+
+        final l10n = AppLocalizations.of(context)!;
+        String message = e.message;
+        String title = e.featureName;
+
+        if (e.type == PremiumLimitType.vaultFull) {
+          title = l10n.premiumVaultFullTitle;
+          message = l10n.premiumVaultFullMessage(e.limit ?? 0);
+        }
+
+        PremiumPaywall.show(context, message: message, featureName: title);
       }
     } catch (e) {
       if (mounted) {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          NanoToast.showError(context, "Error: $e");
-        }
+        final l10n = AppLocalizations.of(context)!;
+        setState(() => _isLoading = false);
+        NanoToast.showError(context, l10n.toastErrorGeneric(e.toString()));
       }
     }
   }

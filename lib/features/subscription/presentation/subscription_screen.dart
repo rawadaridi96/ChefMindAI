@@ -504,15 +504,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   Future<void> _handlePayment(
       BuildContext context, SubscriptionTier tier) async {
+    final l10n = AppLocalizations.of(context)!;
     if (tier == SubscriptionTier.homeCook) {
       // Downgrades are handled by App Store management
-      NanoToast.showInfo(context, "Manage downgrades in your Store settings.");
+      NanoToast.showInfo(context, l10n.toastManageDowngrades);
       return;
     }
 
     if (_offerings == null) {
-      NanoToast.showError(
-          context, "Store not configured. Please try again later.");
+      NanoToast.showError(context, l10n.toastStoreNotConfigured);
       return;
     }
 
@@ -529,7 +529,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     // Let's assume standard Offering 'default'.
     final offering = _offerings?.current;
     if (offering == null) {
-      NanoToast.showError(context, "No offers available.");
+      NanoToast.showError(context, l10n.toastNoOffers);
       return;
     }
 
@@ -561,7 +561,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     if (package == null) {
       // Fallback for demo/dev if strict ID parsing fails
       // Just grab first monthly/yearly package? No that's dangerous.
-      NanoToast.showError(context, "Product not found: $targetId");
+      NanoToast.showError(context, l10n.toastProductNotFound(targetId));
       return;
     }
 
@@ -580,27 +580,29 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           // User cancelled, do nothing or show info
           // NanoToast.showInfo(context, "Purchase cancelled");
         } else {
-          NanoToast.showError(context, "Purchase failed: ${e.message}");
+          NanoToast.showError(
+              context, l10n.toastPurchaseFailed(e.message ?? "Unknown"));
         }
       }
     } catch (e) {
       if (context.mounted) {
-        NanoToast.showError(context, "An unexpected error occurred.");
+        NanoToast.showError(context, l10n.toastErrorUnexpected);
       }
     }
   }
 
   Future<void> _restorePurchases() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       await ref
           .read(subscriptionControllerProvider.notifier)
           .restorePurchases();
       if (mounted) {
-        NanoToast.showSuccess(context, "Purchases restored!");
+        NanoToast.showSuccess(context, l10n.toastPurchasesRestored);
       }
     } catch (e) {
       if (mounted) {
-        NanoToast.showError(context, "Restore failed.");
+        NanoToast.showError(context, l10n.toastRestoreFailed);
       }
     }
   }
