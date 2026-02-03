@@ -27,6 +27,7 @@ import '../meal_plan/presentation/meal_plan_provider.dart';
 import '../meal_plan/presentation/meal_plan_screen.dart';
 import '../../core/services/onboarding_service.dart';
 import '../../core/widgets/onboarding_overlay.dart';
+import '../../features/guide/presentation/master_guide_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -562,6 +563,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             */
 
             IconButton(
+              icon: const Icon(Icons.help_outline, color: Colors.white),
+              onPressed: () => _showHelpMenu(context),
+            ),
+            IconButton(
               icon: const Icon(Icons.diamond_outlined,
                   color: AppColors.zestyLime),
               onPressed: () {
@@ -974,7 +979,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Switch to Recipes tab
     final mealPlanEnabled = ref.read(mealPlanEnabledProvider);
-    setState(() => _currentIndex = mealPlanEnabled ? 3 : 1); // Recipes tab
+    setState(() {
+      _currentIndex = mealPlanEnabled ? 3 : 1; // Recipes tab
+      _searchController.clear();
+    });
   }
 
   Widget _buildSkillBadges() {
@@ -1404,6 +1412,89 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
     });
+  }
+
+  void _showHelpMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.deepCharcoal,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border.all(color: Colors.white12, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.help_outline, color: AppColors.zestyLime),
+                const SizedBox(width: 12),
+                Text(
+                  "Need Help?",
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Tutorial Option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.zestyLime.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.touch_app,
+                    color: AppColors.zestyLime, size: 20),
+              ),
+              title: const Text("Start Interactive Tutorial",
+                  style: TextStyle(color: Colors.white)),
+              subtitle: const Text("Learn how to use the app step-by-step",
+                  style: TextStyle(color: Colors.white54, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _showOnboarding = true);
+              },
+            ),
+
+            const Divider(color: Colors.white10),
+
+            // Guide Option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.menu_book,
+                    color: Colors.blueAccent, size: 20),
+              ),
+              title: const Text("Values & Master Guide",
+                  style: TextStyle(color: Colors.white)),
+              subtitle: const Text("Read detailed instructions & features",
+                  style: TextStyle(color: Colors.white54, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MasterGuideScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
   }
 }
 

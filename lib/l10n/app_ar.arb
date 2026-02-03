@@ -624,5 +624,247 @@
     "placeholders": {
       "error": {"type": "String"}
     }
+  },
+  "onboardingStepModeTitle": "اختر وضعك",
+  "onboardingStepModeDesc": "بدّل بين وضع 'استكشاف' (اكتب ما تشتهي) أو وضع 'مؤونتي' (استخدم ما لديك).",
+  "onboardingStepPromptTitle": "أدخل رغبتك",
+  "onboardingStepPromptDesc": "اكتب ما تريد أن تأكله أو صف الطبق. كن مبدعًا!",
+  "onboardingStepGenerateTitle": "أنشئ سبك",
+  "onboardingStepGenerateDesc": "اضغط على إنشاء وسيقوم طاهي الذكاء الاصطناعي بإنشاء وصفة مخصصة لك.",
+  "onboardingStepDietaryTitle": "تفضيلات غذائية",
+  "onboardingStepDietaryDesc": "قم بتمكين المرشحات لتطبيق تفضيلاتك المحفوظة تلقائيًا.",
+  "onboardingStepPantryTitle": "انتقل إلى مؤونتي",
+  "onboardingStepPantryDesc": "لنستكشف وضع المؤونة! اضغط هنا للطهي بمكوناتك.",
+  "onboardingStepPantryFilterTitle": "نقي بالمرشحات",
+  "onboardingStepPantryFilterDesc": "حدد المطبخ، الوقت، المهارة والتسميات لتخصيص الاقتراحات.",
+  "onboardingStepPantrySelectorTitle": "نوع الوجبة والجو",
+  "onboardingStepPantrySelectorDesc": "فطور، غداء، حلوى أو وجبة خفيفة. اختر جوًا مثل مريح أو سريع.",
+  "onboardingStepPantryGenerateTitle": "إنشاء من المؤونة",
+  "onboardingStepPantryGenerateDesc": "أنشئ وصفات بما لديك! الذكاء الاصطناعي يطابق مكوناتك.",
+  "onboardingStepNavTitle": "استكشف التطبيق",
+  "onboardingStepNavDesc": "استخدم التنقل للوصول إلى المؤونة، الوصفات، وعربة التسوق.",
+  "onboardingSkip": "تخطي",
+  "onboardingNext": "التالي",
+  "onboardingDone": "تم",
+  "onboardingDontShowAgain": "لا تظهر مرة أخرى",
+  "settingsShowTutorial": "عرض الدليل مرة أخرى",
+  "guideSubscriptionPlans": "خطط الاشتراك",
+  "guideSubscriptionPlansDesc": "فهم مستواك",
+  "guideHomeCookTier": "طاهي منزلي (مجاني)",
+  "guideHomeCookTierDesc": "حتى 5 وصفات/يوم. تخزين محدود. مثالي للطهاة العرضيين.",
+  "guideSousChefTier": "مساعد شيف",
+  "guideSousChefTierDesc": "وصفات غير محدودة، خزين غير محدود، ملفات غذائية وإنشاء محسن.",
+
+  "guideMealPlanning": "تخطيط الوجبات",
+  "guideMealPlanningDesc": "خطط لأسبوعك بسهولة.",
+  "guideAddToPlan": "إضافة للخطة",
+  "guideAddToPlanDesc": "اضغط على التقويم لجدولة أي وصفة.",
+  "guideCalendarView": "ععرض التقويم",
+  "guideCalendarViewDesc": "شاهد وجباتك القادمة وتتبع التغذية.",
+  "guideShoppingListSync": "مزامنة ذكية",
+  "guideShoppingListSyncDesc": "تضاف المكونات المخططة لقائمتك.",
+
+  "guideDiscoverTitle": "اكتشف وأنشئ",
+  "guideDiscoverDesc": "اصنع وصفات من الصفر أو باستخدام مؤونتك.",
+  "guidePromptStep": "أدخل طلبك",
+  "guidePromptDesc": "اكتب رغبة أو استخدم فكرة حديثة.",
+  "guideFiltersStep": "مرشحات الشيف",
+  "guideFiltersDesc": "خصص مع النظام الغذائي، الجو والمزيد.",
+  "guideSwitchModeStep": "تغيير الوضع",
+  "guideSwitchModeDesc": "انتقل إلى 'مؤونتي' لاستخدام مخزونك.",
+  "guidePantryLogicStep": "منطق المؤونة",
+  "guidePantryLogicDesc": "صفي المكونات واختر أنواع الوجبات.",
+  "guideUnifiedGenerate": "سحر الإنشاء",
+  "guideUnifiedGenerateDesc": "اضغط على العصا السحرية لصنع وجبتك.",
+  "guideStockUpStep": "تخزين",
+  "guideStockUpDesc": "أضف عناصر يدويًا أو استخدم الماسح.",
+  "guideSmartMgmtStep": "إدارة ذكية",
+  "guideSmartMgmtDesc": "تتبع النضارة والكميات.",
+  "guideShopListStep": "قائمة التسوق",
+  "guideShopListDesc": "تزامن تلقائي مع خطط وجباتك.",
+  "guidePantrySwitch": "تغيير الوضع",
+  "guidePantrySwitchDesc": "اضغط 'مؤونتي' لتغيير الوضع.",
+  "guidePantryRefine": "تنفية النتائج",
+  "guidePantryRefineDesc": "استخدم المرشحات لتضمين عناصر محددة.",
+  "guidePantryGenerate": "سحر الإنشاء",
+  "guidePantryGenerateDesc": "أنشئ وصفات باستخدام مكوناتك الموجودة.",
+  "guideImportStep": "استيراد",
+  "guideImportStepDesc": "الصق روابط أو شارك من وسائل التواصل.",
+  "guideVaultLinks": "وضع الروابط",
+  "guideVaultLinksDesc": "بدّل المفتاح لعرض روابط الوصفات المحفوظة.",
+  "guidePantryScanner": "ماسح بصري",
+  "guidePantryScannerDesc": "استخدم الكاميرا لمسح المكونات تلقائيًا.",
+  "guideOfflineTitle": "وصول دون اتصال",
+  "guideOfflineDesc": "اطبخ بدون إنترنت.",
+  "guideOfflineVault": "الخزنة",
+  "guideOfflineVaultDesc": "الوصول إلى جميع وصفاتك المحفوظة في أي وقت.",
+  "guideOfflinePantry": "المؤونة والعربة",
+  "guideOfflinePantryDesc": "إدارة مخزونك وقائمة التسوق حتى دون اتصال.",
+  "guideOfflineSync": "مزامنة لاحقًا",
+  "guideCookingTools": "أدوات الطهي",
+  "guideCookingToolsDesc": "تحجيم، وضع الطهي ومساعد الشيف.",
+  "guideOfflineSyncDesc": "تتم المزامنة تلقائيًا عند إعادة الاتصال.",
+  "guideExecutiveChefTier": "شيف تنفيذي",
+  "guideExecutiveChefTierDesc": "كل شيء في مساعد الشيف زائد المزامنة العائلية والدعم المميز.",
+  "guideRecipeScaling": "تحجيم الوصفة",
+  "guideRecipeScalingDesc": "تعديل الحصص",
+  "guideScalingHow": "تغيير الحصص",
+  "guideScalingHowDesc": "استخدم محدد الحصص لتعديل المكونات تلقائيًا.",
+  "guideScalingMacros": "تحديث تلقائي",
+  "guideScalingMacrosDesc": "يتم تحديث المعلومات الغذائية تلقائيًا.",
+  "guideCookingMode": "وضع الطهي",
+  "guideCookingModeDesc": "خطوة بخطوة",
+  "guideCookingStart": "ابدأ الطهي",
+  "guideCookingStartDesc": "اضغط 'ابدأ الطهي' للدخول في وضع التحدث الحر.",
+  "guideCookingVoice": "تعليمات صوتية",
+  "guideCookingVoiceDesc": "تُقرأ كل خطوة بصوت عالٍ. قل 'التالي' للمتابعة.",
+  "guideCookingTimer": "مؤقتات مدمجة",
+  "guideCookingTimerDesc": "اضغط لبدء المؤقتات المدمجة.",
+  "guideChefAssistant": "مساعد الشيف",
+  "guideChefAssistantDesc": "مساعدة الذكاء الاصطناعي",
+  "guideAssistantAsk": "اسأل الشيف",
+  "guideAssistantAskDesc": "لديك سؤال؟ اضغط 'اسأل الشيف'.",
+  "guideAssistantSubs": "بدائل",
+  "guideAssistantSubsDesc": "اطلب بدائل فورية.",
+  "guideAssistantTechniques": "تقنيات",
+  "guideAssistantTechniquesDesc": "اطلب من الشيف شرح أي تقنية.",
+  "toastErrorGeneric": "خطأ: {error}",
+  "@toastErrorGeneric": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastRunningBackground": "يعمل في الخلفية...",
+  "toastLinkSaved": "تم حفظ الرابط! 📂",
+  "toastRecipeSaved": "تم حفظ الوصفة! 📥",
+  "toastRecipeNotFound": "الوصفة غير موجودة.",
+  "toastLinkInvalid": "الرابط منتهي أو غير صالح.",
+  "toastSaveFailed": "فشل الحفظ: {error}",
+  "@toastSaveFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastLoadFailed": "فشل التحميل: {error}",
+  "@toastLoadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastScanFailed": "فشل المسح: {error}",
+  "@toastScanFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToPantry": "أضيف {item} للمؤونة!",
+  "@toastAddedToPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAlreadyInPantry": "{item} موجود بالفعل.",
+  "@toastAlreadyInPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToMealPlan": "أضيف لخطة الوجبات!",
+  "toastRemovedFromPlan": "أزيل من الخطة",
+  "toastCookingCompleted": "اكتملت الوصفة!",
+  "toastSpeechUnavailable": "التعرف الصوتي غير متاح",
+  "toastPurchasesRestored": "تمت استعادة المشتريات!",
+  "toastRestoreFailed": "فشلت الاستعادة.",
+  "toastNoOffers": "لا توجد عروض.",
+  "toastPurchaseFailed": "فشل الشراء: {error}",
+  "@toastPurchaseFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastManageDowngrades": "إدارة التخفيضات في إعدادات المتجر.",
+  "mealPlanEmpty": "لا وجبات مخططة",
+  "mealPlanNoRecipes": "لا وصفات محفوظة.",
+  "mealPlanAddTo": "إضافة إلى {type}",
+  "@mealPlanAddTo": {
+    "placeholders": {
+        "type": {
+            "type": "String"
+        }
+    }
+  },
+  "mealTypeBreakfast": "فطور",
+  "mealTypeLunch": "غداء",
+  "mealTypeDinner": "عشاء",
+  "mealTypeSnacks": "وجبات خفيفة",
+  "premiumVaultFullTitle": "الخزنة ممتلئة",
+  "premiumVaultFullMessage": "الخزنة ممتلئة ({limit} عنصر).",
+  "@premiumVaultFullMessage": {
+    "placeholders": {
+        "limit": {
+            "type": "int"
+        }
+    }
+  },
+  "premiumShareLimitTitle": "حد المشاركة",
+  "premiumShareLimitMessage": "تم الوصول للحد اليومي.",
+  "toastStoreNotConfigured": "المتجر غير مكون.",
+  "toastProductNotFound": "المنتج غير موجود: {id}",
+  "@toastProductNotFound": {
+    "placeholders": {
+        "id": {
+            "type": "String"
+        }
+    }
+  },
+  "toastErrorUnexpected": "خطأ غير متوقع.",
+  "dialogRemoveFromVaultTitle": "إزالة من الخزنة؟",
+  "dialogRemoveFromVaultMessage": "سيؤدي هذا لإزالة الوصفة.",
+  "actionCancel": "إلغاء",
+  "actionRemove": "إزالة",
+  "shareMakeVisible": "جعل مرئيًا للعائلة",
+  "toastJoinHouseholdFirst": "انضم لمنزل أولاً.",
+  "toastSharedWithHousehold": "تمت المشاركة مع المنزل!",
+  "shareLink": "مشاركة الرابط",
+  "shareMessage": "شاهد هذه الوصفة: {title}!",
+  "@shareMessage": {
+    "placeholders": {
+        "title": {
+            "type": "String"
+        }
+    }
+  },
+  "addToMealPlanTitle": "إضافة للخطة",
+  "labelDate": "التاريخ:",
+  "labelMealType": "النوع:",
+  "actionAddToPlan": "إضافة",
+  "sectionMainIngredients": "المكونات الرئيسية",
+  "toastAddedToList": "أضيف للقائمة",
+  "dialogSaveRecipeFirstTitle": "احفظ أولاً",
+  "dialogSaveRecipeFirstMessage": "لإضافة صورة، احفظ الوصفة.",
+  "actionSaveToVault": "حفظ",
+  "toastUploadingPhoto": "جاري الرفع...",
+  "toastPhotoAdded": "تمت إضافة الصورة!",
+  "toastUploadFailed": "فشل: {error}",
+  "@toastUploadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
   }
 }

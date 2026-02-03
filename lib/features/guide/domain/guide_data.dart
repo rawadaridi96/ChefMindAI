@@ -125,6 +125,29 @@ class GuideData {
           ),
         ],
       ),
+      // 4. Meal Planning
+      GuideModule(
+        title: l10n.guideMealPlanning,
+        description: l10n.guideMealPlanningDesc,
+        steps: [
+          GuideStep(
+            title: l10n.guideAddToPlan,
+            description: l10n.guideAddToPlanDesc,
+            icon: LucideIcons.calendarPlus,
+          ),
+          GuideStep(
+            title: l10n.guideCalendarView,
+            description: l10n.guideCalendarViewDesc,
+            icon: LucideIcons.calendarDays,
+          ),
+          GuideStep(
+            title: l10n.guideShoppingListSync,
+            description: l10n.guideShoppingListSyncDesc,
+            icon: LucideIcons.refreshCw,
+          ),
+        ],
+      ),
+
       // 4. Cooking Tools
       GuideModule(
         title: l10n.guideCookingTools,

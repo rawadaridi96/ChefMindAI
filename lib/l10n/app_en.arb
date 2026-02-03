@@ -800,6 +800,16 @@
   "guideSousChefTier": "Sous Chef",
   "guideSousChefTierDesc": "Unlimited recipes, unlimited vault, dietary profiles, and enhanced generation.",
 
+  "guideMealPlanning": "Meal Planning",
+  "guideMealPlanningDesc": "Plan your week with ease.",
+  "guideAddToPlan": "Add to Plan",
+  "guideAddToPlanDesc": "Tap the calendar icon on any recipe to schedule it for breakfast, lunch, or dinner.",
+  "guideCalendarView": "Calendar View",
+  "guideCalendarViewDesc": "See your upcoming meals at a glance and track nutrition for the day.",
+  "guideShoppingListSync": "Smart Sync",
+  "guideShoppingListSyncDesc": "Ingredients from planned meals are automatically added to your shopping list.",
+
+
   "guideDiscoverTitle": "Discover & Create",
   "guideDiscoverDesc": "Craft recipes from scratch or using your pantry.",
   "guidePromptStep": "Enter Prompt",

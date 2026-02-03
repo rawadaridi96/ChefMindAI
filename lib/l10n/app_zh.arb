@@ -655,5 +655,247 @@
   "chefSuggestedChange": "建议更改",
   "chefApplyChange": "应用更改",
   "chefSwapInstruction": "将 {target} 替换为 {replacement}",
-  "chefRemoveInstruction": "移除 {target}"
+  "chefRemoveInstruction": "移除 {target}",
+  "onboardingStepModeTitle": "选择您的模式",
+  "onboardingStepModeDesc": "在'探索'模式（输入您想要的）或'我的储藏室'模式（使用您拥有的）之间切换，以生成食谱。",
+  "onboardingStepPromptTitle": "输入您的渴望",
+  "onboardingStepPromptDesc": "输入您想吃什么或描述您想要的菜肴。尽情发挥创意！",
+  "onboardingStepGenerateTitle": "生成您的食谱",
+  "onboardingStepGenerateDesc": "点击生成按钮，我们的AI厨师将为您创建个性化食谱。",
+  "onboardingStepDietaryTitle": "设置饮食偏好",
+  "onboardingStepDietaryDesc": "启用饮食过滤器，将保存的偏好自动应用于每个食谱。",
+  "onboardingStepPantryTitle": "切换到我的储藏室",
+  "onboardingStepPantryDesc": "让我们探索储藏室模式！点击这里使用您的储藏室食材生成食谱。",
+  "onboardingStepPantryFilterTitle": "使用过滤器优化",
+  "onboardingStepPantryFilterDesc": "设置菜系、烹饪时间、技能水平和饮食标签以个性化您的建议。",
+  "onboardingStepPantrySelectorTitle": "选择餐食类型和氛围",
+  "onboardingStepPantrySelectorDesc": "选择早餐、主餐、甜点或小吃。设置一种氛围，如舒适、约会之夜或快速简便。",
+  "onboardingStepPantryGenerateTitle": "从储藏室生成",
+  "onboardingStepPantryGenerateDesc": "点击这里使用您已有的食材创建食谱！我们的AI将您的食材与完美的菜肴相匹配。",
+  "onboardingStepNavTitle": "探索应用程序",
+  "onboardingStepNavDesc": "使用底部导航访问储藏室、食谱、购物车等。厨师按钮将带您回到这里！",
+  "onboardingSkip": "跳过",
+  "onboardingNext": "下一步",
+  "onboardingDone": "完成",
+  "onboardingDontShowAgain": "不再显示",
+  "settingsShowTutorial": "再次显示教程",
+  "guideSubscriptionPlans": "订阅计划",
+  "guideSubscriptionPlansDesc": "了解您的等级",
+  "guideHomeCookTier": "家庭厨师（免费）",
+  "guideHomeCookTierDesc": "每天生成最多5个食谱。储藏室存储有限。非常适合偶尔做饭的人。",
+  "guideSousChefTier": "副主厨",
+  "guideSousChefTierDesc": "无限食谱，无限储藏室，饮食档案和增强生成功能。",
+
+  "guideMealPlanning": "膳食计划",
+  "guideMealPlanningDesc": "轻松计划您的一周。",
+  "guideAddToPlan": "添加到计划",
+  "guideAddToPlanDesc": "点击任何食谱上的日历图标进行安排。",
+  "guideCalendarView": "日历视图",
+  "guideCalendarViewDesc": "一目了然地查看您即将到来的餐点并跟踪当天的营养。",
+  "guideShoppingListSync": "智能同步",
+  "guideShoppingListSyncDesc": "计划餐点中的食材会自动添加到您的购物清单。",
+
+  "guideDiscoverTitle": "发现与创建",
+  "guideDiscoverDesc": "从头开始或使用您的储藏室制作食谱。",
+  "guidePromptStep": "输入提示",
+  "guidePromptDesc": "输入渴望或使用'最近的芯片'以节省时间。",
+  "guideFiltersStep": "厨师过滤器",
+  "guideFiltersDesc": "自定义饮食、氛围等。",
+  "guideSwitchModeStep": "切换模式",
+  "guideSwitchModeDesc": "切换到'我的储藏室'以使用您的库存。",
+  "guidePantryLogicStep": "储藏室逻辑",
+  "guidePantryLogicDesc": "过滤食材并选择餐食类型。",
+  "guideUnifiedGenerate": "生成魔法",
+  "guideUnifiedGenerateDesc": "点击魔术棒制作您的餐点。",
+  "guideStockUpStep": "储备",
+  "guideStockUpDesc": "手动添加物品或使用扫描仪。",
+  "guideSmartMgmtStep": "智能管理",
+  "guideSmartMgmtDesc": "跟踪新鲜度和数量。",
+  "guideShopListStep": "购物清单",
+  "guideShopListDesc": "自动与您的膳食计划同步。",
+  "guidePantrySwitch": "切换模式",
+  "guidePantrySwitchDesc": "点击'我的储藏室'切换生成器模式。",
+  "guidePantryRefine": "优化结果",
+  "guidePantryRefineDesc": "使用过滤器包含特定物品或氛围。",
+  "guidePantryGenerate": "生成魔法",
+  "guidePantryGenerateDesc": "使用您现有的食材创建食谱，节省时间和金钱。",
+  "guideImportStep": "导入",
+  "guideImportStepDesc": "粘贴链接或直接从社交媒体分享。",
+  "guideVaultLinks": "链接模式",
+  "guideVaultLinksDesc": "切换开关以查看您收藏的食谱链接。",
+  "guidePantryScanner": "视觉扫描仪",
+  "guidePantryScannerDesc": "使用相机自动扫描食材到您的储藏室。",
+  "guideOfflineTitle": "离线访问",
+  "guideOfflineDesc": "无需连接即可烹饪。",
+  "guideOfflineVault": "储藏室",
+  "guideOfflineVaultDesc": "随时随地访问您保存的所有食谱。",
+  "guideOfflinePantry": "储藏室和购物车",
+  "guideOfflinePantryDesc": "即使离线也可以管理您的库存和购物清单。",
+  "guideOfflineSync": "稍后同步",
+  "guideCookingTools": "烹饪工具",
+  "guideCookingToolsDesc": "缩放、烹饪模式和厨师助手。",
+  "guideOfflineSyncDesc": "当您重新连接到互联网时，更改会自动同步。",
+  "guideExecutiveChefTier": "行政主厨",
+  "guideExecutiveChefTierDesc": "副主厨的所有功能加上家庭同步、共享储藏室和高级支持。",
+  "guideRecipeScaling": "食谱缩放",
+  "guideRecipeScalingDesc": "调整份量",
+  "guideScalingHow": "更改份量",
+  "guideScalingHowDesc": "使用任何食谱上的份量选择器自动按比例增减食材。",
+  "guideScalingMacros": "自动更新宏营养素",
+  "guideScalingMacrosDesc": "当您更改份量大小时，营养信息会自动更新。",
+  "guideCookingMode": "烹饪模式",
+  "guideCookingModeDesc": "分步烹饪",
+  "guideCookingStart": "开始烹饪",
+  "guideCookingStartDesc": "在任何食谱上点击'开始烹饪'进入免提烹饪模式。",
+  "guideCookingVoice": "语音指令",
+  "guideCookingVoiceDesc": "每个步骤都会朗读。说'下一步'或点击以前进。",
+  "guideCookingTimer": "内置计时器",
+  "guideCookingTimerDesc": "计时器嵌入在步骤中。点击开始并在完成时获得通知。",
+  "guideChefAssistant": "厨师助手",
+  "guideChefAssistantDesc": "食谱中的AI帮助",
+  "guideAssistantAsk": "询问厨师",
+  "guideAssistantAskDesc": "对食谱有疑问？点击'询问厨师'获取实时AI帮助。",
+  "guideAssistantSubs": "食材替代",
+  "guideAssistantSubsDesc": "询问替代品，如'我可以用杏仁奶代替吗？'并获得即时答案。",
+  "guideAssistantTechniques": "烹饪技巧",
+  "guideAssistantTechniquesDesc": "不确定某种方法？请厨师解释食谱中的任何技巧。",
+  "toastErrorGeneric": "错误：{error}",
+  "@toastErrorGeneric": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastRunningBackground": "正在后台运行...",
+  "toastLinkSaved": "链接已保存到储藏室！📂",
+  "toastRecipeSaved": "食谱已保存到您的储藏室！📥",
+  "toastRecipeNotFound": "未找到食谱或拒绝访问。",
+  "toastLinkInvalid": "链接已过期或无效。",
+  "toastSaveFailed": "保存食谱失败：{error}",
+  "@toastSaveFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastLoadFailed": "加载食谱失败：{error}",
+  "@toastLoadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastScanFailed": "扫描失败：{error}",
+  "@toastScanFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToPantry": "已添加 {item} 到储藏室！",
+  "@toastAddedToPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAlreadyInPantry": "{item} 已在您的储藏室中。",
+  "@toastAlreadyInPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToMealPlan": "已添加到膳食计划！",
+  "toastRemovedFromPlan": "已从计划中移除",
+  "toastCookingCompleted": "食谱已完成！祝您好胃口！",
+  "toastSpeechUnavailable": "语音识别不可用",
+  "toastPurchasesRestored": "购买已恢复！",
+  "toastRestoreFailed": "恢复失败。",
+  "toastNoOffers": "没有可用的优惠。",
+  "toastPurchaseFailed": "购买失败：{error}",
+  "@toastPurchaseFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastManageDowngrades": "在您的商店设置中管理降级。",
+  "mealPlanEmpty": "没有计划的膳食",
+  "mealPlanNoRecipes": "未找到保存的食谱。",
+  "mealPlanAddTo": "添加到 {type}",
+  "@mealPlanAddTo": {
+    "placeholders": {
+        "type": {
+            "type": "String"
+        }
+    }
+  },
+  "mealTypeBreakfast": "早餐",
+  "mealTypeLunch": "午餐",
+  "mealTypeDinner": "晚餐",
+  "mealTypeSnacks": "小吃",
+  "premiumVaultFullTitle": "储藏室已满",
+  "premiumVaultFullMessage": "储藏室已满（{limit} 个项目）。",
+  "@premiumVaultFullMessage": {
+    "placeholders": {
+        "limit": {
+            "type": "int"
+        }
+    }
+  },
+  "premiumShareLimitTitle": "每日分享限制",
+  "premiumShareLimitMessage": "达到每日分享限制。升级以无限分享！",
+  "toastStoreNotConfigured": "商店未配置。",
+  "toastProductNotFound": "未找到产品：{id}",
+  "@toastProductNotFound": {
+    "placeholders": {
+        "id": {
+            "type": "String"
+        }
+    }
+  },
+  "toastErrorUnexpected": "发生意外错误。",
+  "dialogRemoveFromVaultTitle": "从储藏室移除？",
+  "dialogRemoveFromVaultMessage": "这将从您保存的收藏中移除此食谱。",
+  "actionCancel": "取消",
+  "actionRemove": "移除",
+  "shareMakeVisible": "对家庭成员可见",
+  "toastJoinHouseholdFirst": "请先加入一个家庭。",
+  "toastSharedWithHousehold": "已与家庭共享！",
+  "shareLink": "分享链接",
+  "shareMessage": "看看这个食谱：{title} 在 ChefMind！",
+  "@shareMessage": {
+    "placeholders": {
+        "title": {
+            "type": "String"
+        }
+    }
+  },
+  "addToMealPlanTitle": "添加到膳食计划",
+  "labelDate": "日期：",
+  "labelMealType": "餐食类型：",
+  "actionAddToPlan": "添加到计划",
+  "sectionMainIngredients": "主要配料",
+  "toastAddedToList": "已添加到清单",
+  "dialogSaveRecipeFirstTitle": "先保存食谱",
+  "dialogSaveRecipeFirstMessage": "要添加照片，必须将此食谱保存到您的储藏室。",
+  "actionSaveToVault": "保存到储藏室",
+  "toastUploadingPhoto": "正在上传照片...",
+  "toastPhotoAdded": "照片添加成功！",
+  "toastUploadFailed": "上传失败：{error}",
+  "@toastUploadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  }
 }

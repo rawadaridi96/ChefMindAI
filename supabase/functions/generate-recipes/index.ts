@@ -139,7 +139,9 @@ serve(async (req) => {
     if (mode === 'discover') {
       if (!search_query) throw new Error('Search query required for discovery mode')
       promptText += `\n\nUser Request: "${search_query}"`
-      promptText += `\nCreate these recipes based on the user's request. Compare required ingredients against the user's pantry list below.`
+      promptText += `\nIMPORTANT: Generate recipes based SOLELY on the user's request. 
+      - Do NOT attempt to match ingredients to any pantry. Assume the user has access to EVERYTHING.
+      - AUTHENTICITY RULE: If the user names a specific dish (e.g. "Kabsa", "Carbonara"), you MUST provide at least one traditional/authentic version of that dish (e.g. Rice + Meat for Kabsa), rather than just "flavored" variations.`
     } 
     // Mode 2: Pantry Chef
     else if (mode === 'pantry_chef') {
@@ -204,16 +206,24 @@ serve(async (req) => {
     }
 
     // --- COMMON CONTEXT & FORMAT ---
-    promptText += `\n\nUser's Pantry List: [${pantryString}]`
-    promptText += `\n\nCRITICAL OUTPUT RULES:
-    1. **STRICTLY EDIBLE FOOD ONLY:** You are a CHEF. Do NOT generate beauty products (face masks, scrubs), cleaning solutions, or inedible mixtures. If the user asks for "Face Mask", generate a "Edible Food Mask" (joke) or a recipe that uses those ingredients for EATING (e.g. Honey & Oat Cookies) and explicitly state it is for eating. If the request is non-culinary, return "Chef's Limitation".
-    2. Return strictly valid JSON.
-    3. **SMART PANTRY MATCHING:** Check each ingredient against the User's Pantry List. Use common sense!
-       - If pantry has "Chocolate", then "Chocolate Bar", "Chocolate Chips", or "Dark Chocolate" are MATCHES (is_missing: false).
-       - If pantry has "Lemon", then "Lemon Juice" or "Lemon Zest" are MATCHES.
-       - If pantry has "Minced Meat", then "Ground Beef" is a MATCH.
-       - Only set "is_missing" to true if the user truly lacks the core ingredient.
-    4. Include detailed step-by-step instructions.
+    if (mode === 'pantry_chef') {
+        promptText += `\n\nUser's Pantry List: [${pantryString}]`
+        promptText += `\n\nCRITICAL OUTPUT RULES:
+        1. **STRICTLY EDIBLE FOOD ONLY:** You are a CHEF.
+        2. Return strictly valid JSON.
+        3. **SMART PANTRY MATCHING:** Check each ingredient against the User's Pantry List. Only set "is_missing" to true if the user truly lacks the core ingredient.
+        4. Include detailed step-by-step instructions.`
+    } else {
+        // DISCOVER MODE - NO PANTRY
+        promptText += `\n\nCRITICAL OUTPUT RULES:
+        1. **STRICTLY EDIBLE FOOD ONLY:** You are a CHEF.
+        2. Return strictly valid JSON.
+        3. Set "is_missing" to true for ALL ingredients (Client will handle matching).
+        4. Include detailed step-by-step instructions.`
+    }
+    
+
+    promptText += `
     5. List required kitchen equipment.
     6. Provide a macro breakdown (protein, carbs, fat).
     7. For every recipe, provide a "image_prompt" field. This should be a highly detailed, professional food photography prompt for an AI image generator (e.g., "Mouth-watering [Recipe Title], vibrant colors, garnishes, soft cinematic lighting, 8k, macro photography, wooden table background").

@@ -655,5 +655,247 @@
   "chefSuggestedChange": "Changement Suggéré",
   "chefApplyChange": "Appliquer Changement",
   "chefSwapInstruction": "Remplacer {target} par {replacement}",
-  "chefRemoveInstruction": "Retirer {target}"
+  "chefRemoveInstruction": "Retirer {target}",
+  "onboardingStepModeTitle": "Choisissez Votre Mode",
+  "onboardingStepModeDesc": "Basculez entre le mode 'Découverte' (tapez une envie) ou 'Mon Garde-manger' (utilisez ce que vous avez).",
+  "onboardingStepPromptTitle": "Entrez Votre Envie",
+  "onboardingStepPromptDesc": "Tapez ce que vous voulez manger ou décrivez le plat. Soyez créatif !",
+  "onboardingStepGenerateTitle": "Générez Votre Recette",
+  "onboardingStepGenerateDesc": "Appuyez sur Générer et notre chef IA créera une recette personnalisée pour vous.",
+  "onboardingStepDietaryTitle": "Préférences Diététiques",
+  "onboardingStepDietaryDesc": "Activez les filtres pour appliquer automatiquement vos préférences à chaque recette.",
+  "onboardingStepPantryTitle": "Passez à Mon Garde-manger",
+  "onboardingStepPantryDesc": "Explorons le mode Garde-manger ! Touchez ici pour cuisiner avec vos ingrédients.",
+  "onboardingStepPantryFilterTitle": "Affinez avec des Filtres",
+  "onboardingStepPantryFilterDesc": "Définissez cuisine, temps, niveau et étiquettes pour personnaliser les suggestions.",
+  "onboardingStepPantrySelectorTitle": "Type de Repas & Ambiance",
+  "onboardingStepPantrySelectorDesc": "Petit-déjeuner, plat principal, dessert ou collation. Choisissez une ambiance comme Réconfort ou Rapide.",
+  "onboardingStepPantryGenerateTitle": "Générez depuis Garde-manger",
+  "onboardingStepPantryGenerateDesc": "Créez des recettes avec ce que vous avez déjà ! L'IA apparie vos ingrédients.",
+  "onboardingStepNavTitle": "Explorez l'App",
+  "onboardingStepNavDesc": "Utilisez la navigation pour accéder au Garde-manger, Recettes, Panier. Le bouton Chef vous ramène ici !",
+  "onboardingSkip": "Passer",
+  "onboardingNext": "Suivant",
+  "onboardingDone": "Fait",
+  "onboardingDontShowAgain": "Ne plus montrer",
+  "settingsShowTutorial": "Revoir le Tutoriel",
+  "guideSubscriptionPlans": "Plans d'Abonnement",
+  "guideSubscriptionPlansDesc": "Comprendre Votre Niveau",
+  "guideHomeCookTier": "Cuisinier Amateur (Gratuit)",
+  "guideHomeCookTierDesc": "Jusqu'à 5 recettes/jour. Stockage limité. Parfait pour les occasionnels.",
+  "guideSousChefTier": "Sous-Chef",
+  "guideSousChefTierDesc": "Recettes illimitées, coffre illimité, profils diététiques et génération améliorée.",
+
+  "guideMealPlanning": "Planification de Repas",
+  "guideMealPlanningDesc": "Planifiez votre semaine facilement.",
+  "guideAddToPlan": "Ajouter au Plan",
+  "guideAddToPlanDesc": "Touchez le calendrier sur n'importe quelle recette pour planifier.",
+  "guideCalendarView": "Vue Calendrier",
+  "guideCalendarViewDesc": "Voyez vos repas à venir et suivez la nutrition.",
+  "guideShoppingListSync": "Synchro Intelligente",
+  "guideShoppingListSyncDesc": "Les ingrédients planifiés s'ajoutent à votre liste.",
+
+  "guideDiscoverTitle": "Découvrir & Créer",
+  "guideDiscoverDesc": "Créez des recettes de zéro ou avec votre garde-manger.",
+  "guidePromptStep": "Entrez Prompt",
+  "guidePromptDesc": "Tapez une envie ou utilisez une idée récente.",
+  "guideFiltersStep": "Filtres Chef",
+  "guideFiltersDesc": "Personnalisez avec Diète, Ambiance, etc.",
+  "guideSwitchModeStep": "Changer de Mode",
+  "guideSwitchModeDesc": "Passez à 'Mon Garde-manger' pour utiliser votre stock.",
+  "guidePantryLogicStep": "Logique Garde-manger",
+  "guidePantryLogicDesc": "Filtrez ingrédients et types de repas.",
+  "guideUnifiedGenerate": "Générer Magia",
+  "guideUnifiedGenerateDesc": "Appuyez sur la Baguette Magique pour créer.",
+  "guideStockUpStep": "Remplir",
+  "guideStockUpDesc": "Ajoutez manuellement ou utilisez le Scanner.",
+  "guideSmartMgmtStep": "Gestion Intelligente",
+  "guideSmartMgmtDesc": "Suivez fraîcheur et quantités.",
+  "guideShopListStep": "Liste de Courses",
+  "guideShopListDesc": "Synchro auto avec vos plans repas.",
+  "guidePantrySwitch": "Changer Mode",
+  "guidePantrySwitchDesc": "Touchez 'Mon Garde-manger' pour changer le mode.",
+  "guidePantryRefine": "Affiner Résultats",
+  "guidePantryRefineDesc": "Utilisez des filtres pour inclure des articles précis.",
+  "guidePantryGenerate": "Générer Magia",
+  "guidePantryGenerateDesc": "Créez des recettes utilisant vos ingrédients existants.",
+  "guideImportStep": "Importation",
+  "guideImportStepDesc": "Collez des liens ou partagez depuis les réseaux sociaux.",
+  "guideVaultLinks": "Modo Liens",
+  "guideVaultLinksDesc": "Basculez pour voir vos liens sauvegardés.",
+  "guidePantryScanner": "Scanner Vision",
+  "guidePantryScannerDesc": "Utilisez la Caméra pour scanner des ingrédients.",
+  "guideOfflineTitle": "Accès Hors Ligne",
+  "guideOfflineDesc": "Cuisinez sans connexion.",
+  "guideOfflineVault": "Le Coffre",
+  "guideOfflineVaultDesc": "Accédez à vos recettes sauvegardées partout.",
+  "guideOfflinePantry": "Garde-manger & Panier",
+  "guideOfflinePantryDesc": "Gérez votre inventaire même hors ligne.",
+  "guideOfflineSync": "Synchro Plus Tard",
+  "guideCookingTools": "Outils Cuisine",
+  "guideCookingToolsDesc": "Mise à l'échelle, Mode Cuisine & Assistant.",
+  "guideOfflineSyncDesc": "Les changements se synchronisent à la reconnexion.",
+  "guideExecutiveChefTier": "Chef Exécutif",
+  "guideExecutiveChefTierDesc": "Tout de Sous-Chef plus synchro famille, coffres partagés et support premium.",
+  "guideRecipeScaling": "Mise à l'échelle",
+  "guideRecipeScalingDesc": "Ajuster Portions",
+  "guideScalingHow": "Changer Portions",
+  "guideScalingHowDesc": "Utilisez le sélecteur pour ajuster les ingrédients automatiquement.",
+  "guideScalingMacros": "Macros Auto",
+  "guideScalingMacrosDesc": "Les infos nutritionnelles s'ajustent automatiquement.",
+  "guideCookingMode": "Mode Cuisine",
+  "guideCookingModeDesc": "Cuisine Pas à Pas",
+  "guideCookingStart": "Commencer",
+  "guideCookingStartDesc": "Touchez 'Commencer' pour le mode mains libres.",
+  "guideCookingVoice": "Instructions Vocales",
+  "guideCookingVoiceDesc": "Chaque étape est lue. Dites 'Suivant' ou touchez pour avancer.",
+  "guideCookingTimer": "Minuteurs Intégrés",
+  "guideCookingTimerDesc": "Touchez pour lancer les minuteurs intégrés.",
+  "guideChefAssistant": "Assistant Chef",
+  "guideChefAssistantDesc": "Aide IA",
+  "guideAssistantAsk": "Demander au Chef",
+  "guideAssistantAskDesc": "Une question ? Touchez 'Demander au Chef'.",
+  "guideAssistantSubs": "Substitutions",
+  "guideAssistantSubsDesc": "Demandez des alternatives instantanément.",
+  "guideAssistantTechniques": "Techniques de Cuisine",
+  "guideAssistantTechniquesDesc": "Demandez au Chef d'expliquer une technique.",
+  "toastErrorGeneric": "Erreur : {error}",
+  "@toastErrorGeneric": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastRunningBackground": "Exécution en arrière-plan...",
+  "toastLinkSaved": "Lien sauvegardé ! 📂",
+  "toastRecipeSaved": "Recette sauvegardée ! 📥",
+  "toastRecipeNotFound": "Recette non trouvée.",
+  "toastLinkInvalid": "Lien expiré ou invalide.",
+  "toastSaveFailed": "Échec sauvegarde : {error}",
+  "@toastSaveFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastLoadFailed": "Échec chargement : {error}",
+  "@toastLoadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastScanFailed": "Échec scan : {error}",
+  "@toastScanFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToPantry": "Ajouté {item} au Garde-manger !",
+  "@toastAddedToPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAlreadyInPantry": "{item} est déjà là.",
+  "@toastAlreadyInPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToMealPlan": "Ajouté au Plan Repas !",
+  "toastRemovedFromPlan": "Retiré du plan",
+  "toastCookingCompleted": "Recette Terminée !",
+  "toastSpeechUnavailable": "Reconnaissance vocale indisponible",
+  "toastPurchasesRestored": "Achats restaurés !",
+  "toastRestoreFailed": "Échec restauration.",
+  "toastNoOffers": "Pas d'offres.",
+  "toastPurchaseFailed": "Échec achat : {error}",
+  "@toastPurchaseFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastManageDowngrades": "Gérez les déclassements dans les paramètres du Store.",
+  "mealPlanEmpty": "Aucun repas prévu",
+  "mealPlanNoRecipes": "Aucune recette sauvegardée.",
+  "mealPlanAddTo": "Ajouter à {type}",
+  "@mealPlanAddTo": {
+    "placeholders": {
+        "type": {
+            "type": "String"
+        }
+    }
+  },
+  "mealTypeBreakfast": "Petit-déjeuner",
+  "mealTypeLunch": "Déjeuner",
+  "mealTypeDinner": "Dîner",
+  "mealTypeSnacks": "Collations",
+  "premiumVaultFullTitle": "Coffre Plein",
+  "premiumVaultFullMessage": "Le coffre est plein ({limit} articles).",
+  "@premiumVaultFullMessage": {
+    "placeholders": {
+        "limit": {
+            "type": "int"
+        }
+    }
+  },
+  "premiumShareLimitTitle": "Limite Partage",
+  "premiumShareLimitMessage": "Limite journalière atteinte.",
+  "toastStoreNotConfigured": "Store non configuré.",
+  "toastProductNotFound": "Produit non trouvé : {id}",
+  "@toastProductNotFound": {
+    "placeholders": {
+        "id": {
+            "type": "String"
+        }
+    }
+  },
+  "toastErrorUnexpected": "Erreur inattendue.",
+  "dialogRemoveFromVaultTitle": "Retirer du Coffre ?",
+  "dialogRemoveFromVaultMessage": "Ceci retirera la recette.",
+  "actionCancel": "Annuler",
+  "actionRemove": "Retirer",
+  "shareMakeVisible": "Rendre visible à la famille",
+  "toastJoinHouseholdFirst": "Rejoignez un foyer d'abord.",
+  "toastSharedWithHousehold": "Partagé avec le Foyer !",
+  "shareLink": "Partager Lien",
+  "shareMessage": "Regarde cette recette : {title} sur ChefMind !",
+  "@shareMessage": {
+    "placeholders": {
+        "title": {
+            "type": "String"
+        }
+    }
+  },
+  "addToMealPlanTitle": "Ajouter au Plan",
+  "labelDate": "Date :",
+  "labelMealType": "Type :",
+  "actionAddToPlan": "Ajouter",
+  "sectionMainIngredients": "Ingredientes Principaux",
+  "toastAddedToList": "Ajouté à la liste",
+  "dialogSaveRecipeFirstTitle": "Sauvegarder D'abord",
+  "dialogSaveRecipeFirstMessage": "Pour ajouter une photo, sauvegardez la recette.",
+  "actionSaveToVault": "Sauvegarder",
+  "toastUploadingPhoto": "Téléchargement photo...",
+  "toastPhotoAdded": "Photo ajoutée !",
+  "toastUploadFailed": "Échec : {error}",
+  "@toastUploadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  }
 }

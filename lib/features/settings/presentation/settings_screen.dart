@@ -22,7 +22,6 @@ import 'chef_labs_screen.dart';
 import 'household_screen.dart';
 import '../../guide/presentation/master_guide_screen.dart';
 import '../../subscription/presentation/subscription_details_screen.dart';
-import '../../../core/services/onboarding_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -577,15 +576,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
 
                       const SizedBox(height: 24),
+                      Text(
+                        AppLocalizations.of(context)!.settingsAccount,
+                        style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Personalize AI (Visible to ALL)
+                      Consumer(builder: (context, ref, _) {
+                        final subState =
+                            ref.watch(subscriptionControllerProvider);
+                        final tier =
+                            subState.valueOrNull ?? SubscriptionTier.homeCook;
+                        final isPremium = tier != SubscriptionTier.homeCook;
+
+                        return _SettingsTile(
+                          icon: Icons.auto_awesome,
+                          title: AppLocalizations.of(context)!
+                              .settingsPersonalizeAI,
+                          subtitle: _buildDietarySummary(user, isPremium),
+                          trailing: const Icon(Icons.arrow_forward_ios,
+                              color: Colors.white54, size: 16),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const DietaryPreferencesScreen(),
+                              ),
+                            ).then((_) => setState(() {
+                                  // Refresh to show updates
+                                }));
+                          },
+                        );
+                      }),
+
+                      const SizedBox(height: 8),
+
                       if (!isGuest) ...[
-                        Text(
-                          AppLocalizations.of(context)!.settingsAccount,
-                          style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 16),
                         _SettingsTile(
                           icon: Icons.people_outline,
                           title:
@@ -606,35 +637,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     builder: (_) => const HouseholdScreen()));
                           },
                         ),
-                        const SizedBox(height: 8),
-                        Consumer(builder: (context, ref, _) {
-                          final subState =
-                              ref.watch(subscriptionControllerProvider);
-                          final tier =
-                              subState.valueOrNull ?? SubscriptionTier.homeCook;
-                          final isPremium = tier != SubscriptionTier.homeCook;
-
-                          return _SettingsTile(
-                            icon: Icons.auto_awesome,
-                            title: AppLocalizations.of(context)!
-                                .settingsPersonalizeAI,
-                            subtitle: _buildDietarySummary(user, isPremium),
-                            trailing: const Icon(Icons.arrow_forward_ios,
-                                color: Colors.white54, size: 16),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const DietaryPreferencesScreen(),
-                                ),
-                              ).then((_) => setState(() {
-                                    // Refresh to show updates
-                                  }));
-                            },
-                          );
-                        }),
-
                         const SizedBox(height: 8),
 
                         // ChefLabs (Executive Only)
@@ -725,24 +727,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           );
                         },
                       ),
-                      const SizedBox(height: 8),
-                      _SettingsTile(
-                        icon: Icons.school_outlined,
-                        title:
-                            AppLocalizations.of(context)!.settingsShowTutorial,
-                        trailing: const Icon(Icons.arrow_forward_ios,
-                            color: Colors.white54, size: 16),
-                        onTap: () async {
-                          final onboardingService =
-                              ref.read(onboardingServiceProvider);
-                          await onboardingService.resetOnboarding();
-                          if (context.mounted) {
-                            NanoToast.showSuccess(context,
-                                "Tutorial will show on next home screen visit");
-                            Navigator.pop(context); // Return to home
-                          }
-                        },
-                      ),
+
                       const SizedBox(height: 24),
 
                       // Sign Out / Log In

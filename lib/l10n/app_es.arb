@@ -654,5 +654,247 @@
   "chefSuggestedChange": "Cambio Sugerido",
   "chefApplyChange": "Aplicar Cambio",
   "chefSwapInstruction": "Cambiar {target} por {replacement}",
-  "chefRemoveInstruction": "Eliminar {target}"
+  "chefRemoveInstruction": "Eliminar {target}",
+  "onboardingStepModeTitle": "Elige Tu Modo",
+  "onboardingStepModeDesc": "Cambia entre el modo 'Descubrir' (escribe cualquier antojo) o el modo 'Mi Despensa' (usa lo que tienes) para generar recetas.",
+  "onboardingStepPromptTitle": "Introduce Tu Antojo",
+  "onboardingStepPromptDesc": "Escribe lo que te apetece o describe el plato que quieres. ¡Sé tan creativo como quieras!",
+  "onboardingStepGenerateTitle": "Genera Tu Receta",
+  "onboardingStepGenerateDesc": "Toca el botón Generar y nuestro chef IA creará una receta personalizada solo para ti.",
+  "onboardingStepDietaryTitle": "Establece Preferencias Dietéticas",
+  "onboardingStepDietaryDesc": "Activa filtros dietéticos para aplicar automáticamente tus preferencias guardadas a cada receta.",
+  "onboardingStepPantryTitle": "Cambia a Mi Despensa",
+  "onboardingStepPantryDesc": "¡Exploremos el modo Despensa! Toca aquí para generar recetas usando ingredientes de tu despensa.",
+  "onboardingStepPantryFilterTitle": "Refina con Filtros",
+  "onboardingStepPantryFilterDesc": "Establece cocina, tiempo de cocción, nivel de habilidad y etiquetas dietéticas para personalizar tus sugerencias.",
+  "onboardingStepPantrySelectorTitle": "Elige Tipo y Vibra",
+  "onboardingStepPantrySelectorDesc": "Elige desayuno, comida, postre o snack. Establece una vibra como Confort o Rápido.",
+  "onboardingStepPantryGenerateTitle": "Genera desde Despensa",
+  "onboardingStepPantryGenerateDesc": "¡Toca aquí para crear recetas usando lo que ya tienes! Nuestra IA combinará tus ingredientes para platos perfectos.",
+  "onboardingStepNavTitle": "Explora la App",
+  "onboardingStepNavDesc": "Usa la navegación inferior para acceder a Despensa, Recetas, Carrito y más.",
+  "onboardingSkip": "Omitir",
+  "onboardingNext": "Siguiente",
+  "onboardingDone": "Hecho",
+  "onboardingDontShowAgain": "No mostrar de nuevo",
+  "settingsShowTutorial": "Mostrar Tutorial de Nuevo",
+  "guideSubscriptionPlans": "Planes de Suscripción",
+  "guideSubscriptionPlansDesc": "Entendiendo Tu Nivel",
+  "guideHomeCookTier": "Cocinero Casero (Gratis)",
+  "guideHomeCookTierDesc": "Genera hasta 5 recetas por día. Almacenamiento limitado en bóveda. Perfecto para cocineros ocasionales.",
+  "guideSousChefTier": "Sous Chef",
+  "guideSousChefTierDesc": "Recetas ilimitadas, bóveda ilimitada, perfiles dietéticos y generación mejorada.",
+
+  "guideMealPlanning": "Planificación de Comidas",
+  "guideMealPlanningDesc": "Planifica tu semana fácilmente.",
+  "guideAddToPlan": "Añadir a Plan",
+  "guideAddToPlanDesc": "Toca el calendario en cualquier receta para programarla.",
+  "guideCalendarView": "Vista Calendario",
+  "guideCalendarViewDesc": "Ve tus próximas comidas y rastrea la nutrición diaria.",
+  "guideShoppingListSync": "Sincronización Inteligente",
+  "guideShoppingListSyncDesc": "Los ingredientes planificados se añaden a tu lista de compras.",
+
+  "guideDiscoverTitle": "Descubre y Crea",
+  "guideDiscoverDesc": "Crea recetas desde cero o usando tu despensa.",
+  "guidePromptStep": "Introduce Prompt",
+  "guidePromptDesc": "Escribe un antojo o usa un 'Chip Reciente' para ahorrar tiempo.",
+  "guideFiltersStep": "Filtros de Chef",
+  "guideFiltersDesc": "Personaliza con Dieta, Vibra y más.",
+  "guideSwitchModeStep": "Cambiar Modo",
+  "guideSwitchModeDesc": "Cambia a 'Mi Despensa' para usar tu inventario.",
+  "guidePantryLogicStep": "Lógica de Despensa",
+  "guidePantryLogicDesc": "Filtra ingredientes y selecciona tipos de comida.",
+  "guideUnifiedGenerate": "Generar Magia",
+  "guideUnifiedGenerateDesc": "Toca la Varita Mágica para crear tu comida.",
+  "guideStockUpStep": "Abastecer",
+  "guideStockUpDesc": "Añade artículos manualmente o usa el Escáner.",
+  "guideSmartMgmtStep": "Gestión Inteligente",
+  "guideSmartMgmtDesc": "Rastrea frescura y cantidades.",
+  "guideShopListStep": "Lista de Compras",
+  "guideShopListDesc": "Se sincroniza automáticamente con tus planes de comida.",
+  "guidePantrySwitch": "Cambiar Modo",
+  "guidePantrySwitchDesc": "Toca 'Mi Despensa' para cambiar el modo del generador.",
+  "guidePantryRefine": "Refinar Resultados",
+  "guidePantryRefineDesc": "Usa filtros para incluir artículos o vibras específicas.",
+  "guidePantryGenerate": "Generar Magia",
+  "guidePantryGenerateDesc": "Crea recetas que usan tus ingredientes existentes para ahorrar tiempo.",
+  "guideImportStep": "Importando",
+  "guideImportStepDesc": "Pega enlaces o comparte directamente desde redes sociales.",
+  "guideVaultLinks": "Modo Enlaces",
+  "guideVaultLinksDesc": "Cambia el interruptor para ver tus enlaces de recetas guardados.",
+  "guidePantryScanner": "Escáner de Visión",
+  "guidePantryScannerDesc": "Usa la Cámara para auto-escanear ingredientes a tu despensa.",
+  "guideOfflineTitle": "Acceso Offline",
+  "guideOfflineDesc": "Cocina sin conexión.",
+  "guideOfflineVault": "La Bóveda",
+  "guideOfflineVaultDesc": "Accede a todas tus recetas guardadas en cualquier momento.",
+  "guideOfflinePantry": "Despensa y Carrito",
+  "guideOfflinePantryDesc": "Gestiona tu inventario y lista de compras incluso sin conexión.",
+  "guideOfflineSync": "Sincronizar Luego",
+  "guideCookingTools": "Herramientas de Cocina",
+  "guideCookingToolsDesc": "Escalado, Modo Cocina y Asistente Chef.",
+  "guideOfflineSyncDesc": "Los cambios se sincronizan automáticamente cuando te reconectas a internet.",
+  "guideExecutiveChefTier": "Chef Ejecutivo",
+  "guideExecutiveChefTierDesc": "Todo lo de Sous Chef más sincronización familiar, bóvedas compartidas y soporte premium.",
+  "guideRecipeScaling": "Escalado de Recetas",
+  "guideRecipeScalingDesc": "Ajustar Porciones",
+  "guideScalingHow": "Cambiar Porciones",
+  "guideScalingHowDesc": "Usa el selector de porciones para escalar ingredientes automáticamente.",
+  "guideScalingMacros": "Macros Auto-Actualizados",
+  "guideScalingMacrosDesc": "La información nutricional se actualiza automáticamente.",
+  "guideCookingMode": "Modo Cocina",
+  "guideCookingModeDesc": "Cocina Paso a Paso",
+  "guideCookingStart": "Empezar a Cocinar",
+  "guideCookingStartDesc": "Toca 'Empezar a Cocinar' para entrar en modo manos libres.",
+  "guideCookingVoice": "Instrucciones de Voz",
+  "guideCookingVoiceDesc": "Cada paso se lee en voz alta. Di 'Siguiente' o toca para avanzar.",
+  "guideCookingTimer": "Temporizadores Integrados",
+  "guideCookingTimerDesc": "Los temporizadores están integrados. Toca para iniciar.",
+  "guideChefAssistant": "Asistente Chef",
+  "guideChefAssistantDesc": "Ayuda IA en Recetas",
+  "guideAssistantAsk": "Preguntar al Chef",
+  "guideAssistantAskDesc": "¿Tienes una pregunta? Toca 'Preguntar al Chef' para ayuda IA.",
+  "guideAssistantSubs": "Sustituciones",
+  "guideAssistantSubsDesc": "Pide alternativas como '¿Puedo usar leche de almendras?' y obtén respuestas.",
+  "guideAssistantTechniques": "Técnicas de Cocina",
+  "guideAssistantTechniquesDesc": "¿Inseguro sobre un método? Pide al Chef que explique.",
+  "toastErrorGeneric": "Error: {error}",
+  "@toastErrorGeneric": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastRunningBackground": "Ejecutando en segundo plano...",
+  "toastLinkSaved": "¡Enlace Guardado en Bóveda! 📂",
+  "toastRecipeSaved": "¡Receta guardada en tu Bóveda! 📥",
+  "toastRecipeNotFound": "Receta no encontrada o acceso denegado.",
+  "toastLinkInvalid": "Enlace expirado o inválido.",
+  "toastSaveFailed": "Fallo al guardar receta: {error}",
+  "@toastSaveFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastLoadFailed": "Fallo al cargar receta: {error}",
+  "@toastLoadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastScanFailed": "Fallo en escaneo: {error}",
+  "@toastScanFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToPantry": "¡Añadido {item} a Despensa!",
+  "@toastAddedToPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAlreadyInPantry": "{item} ya está en tu despensa.",
+  "@toastAlreadyInPantry": {
+    "placeholders": {
+        "item": {
+            "type": "String"
+        }
+    }
+  },
+  "toastAddedToMealPlan": "¡Añadido al Plan de Comidas!",
+  "toastRemovedFromPlan": "Eliminado del plan",
+  "toastCookingCompleted": "¡Receta Completada!",
+  "toastSpeechUnavailable": "Voz no disponible",
+  "toastPurchasesRestored": "¡Compras restauradas!",
+  "toastRestoreFailed": "Fallo en restauración.",
+  "toastNoOffers": "No hay ofertas disponibles.",
+  "toastPurchaseFailed": "Fallo en compra: {error}",
+  "@toastPurchaseFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  },
+  "toastManageDowngrades": "Gestiona degradaciones en la configuración de la Tienda.",
+  "mealPlanEmpty": "Sin comidas planeadas",
+  "mealPlanNoRecipes": "No se encontraron recetas guardadas.",
+  "mealPlanAddTo": "Añadir a {type}",
+  "@mealPlanAddTo": {
+    "placeholders": {
+        "type": {
+            "type": "String"
+        }
+    }
+  },
+  "mealTypeBreakfast": "Desayuno",
+  "mealTypeLunch": "Almuerzo",
+  "mealTypeDinner": "Cena",
+  "mealTypeSnacks": "Snacks",
+  "premiumVaultFullTitle": "Límite de Bóveda",
+  "premiumVaultFullMessage": "La bóveda está llena ({limit} artículos).",
+  "@premiumVaultFullMessage": {
+    "placeholders": {
+        "limit": {
+            "type": "int"
+        }
+    }
+  },
+  "premiumShareLimitTitle": "Límite de Compartir",
+  "premiumShareLimitMessage": "Límite diario alcanzado. ¡Mejora para compartir ilimitado!",
+  "toastStoreNotConfigured": "Tienda no configurada.",
+  "toastProductNotFound": "Producto no encontrado: {id}",
+  "@toastProductNotFound": {
+    "placeholders": {
+        "id": {
+            "type": "String"
+        }
+    }
+  },
+  "toastErrorUnexpected": "Error inesperado.",
+  "dialogRemoveFromVaultTitle": "¿Eliminar de Bóveda?",
+  "dialogRemoveFromVaultMessage": "Esto eliminará esta receta de tu colección.",
+  "actionCancel": "Cancelar",
+  "actionRemove": "Eliminar",
+  "shareMakeVisible": "Hacer visible a familia",
+  "toastJoinHouseholdFirst": "Únete a un hogar primero.",
+  "toastSharedWithHousehold": "¡Compartido con el Hogar!",
+  "shareLink": "Compartir Enlace",
+  "shareMessage": "Mira esta receta: {title} en ChefMind!",
+  "@shareMessage": {
+    "placeholders": {
+        "title": {
+            "type": "String"
+        }
+    }
+  },
+  "addToMealPlanTitle": "Añadir a Plan",
+  "labelDate": "Fecha:",
+  "labelMealType": "Tipo de Comida:",
+  "actionAddToPlan": "Añadir a Plan",
+  "sectionMainIngredients": "Ingredientes Principales",
+  "toastAddedToList": "Añadido a lista",
+  "dialogSaveRecipeFirstTitle": "Guardar Primero",
+  "dialogSaveRecipeFirstMessage": "Para añadir foto, guarda la receta.",
+  "actionSaveToVault": "Guardar",
+  "toastUploadingPhoto": "Subiendo foto...",
+  "toastPhotoAdded": "¡Foto añadida!",
+  "toastUploadFailed": "Fallo en subida: {error}",
+  "@toastUploadFailed": {
+    "placeholders": {
+        "error": {
+            "type": "String"
+        }
+    }
+  }
 }
