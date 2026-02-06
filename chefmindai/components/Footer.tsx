@@ -15,17 +15,13 @@ export default function Footer() {
           >
             Privacy Policy
           </Link>
+            Terms of Service
+          </Link>
           <Link
             href="/guide"
             className="hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             User Guide
-          </Link>
-          <Link
-            href="/terms"
-            className="hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            Terms of Service
           </Link>
           <a
             href="mailto:support@chefmind.ai"

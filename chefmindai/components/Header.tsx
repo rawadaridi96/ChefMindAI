@@ -39,6 +39,12 @@ export default function Header() {
           >
             Terms
           </Link>
+          <Link
+            href="/guide"
+            className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          >
+            Guide
+          </Link>
         </nav>
       </div>
     </header>
