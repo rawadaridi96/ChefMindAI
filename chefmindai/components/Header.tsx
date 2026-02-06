@@ -24,6 +24,7 @@ export default function Header() {
               alt="ChefMindAI Logo"
               fill
               className="object-cover"
+              style={{ borderRadius: "50%" }}
             />
           </div>
           <span>ChefMindAI</span>
