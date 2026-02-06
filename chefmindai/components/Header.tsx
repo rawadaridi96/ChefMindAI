@@ -10,14 +10,13 @@ export default function Header() {
           href="/"
           className="flex items-center gap-2 font-bold text-xl text-emerald-600 dark:text-emerald-500"
         >
-          <div className="relative w-12 h-12 rounded-full overflow-hidden shadow-sm">
-            <Image
-              src="/logo.png"
-              alt="ChefMindAI Logo"
-              fill
-              className="object-cover rounded-full"
-            />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="ChefMindAI Logo"
+            width={48}
+            height={48}
+            className="rounded-full object-cover"
+          />
           <span>ChefMindAI</span>
         </Link>
         <nav className="flex items-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-300">
