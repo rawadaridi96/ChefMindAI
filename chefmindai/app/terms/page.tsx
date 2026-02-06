@@ -9,7 +9,7 @@ export default function TermsOfService() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-4">1. Acceptance of Terms</h2>
         <p className="mb-4">
-          By downloading, installing, or using the ChefMind AI mobile
+          By downloading, installing, or using the ChefMindAI mobile
           application ("App") or accessing our website ("Service"), you agree to
           be bound by these Terms of Service. If you do not agree to these
           terms, please do not use the Service.
@@ -21,7 +21,7 @@ export default function TermsOfService() {
           2. Description of Service
         </h2>
         <p className="mb-4">
-          ChefMind AI is an AI-powered personal chef and pantry assistant
+          ChefMindAI is an AI-powered personal chef and pantry assistant
           designed to help users generate recipes, manage their pantry
           inventory, and plan meals. The Service includes both free and paid
           subscription tiers.
@@ -54,7 +54,7 @@ export default function TermsOfService() {
         <p className="mb-4">
           The Service and its original content (excluding Content provided by
           users), features, and functionality are and will remain the exclusive
-          property of ChefMind AI and its licensors. The Service is protected by
+          property of ChefMindAI and its licensors. The Service is protected by
           copyright, trademark, and other laws.
         </p>
       </section>
@@ -98,7 +98,7 @@ export default function TermsOfService() {
           8. Limitation of Liability
         </h2>
         <p className="mb-4">
-          In no event shall ChefMind AI, nor its directors, employees, partners,
+          In no event shall ChefMindAI, nor its directors, employees, partners,
           agents, suppliers, or affiliates, be liable for any indirect,
           incidental, special, consequential or punitive damages, including
           without limitation, loss of profits, data, use, goodwill, or other

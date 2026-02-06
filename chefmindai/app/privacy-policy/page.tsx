@@ -8,7 +8,7 @@ export default function PrivacyPolicy() {
 
       <section className="mb-8">
         <p className="mb-4">
-          ChefMind AI ("we," "our," or "us") respects your privacy. This Privacy
+          ChefMindAI ("we," "our," or "us") respects your privacy. This Privacy
           Policy describes succinctly how we collect, use, and share your
           personal information when you use our mobile application ("App") or
           website.
@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
 
         <h3 className="font-semibold mt-4 mb-2">Permissions We Request</h3>
         <p className="mb-4">
-          To provide the core features of ChefMind AI, we request the following
+          To provide the core features of ChefMindAI, we request the following
           permissions on your device:
         </p>
         <ul className="list-disc pl-6 mb-4 space-y-2">

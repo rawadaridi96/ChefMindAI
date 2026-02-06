@@ -8,9 +8,9 @@ import Footer from "@/components/Footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ChefMind AI - Your Personal Pantry Assistant",
+  title: "ChefMindAI - Your Personal Pantry Assistant",
   description:
-    "Stop food waste and cook delicious meals with ChefMind AI. The smart recipe generator and pantry manager.",
+    "Stop food waste and cook delicious meals with ChefMindAI. The smart recipe generator and pantry manager.",
 };
 
 export default function RootLayout({
