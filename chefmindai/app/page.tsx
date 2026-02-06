@@ -11,10 +11,11 @@ import {
   ScanLine,
   Calendar,
   Smartphone,
+  Sparkles,
 } from "lucide-react";
 
 export default function Home() {
-  const oneLinkUrl = "https://onelink.to/chefmindai"; // Placeholder OneLink
+  const oneLinkUrl = "https://onelink.to/853e9h";
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-black text-gray-900 dark:text-gray-100 overflow-hidden">
@@ -126,6 +127,28 @@ export default function Home() {
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Scan</p>
                   <p className="font-bold text-sm">Pantry Items</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Floating Elements - Label 2 (Generate) */}
+            <motion.div
+              animate={{ y: [0, 10, 0] }} // Opposite float direction
+              transition={{
+                duration: 4.5, // Slightly different duration
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.5,
+              }}
+              className="absolute top-40 -left-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-10"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-lg">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Generate</p>
+                  <p className="font-bold text-sm">Unique Recipes</p>
                 </div>
               </div>
             </motion.div>

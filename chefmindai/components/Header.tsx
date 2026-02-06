@@ -10,12 +10,12 @@ export default function Header() {
           href="/"
           className="flex items-center gap-2 font-bold text-xl text-emerald-600 dark:text-emerald-500"
         >
-          <div className="relative w-8 h-8 rounded-full overflow-hidden border border-gray-100 dark:border-gray-800">
+          <div className="relative w-10 h-10">
             <Image
               src="/logo.png"
               alt="ChefMindAI Logo"
               fill
-              className="object-cover"
+              className="object-contain"
             />
           </div>
           <span>ChefMindAI</span>
