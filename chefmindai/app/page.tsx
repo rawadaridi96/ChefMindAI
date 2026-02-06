@@ -12,6 +12,7 @@ import {
   Calendar,
   Smartphone,
   Sparkles,
+  ShoppingCart,
 } from "lucide-react";
 
 export default function Home() {
@@ -149,6 +150,28 @@ export default function Home() {
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Generate</p>
                   <p className="font-bold text-sm">Unique Recipes</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Floating Elements - Label 3 (Shopping) */}
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{
+                duration: 5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 1.2,
+              }}
+              className="absolute bottom-32 -right-8 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-10"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg">
+                  <ShoppingCart size={20} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Smart</p>
+                  <p className="font-bold text-sm">Shopping List</p>
                 </div>
               </div>
             </motion.div>

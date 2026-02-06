@@ -15,7 +15,7 @@ export default function Header() {
               src="/logo.png"
               alt="ChefMindAI Logo"
               fill
-              className="object-contain"
+              className="object-contain rounded-full"
             />
           </div>
           <span>ChefMindAI</span>

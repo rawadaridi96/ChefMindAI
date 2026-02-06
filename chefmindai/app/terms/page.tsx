@@ -9,10 +9,10 @@ export default function TermsOfService() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-4">1. Acceptance of Terms</h2>
         <p className="mb-4">
-          By downloading, installing, or using the ChefMindAI mobile
-          application ("App") or accessing our website ("Service"), you agree to
-          be bound by these Terms of Service. If you do not agree to these
-          terms, please do not use the Service.
+          By downloading, installing, or using the ChefMindAI mobile application
+          ("App") or accessing our website ("Service"), you agree to be bound by
+          these Terms of Service. If you do not agree to these terms, please do
+          not use the Service.
         </p>
       </section>
 
@@ -40,7 +40,37 @@ export default function TermsOfService() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">4. Privacy Policy</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          4. Subscriptions & Payments
+        </h2>
+        <p className="mb-4">
+          ChefMindAI offers auto-renewing subscription options ("Premium Plans")
+          to unlock advanced features.
+        </p>
+        <ul className="list-disc pl-6 mb-4 space-y-2">
+          <li>
+            <strong>Billing:</strong> Payment will be charged to your iTunes or
+            Google Play Account at confirmation of purchase.
+          </li>
+          <li>
+            <strong>Auto-Renewal:</strong> Subscription automatically renews
+            unless auto-renew is turned off at least 24-hours before the end of
+            the current period.
+          </li>
+          <li>
+            <strong>Management:</strong> You can manage your subscription and
+            turn off auto-renewal by going to your Account Settings on your
+            device after purchase.
+          </li>
+          <li>
+            <strong>No Refunds:</strong> We do not offer refunds for partial
+            subscription periods, except as required by applicable law.
+          </li>
+        </ul>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">5. Privacy Policy</h2>
         <p className="mb-4">
           Your use of the Service is also governed by our Privacy Policy, which
           explains how we collect, use, and protect your personal information.
