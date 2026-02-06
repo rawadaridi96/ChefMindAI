@@ -93,7 +93,39 @@ export default function PrivacyPolicy() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">5. Children's Privacy</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          5. Data Retention & Deletion
+        </h2>
+        <p className="mb-4">
+          We retain your personalized data (recipes, pantry items) as long as
+          your account is active.
+        </p>
+        <h3 className="font-semibold mt-4 mb-2">Account Deletion</h3>
+        <p className="mb-4">
+          You have the right to request the deletion of your account and all
+          associated data at any time. To do so, you can:
+        </p>
+        <ul className="list-disc pl-6 mb-4 space-y-2">
+          <li>
+            Use the <strong>"Delete Account"</strong> option within the App
+            settings.
+          </li>
+          <li>
+            Email us at{" "}
+            <a
+              href="mailto:support@chefmind.ai"
+              className="text-emerald-600 hover:underline"
+            >
+              support@chefmind.ai
+            </a>{" "}
+            with the subject line "Account Deletion Request". We will process
+            your request within 30 days.
+          </li>
+        </ul>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">6. Children's Privacy</h2>
         <p className="mb-4">
           Our Service is not intended for use by children under the age of 13.
           We do not knowingly collect personal information from children under
@@ -103,7 +135,7 @@ export default function PrivacyPolicy() {
 
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-4">
-          6. Changes to This Policy
+          7. Changes to This Policy
         </h2>
         <p className="mb-4">
           We may update our Privacy Policy from time to time. We will notify you
@@ -113,7 +145,7 @@ export default function PrivacyPolicy() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">7. Contact Us</h2>
+        <h2 className="text-xl font-semibold mb-4">8. Contact Us</h2>
         <p className="mb-4">
           If you have any questions about this Privacy Policy, please contact us
           at support@chefmind.ai.
